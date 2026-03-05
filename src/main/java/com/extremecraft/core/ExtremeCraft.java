@@ -13,7 +13,7 @@ import com.extremecraft.future.registry.TechCreativeTabs;
 import com.extremecraft.future.registry.TechItems;
 import com.extremecraft.future.registry.TechMenuTypes;
 import com.extremecraft.future.registry.TechRecipeSerializers;
-import com.extremecraft.gui.PulverizerScreen;
+import com.extremecraft.gui.PulverizerScreen;`nimport com.extremecraft.modules.loader.ModuleAbilityLoader;`nimport com.extremecraft.modules.loader.ModuleDefinitionLoader;`nimport com.extremecraft.modules.runtime.ModuleRuntimeEvents;
 import com.extremecraft.item.armor.ArmorBonusHandler;
 import com.extremecraft.item.module.ModuleLoader;
 import com.extremecraft.network.ModNetwork;
@@ -103,14 +103,14 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new SkillRegistry());
             MinecraftForge.EVENT_BUS.register(new SkillTreeDataLoader());
             MinecraftForge.EVENT_BUS.register(new ClassDefinitionLoader());
-            MinecraftForge.EVENT_BUS.register(new ClassAbilityLoader());
+            MinecraftForge.EVENT_BUS.register(new ClassAbilityLoader());`n            MinecraftForge.EVENT_BUS.register(new ModuleDefinitionLoader());`n            MinecraftForge.EVENT_BUS.register(new ModuleAbilityLoader());
             MinecraftForge.EVENT_BUS.register(new ModuleLoader());
             MinecraftForge.EVENT_BUS.register(new ResearchManager());
             MinecraftForge.EVENT_BUS.register(new WorldgenConsistencyValidator());
             MinecraftForge.EVENT_BUS.register(new DwServerTicker());
             MinecraftForge.EVENT_BUS.register(new ArmorBonusHandler());
             MinecraftForge.EVENT_BUS.register(new PlayerDualWieldEvents());
-            MinecraftForge.EVENT_BUS.register(new PlayerSkillTreeEvents());
+            MinecraftForge.EVENT_BUS.register(new PlayerSkillTreeEvents());`n            MinecraftForge.EVENT_BUS.register(new ModuleRuntimeEvents());
         });
     }
 
@@ -132,5 +132,6 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
 
 

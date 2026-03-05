@@ -31,11 +31,11 @@ public class ModuleRuntimeEvents {
         }
 
         for (ItemStack armor : player.getArmorSlots()) {
-            ModuleRuntimeService.applyPassiveModules(player, armor, null);
+            ModuleRuntimeService.applyPassiveModules(player, armor);
         }
 
         ItemStack held = player.getMainHandItem();
-        ModuleRuntimeService.applyPassiveModules(player, held, null);
+        ModuleRuntimeService.applyPassiveModules(player, held);
     }
 
     @SubscribeEvent

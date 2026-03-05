@@ -29,7 +29,7 @@ public abstract class AbstractModularArmorItem extends ArmorItem implements IMod
     @Override
     public void onArmorTick(ItemStack stack, Level level, Player player) {
         if (!level.isClientSide && player.tickCount % 20 == 0) {
-            com.extremecraft.modules.runtime.ModuleRuntimeService.applyPassiveModules(player, stack, EquipmentSlot.byTypeAndIndex(EquipmentSlot.Type.ARMOR, getEquipmentSlot().getIndex()));
+            com.extremecraft.modules.runtime.ModuleRuntimeService.applyPassiveModules(player, stack);
         }
     }
 }

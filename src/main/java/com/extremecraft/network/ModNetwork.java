@@ -5,6 +5,7 @@ import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
 import com.extremecraft.network.packet.PlayerStatsPacket;
 import com.extremecraft.network.packet.RequestPlayerStatsPacket;
 import com.extremecraft.network.packet.SyncClassAbilityStateS2CPacket;
+import com.extremecraft.network.packet.SyncModuleAbilityStateS2CPacket;
 import com.extremecraft.network.packet.SyncProgressPacket;
 import com.extremecraft.network.packet.UpgradeStatPacket;
 import net.minecraft.resources.ResourceLocation;
@@ -61,6 +62,12 @@ public final class ModNetwork {
                 .encoder(SyncClassAbilityStateS2CPacket::encode)
                 .decoder(SyncClassAbilityStateS2CPacket::decode)
                 .consumerMainThread(SyncClassAbilityStateS2CPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncModuleAbilityStateS2CPacket.class, nextId())
+                .encoder(SyncModuleAbilityStateS2CPacket::encode)
+                .decoder(SyncModuleAbilityStateS2CPacket::decode)
+                .consumerMainThread(SyncModuleAbilityStateS2CPacket::handle)
                 .add();
     }
 
