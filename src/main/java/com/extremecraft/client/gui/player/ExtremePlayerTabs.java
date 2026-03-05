@@ -8,7 +8,8 @@ public final class ExtremePlayerTabs {
         SKILLS("Skills", 420, 312),
         MAGIC("Magic", 338, 236),
         DUAL_WIELD("DualWield", 320, 214),
-        CLASS_SKILLS("Class", 338, 236);
+        CLASS_SKILLS("Class", 338, 236),
+        MODULES("Modules", 360, 244);
 
         private final Component label;
         private final int preferredWidth;

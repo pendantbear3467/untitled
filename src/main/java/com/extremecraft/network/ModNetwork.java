@@ -2,10 +2,13 @@ package com.extremecraft.network;
 
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
+import com.extremecraft.network.packet.InstallModuleC2SPacket;
 import com.extremecraft.network.packet.PlayerStatsPacket;
+import com.extremecraft.network.packet.RemoveModuleC2SPacket;
 import com.extremecraft.network.packet.RequestPlayerStatsPacket;
 import com.extremecraft.network.packet.SyncClassAbilityStateS2CPacket;
 import com.extremecraft.network.packet.SyncModuleAbilityStateS2CPacket;
+import com.extremecraft.network.packet.SyncModuleCatalogS2CPacket;
 import com.extremecraft.network.packet.SyncProgressPacket;
 import com.extremecraft.network.packet.UpgradeStatPacket;
 import net.minecraft.resources.ResourceLocation;
@@ -68,6 +71,24 @@ public final class ModNetwork {
                 .encoder(SyncModuleAbilityStateS2CPacket::encode)
                 .decoder(SyncModuleAbilityStateS2CPacket::decode)
                 .consumerMainThread(SyncModuleAbilityStateS2CPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncModuleCatalogS2CPacket.class, nextId())
+                .encoder(SyncModuleCatalogS2CPacket::encode)
+                .decoder(SyncModuleCatalogS2CPacket::decode)
+                .consumerMainThread(SyncModuleCatalogS2CPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(InstallModuleC2SPacket.class, nextId())
+                .encoder(InstallModuleC2SPacket::encode)
+                .decoder(InstallModuleC2SPacket::decode)
+                .consumerMainThread(InstallModuleC2SPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(RemoveModuleC2SPacket.class, nextId())
+                .encoder(RemoveModuleC2SPacket::encode)
+                .decoder(RemoveModuleC2SPacket::decode)
+                .consumerMainThread(RemoveModuleC2SPacket::handle)
                 .add();
     }
 

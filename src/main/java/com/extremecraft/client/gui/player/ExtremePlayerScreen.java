@@ -4,8 +4,11 @@ import com.extremecraft.client.gui.layout.GuiScaleContext;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.network.ModNetwork;
+import com.extremecraft.network.packet.InstallModuleC2SPacket;
+import com.extremecraft.network.packet.RemoveModuleC2SPacket;
 import com.extremecraft.network.packet.RequestPlayerStatsPacket;
 import com.extremecraft.network.packet.UpgradeStatPacket;
+import com.extremecraft.modules.runtime.ModuleCatalogClientState;
 import com.extremecraft.progression.capability.PlayerStatsApi;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
 import com.extremecraft.progression.skilltree.SkillTreeManager;
@@ -162,6 +165,7 @@ public class ExtremePlayerScreen extends Screen {
             case MAGIC -> renderMagicTab(graphics, mouseX, mouseY);
             case DUAL_WIELD -> renderDualWieldTab(graphics, mouseX, mouseY);
             case CLASS_SKILLS -> renderClassTab(graphics);
+            case MODULES -> renderModulesTab(graphics, mouseX, mouseY);
         }
 
         super.render(graphics, mouseX, mouseY, partialTick);
@@ -334,6 +338,92 @@ public class ExtremePlayerScreen extends Screen {
         graphics.drawString(font, Component.literal("UI for class switching/perk trees is pending."), x, y + 30, 0xC8CFDB, false);
     }
 
+    private void renderModulesTab(GuiGraphics graphics, int mouseX, int mouseY) {
+        int x = leftPos + 16;
+        int y = topPos + 62;
+
+        ItemStack main = player.getMainHandItem();
+        ItemStack chest = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
+
+        graphics.drawString(font, Component.literal("Module Bench"), x, y, 0xE8C78D, false);
+        graphics.drawString(font, Component.literal("Hold a modular tool or wear modular chest armor."), x, y + 14, 0xC8CFDB, false);
+        graphics.drawString(font, Component.literal("Main: " + main.getHoverName().getString()), x, y + 34, 0xD8DEE9, false);
+        graphics.drawString(font, Component.literal("Chest: " + chest.getHoverName().getString()), x, y + 46, 0xD8DEE9, false);
+
+        List<ModuleCatalogClientState.ModuleEntry> toolModules = ModuleCatalogClientState.toolModules();
+        List<ModuleCatalogClientState.ModuleEntry> armorModules = ModuleCatalogClientState.armorModules();
+
+        graphics.drawString(font, Component.literal("Tool Modules"), x, y + 66, 0xE0E6F2, false);
+        for (int i = 0; i < Math.min(4, toolModules.size()); i++) {
+            ModuleCatalogClientState.ModuleEntry entry = toolModules.get(i);
+            int rowY = y + 80 + (i * 18);
+            drawActionButton(graphics, x, rowY, 16, 16, "+");
+            drawActionButton(graphics, x + 18, rowY, 16, 16, "-");
+            graphics.drawString(font, Component.literal(entry.id() + " (" + entry.slotCost() + ")"), x + 40, rowY + 4, 0xD8DEE9, false);
+        }
+
+        int armorX = x + 188;
+        graphics.drawString(font, Component.literal("Armor Modules"), armorX, y + 66, 0xE0E6F2, false);
+        for (int i = 0; i < Math.min(4, armorModules.size()); i++) {
+            ModuleCatalogClientState.ModuleEntry entry = armorModules.get(i);
+            int rowY = y + 80 + (i * 18);
+            drawActionButton(graphics, armorX, rowY, 16, 16, "+");
+            drawActionButton(graphics, armorX + 18, rowY, 16, 16, "-");
+            graphics.drawString(font, Component.literal(entry.id() + " (" + entry.slotCost() + ")"), armorX + 40, rowY + 4, 0xD8DEE9, false);
+        }
+
+        if (toolModules.isEmpty() && armorModules.isEmpty()) {
+            graphics.drawString(font, Component.literal("Waiting for server module catalog sync..."), x, y + 88, 0xC8CFDB, false);
+        }
+    }
+
+    private void drawActionButton(GuiGraphics graphics, int x, int y, int w, int h, String label) {
+        graphics.fill(x, y, x + w, y + h, 0xAA2A3142);
+        graphics.fill(x + 1, y + 1, x + w - 1, y + h - 1, 0xAA1A1F2A);
+        graphics.drawString(font, Component.literal(label), x + 4, y + 4, 0xE6ECF8, false);
+    }
+
+    private boolean mouseOver(double mouseX, double mouseY, int x, int y, int w, int h) {
+        return mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h;
+    }
+
+    private boolean handleModulesClick(double mouseX, double mouseY) {
+        int x = leftPos + 16;
+        int y = topPos + 62;
+
+        List<ModuleCatalogClientState.ModuleEntry> toolModules = ModuleCatalogClientState.toolModules();
+        List<ModuleCatalogClientState.ModuleEntry> armorModules = ModuleCatalogClientState.armorModules();
+
+        for (int i = 0; i < Math.min(4, toolModules.size()); i++) {
+            int rowY = y + 80 + (i * 18);
+            ModuleCatalogClientState.ModuleEntry entry = toolModules.get(i);
+            if (mouseOver(mouseX, mouseY, x, rowY, 16, 16)) {
+                ModNetwork.CHANNEL.sendToServer(new InstallModuleC2SPacket(entry.id(), "MAIN_HAND"));
+                return true;
+            }
+            if (mouseOver(mouseX, mouseY, x + 18, rowY, 16, 16)) {
+                ModNetwork.CHANNEL.sendToServer(new RemoveModuleC2SPacket(entry.id(), "MAIN_HAND"));
+                return true;
+            }
+        }
+
+        int armorX = x + 188;
+        for (int i = 0; i < Math.min(4, armorModules.size()); i++) {
+            int rowY = y + 80 + (i * 18);
+            ModuleCatalogClientState.ModuleEntry entry = armorModules.get(i);
+            if (mouseOver(mouseX, mouseY, armorX, rowY, 16, 16)) {
+                ModNetwork.CHANNEL.sendToServer(new InstallModuleC2SPacket(entry.id(), "CHESTPLATE"));
+                return true;
+            }
+            if (mouseOver(mouseX, mouseY, armorX + 18, rowY, 16, 16)) {
+                ModNetwork.CHANNEL.sendToServer(new RemoveModuleC2SPacket(entry.id(), "CHESTPLATE"));
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private Optional<PlayerStatsCapability> getStats() {
         return PlayerStatsApi.get(player);
     }
@@ -359,6 +449,9 @@ public class ExtremePlayerScreen extends Screen {
                 treeButtonX += 62;
             }
         }
+        if (activeTab == ExtremePlayerTabs.Tab.MODULES && button == InputConstants.MOUSE_BUTTON_LEFT && handleModulesClick(mouseX, mouseY)) {
+            return true;
+        }
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
@@ -374,3 +467,8 @@ public class ExtremePlayerScreen extends Screen {
         return false;
     }
 }
+
+
+
+
+

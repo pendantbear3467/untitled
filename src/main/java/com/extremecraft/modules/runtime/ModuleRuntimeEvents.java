@@ -1,6 +1,7 @@
 package com.extremecraft.modules.runtime;
 
 import com.extremecraft.modules.data.ModuleTrigger;
+import com.extremecraft.modules.service.ModuleCatalogSyncService;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.TickEvent;
@@ -14,6 +15,7 @@ public class ModuleRuntimeEvents {
     public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             ModuleRuntimeService.syncState(player);
+            ModuleCatalogSyncService.sync(player);
             ModuleRuntimeService.refreshPassiveModifiers(player);
         }
     }

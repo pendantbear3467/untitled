@@ -50,7 +50,7 @@ public final class ModuleStackData {
         return true;
     }
 
-    private static void writeModules(ItemStack stack, Set<String> modules) {
+    public static void writeModules(ItemStack stack, Set<String> modules) {
         CompoundTag root = stack.getOrCreateTagElement(ROOT);
         ListTag listTag = new ListTag();
         for (String module : modules) {
@@ -59,3 +59,4 @@ public final class ModuleStackData {
         root.put(IDS, listTag);
     }
 }
+
