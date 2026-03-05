@@ -64,7 +64,8 @@ public record OffhandActionC2S(Action action, int entityId, BlockPos pos, Direct
                                 && target.isAlive()
                                 && target != sp
                                 && !target.isRemoved()
-                                && withinReach(sp, target.blockPosition())) {
+                                && sp.distanceToSqr(target) <= 36.0D
+                                && sp.hasLineOfSight(target)) {
                             ItemStack off = sp.getOffhandItem();
                             if (!off.isEmpty()) {
                                 invokeOffhandExecutorIfPresent(sp, target);

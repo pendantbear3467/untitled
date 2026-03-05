@@ -9,11 +9,13 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.SwordItem;
+import net.minecraft.world.item.TridentItem;
+import net.minecraft.world.item.DiggerItem;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -26,32 +28,41 @@ import java.util.stream.Collectors;
 public final class DwClientHooks {
     private boolean isMining = false;
 
-    public DwClientHooks() {
-        MinecraftForge.EVENT_BUS.register(this);
-    }
-
     @SubscribeEvent
-    public void onInteractKey(InputEvent.InteractionKeyMappingTriggered e) {
-        if (DwKeybinds.OFFHAND_OVERRIDE == null || !DwKeybinds.OFFHAND_OVERRIDE.isDown()) return;
-
-        e.setCanceled(true);
+    public void onInteractKey(InputEvent.InteractionKeyMappingTriggered event) {
+        if (!DwConfig.CLIENT.enableDualWield.get()) {
+            return;
+        }
 
         Minecraft mc = Minecraft.getInstance();
-        Player pl = mc.player;
-        if (pl == null) return;
+        Player player = mc.player;
+        if (player == null || mc.screen != null) {
+            return;
+        }
 
         HitResult hit = mc.hitResult;
-        ItemStack off = pl.getOffhandItem();
-        if (off.isEmpty() || isBlacklisted(off) || shouldBypassOverride(off)) return;
+        ItemStack off = player.getOffhandItem();
+        if (off.isEmpty() || isBlacklisted(off) || shouldBypassOverride(off)) {
+            return;
+        }
 
-        if (hit instanceof EntityHitResult ehr) {
-            pl.swing(InteractionHand.OFF_HAND);
+        // Standard dual-wield behavior: right click on an entity uses offhand attack.
+        if (hit instanceof EntityHitResult ehr && isOffhandWeapon(off)) {
+            event.setCanceled(true);
+            player.swing(InteractionHand.OFF_HAND);
             DwNetwork.sendToServer(new OffhandActionC2S(Action.ATTACK_ENTITY, ehr.getEntity().getId(), null, null));
             return;
         }
 
+        // Advanced override behavior remains opt-in via dedicated keybind.
+        if (DwKeybinds.OFFHAND_OVERRIDE == null || !DwKeybinds.OFFHAND_OVERRIDE.isDown()) {
+            return;
+        }
+
+        event.setCanceled(true);
+
         if (hit instanceof BlockHitResult bhr) {
-            if (pl.isShiftKeyDown() && DwConfig.CLIENT.allowOffhandBlockBreaking.get()) {
+            if (player.isShiftKeyDown() && DwConfig.CLIENT.allowOffhandBlockBreaking.get()) {
                 DwNetwork.sendToServer(new OffhandActionC2S(Action.HOLD_START_BREAK, 0, bhr.getBlockPos(), bhr.getDirection()));
                 isMining = true;
                 return;
@@ -66,6 +77,10 @@ public final class DwClientHooks {
 
     @SubscribeEvent
     public void onKeyRelease(InputEvent.Key event) {
+        if (!DwConfig.CLIENT.enableDualWield.get()) {
+            return;
+        }
+
         if (DwKeybinds.OFFHAND_OVERRIDE != null && !DwKeybinds.OFFHAND_OVERRIDE.isDown() && isMining) {
             DwNetwork.sendToServer(new OffhandActionC2S(Action.HOLD_ABORT_BREAK, 0, null, null));
             isMining = false;
@@ -98,6 +113,12 @@ public final class DwClientHooks {
                 .map(ResourceLocation::tryParse)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
+    }
+
+    private static boolean isOffhandWeapon(ItemStack stack) {
+        return stack.getItem() instanceof SwordItem
+                || stack.getItem() instanceof TridentItem
+                || stack.getItem() instanceof DiggerItem;
     }
 
     private static boolean shouldBypassOverride(ItemStack stack) {

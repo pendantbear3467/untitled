@@ -47,6 +47,7 @@
   "item.extremecraft.pulverizer": "Pulverizer",
   "item.extremecraft.reactor_core": "Reactor Core",
   "item.extremecraft.generator_tier_6": "Generator Tier 6",
+  "itemGroup.extremecraft": "ExtremeCraft",
   "key.categories.extremecraft": "ExtremeCraft",
   "key.extremecraft.offhand_action": "Offhand Override",
   "key.extremecraft.cycle_loadout": "Cycle Dual-Wield Loadout",

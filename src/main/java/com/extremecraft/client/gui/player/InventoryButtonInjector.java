@@ -1,6 +1,8 @@
 package com.extremecraft.client.gui.player;
 
 import com.extremecraft.core.ECConstants;
+import com.extremecraft.network.ModNetwork;
+import com.extremecraft.network.packet.RequestPlayerStatsPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
@@ -16,6 +18,8 @@ public class InventoryButtonInjector {
         if (!(event.getScreen() instanceof InventoryScreen inventoryScreen)) {
             return;
         }
+
+        ModNetwork.CHANNEL.sendToServer(new RequestPlayerStatsPacket());
 
         int x = inventoryScreen.getGuiLeft() - 26;
         int y = inventoryScreen.getGuiTop() + 8;

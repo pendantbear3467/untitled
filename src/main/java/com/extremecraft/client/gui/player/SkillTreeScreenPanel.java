@@ -1,5 +1,6 @@
 package com.extremecraft.client.gui.player;
 
+import com.extremecraft.config.DwConfig;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.UpgradeStatPacket;
@@ -11,6 +12,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,24 +32,26 @@ public class SkillTreeScreenPanel {
         this.statsSupplier = statsSupplier;
     }
 
-    public void render(GuiGraphics graphics, Font font, int panelLeft, int panelTop, int panelWidth, int panelHeight, String activeTreeId, int mouseX, int mouseY) {
+    public void render(GuiGraphics graphics, Font font, int panelLeft, int panelTop, int panelWidth, int panelHeight,
+                       String activeTreeId, int mouseX, int mouseY) {
         List<SkillNode> nodes = SkillTreeManager.nodesForTree(activeTreeId);
         if (nodes.isEmpty()) {
             graphics.drawString(font, Component.literal("No nodes in tree."), panelLeft + 8, panelTop + 8, 0xD5D9E2, false);
             return;
         }
 
+        float zoom = configuredZoom();
         int centerX = panelLeft + panelWidth / 2;
         int centerY = panelTop + panelHeight / 2;
 
-        renderConnections(graphics, activeTreeId, centerX, centerY);
+        renderConnections(graphics, activeTreeId, centerX, centerY, zoom);
 
         NodeUiCache hovered = null;
         for (SkillNode node : nodes) {
             NodeUiCache ui = uiCache(node);
 
-            int x = centerX + node.x() - NODE_SIZE / 2;
-            int y = centerY + node.y() - NODE_SIZE / 2;
+            int x = nodeScreenX(centerX, node.x(), zoom);
+            int y = nodeScreenY(centerY, node.y(), zoom);
             boolean unlocked = isUnlocked(node.id());
             boolean canUnlock = canUnlock(node);
 
@@ -61,7 +65,7 @@ public class SkillTreeScreenPanel {
             }
         }
 
-        if (hovered != null) {
+        if (hovered != null && DwConfig.CLIENT.showSkillNodeTooltips.get()) {
             tooltipBuffer.clear();
             tooltipBuffer.add(hovered.displayName);
             tooltipBuffer.add(hovered.bonusText);
@@ -70,18 +74,20 @@ public class SkillTreeScreenPanel {
         }
     }
 
-    public boolean mouseClicked(int panelLeft, int panelTop, int panelWidth, int panelHeight, String activeTreeId, double mouseX, double mouseY) {
+    public boolean mouseClicked(int panelLeft, int panelTop, int panelWidth, int panelHeight,
+                                String activeTreeId, double mouseX, double mouseY) {
         List<SkillNode> nodes = SkillTreeManager.nodesForTree(activeTreeId);
         if (nodes.isEmpty()) {
             return false;
         }
 
+        float zoom = configuredZoom();
         int centerX = panelLeft + panelWidth / 2;
         int centerY = panelTop + panelHeight / 2;
 
         for (SkillNode node : nodes) {
-            int x = centerX + node.x() - NODE_SIZE / 2;
-            int y = centerY + node.y() - NODE_SIZE / 2;
+            int x = nodeScreenX(centerX, node.x(), zoom);
+            int y = nodeScreenY(centerY, node.y(), zoom);
 
             if (mouseX >= x && mouseX <= x + NODE_SIZE && mouseY >= y && mouseY <= y + NODE_SIZE && canUnlock(node)) {
                 ModNetwork.CHANNEL.sendToServer(new UpgradeStatPacket("skill:" + node.id()));
@@ -92,7 +98,19 @@ public class SkillTreeScreenPanel {
         return false;
     }
 
-    private void renderConnections(GuiGraphics graphics, String activeTreeId, int centerX, int centerY) {
+    private float configuredZoom() {
+        return (float) Mth.clamp(DwConfig.CLIENT.skillTreeZoom.get(), 0.50D, 2.00D);
+    }
+
+    private int nodeScreenX(int centerX, int nodeX, float zoom) {
+        return centerX + Math.round(nodeX * zoom) - NODE_SIZE / 2;
+    }
+
+    private int nodeScreenY(int centerY, int nodeY, float zoom) {
+        return centerY + Math.round(nodeY * zoom) - NODE_SIZE / 2;
+    }
+
+    private void renderConnections(GuiGraphics graphics, String activeTreeId, int centerX, int centerY, float zoom) {
         for (SkillTreeManager.Connection connection : SkillTreeManager.connectionsForTree(activeTreeId)) {
             SkillNode from = SkillTreeManager.getNode(connection.from());
             SkillNode to = SkillTreeManager.getNode(connection.to());
@@ -100,10 +118,10 @@ public class SkillTreeScreenPanel {
                 continue;
             }
 
-            int x0 = centerX + from.x();
-            int y0 = centerY + from.y();
-            int x1 = centerX + to.x();
-            int y1 = centerY + to.y();
+            int x0 = centerX + Math.round(from.x() * zoom);
+            int y0 = centerY + Math.round(from.y() * zoom);
+            int x1 = centerX + Math.round(to.x() * zoom);
+            int y1 = centerY + Math.round(to.y() * zoom);
             drawLine(graphics, x0, y0, x1, y1, 0x885E6D83);
         }
     }
