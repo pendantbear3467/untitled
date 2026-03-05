@@ -30,10 +30,21 @@ public class PlayerDualWieldEvents {
     @SubscribeEvent
     public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            PlayerDualWieldApi.get(player).ifPresent(data -> {
-                data.ensureInitialized(player);
-                DualWieldService.sync(player, data);
-            });
+            syncState(player);
+        }
+    }
+
+    @SubscribeEvent
+    public void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            syncState(player);
+        }
+    }
+
+    @SubscribeEvent
+    public void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            syncState(player);
         }
     }
 
@@ -50,5 +61,12 @@ public class PlayerDualWieldEvents {
         if ((player.tickCount % 5) == 0) {
             DualWieldService.flushDirty(player);
         }
+    }
+
+    private static void syncState(ServerPlayer player) {
+        PlayerDualWieldApi.get(player).ifPresent(data -> {
+            data.ensureInitialized(player);
+            DualWieldService.sync(player, data);
+        });
     }
 }
