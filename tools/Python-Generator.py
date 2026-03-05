@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Legacy launcher kept for backward compatibility.
+"""Compatibility launcher.
 
-The maintained implementation now lives in tools/generate_assets.py.
+`generate_assets.py` is the single maintained generator implementation.
+This file remains as an entry point for existing workflows.
 """
 
 from pathlib import Path
@@ -10,7 +11,7 @@ import sys
 
 
 def main() -> None:
-    target = Path(__file__).resolve().parent / "tools" / "generate_assets.py"
+    target = Path(__file__).with_name("generate_assets.py")
     spec = importlib.util.spec_from_file_location("ec_generate_assets", target)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Failed to load generator module: {target}")
@@ -18,7 +19,7 @@ def main() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     if not hasattr(module, "main"):
-        raise RuntimeError("tools/generate_assets.py does not expose main()")
+        raise RuntimeError("generate_assets.py does not expose main()")
     module.main()
 
 

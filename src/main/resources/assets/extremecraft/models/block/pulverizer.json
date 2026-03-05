@@ -1,1 +1,6 @@
-{"parent":"block/cube","textures":{"down":"minecraft:block/iron_block","up":"minecraft:block/piston_top","north":"minecraft:block/furnace_front","south":"minecraft:block/furnace_side","east":"minecraft:block/furnace_side","west":"minecraft:block/furnace_side"}}
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "extremecraft:block/pulverizer"
+  }
+}
