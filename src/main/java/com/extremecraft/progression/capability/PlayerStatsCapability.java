@@ -205,6 +205,7 @@ public class PlayerStatsCapability {
             return;
         }
         equipmentAdditiveModifiers.put(id, value);
+        recalculateDerivedStats();
     }
 
     public void removeEquipmentModifier(String id) {
@@ -212,6 +213,27 @@ public class PlayerStatsCapability {
             return;
         }
         equipmentAdditiveModifiers.remove(id);
+        recalculateDerivedStats();
+    }
+
+    public boolean replaceEquipmentModifiers(Map<String, Float> newModifiers) {
+        Map<String, Float> normalized = new HashMap<>();
+        if (newModifiers != null) {
+            newModifiers.forEach((key, value) -> {
+                if (key != null && !key.isBlank() && value != null) {
+                    normalized.put(key.trim().toLowerCase(), value);
+                }
+            });
+        }
+
+        if (equipmentAdditiveModifiers.equals(normalized)) {
+            return false;
+        }
+
+        equipmentAdditiveModifiers.clear();
+        equipmentAdditiveModifiers.putAll(normalized);
+        recalculateDerivedStats();
+        return true;
     }
 
     public void setAscensionLevel(int ascensionLevel) {
@@ -274,6 +296,10 @@ public class PlayerStatsCapability {
                 case "movement_speed" -> movementSpeedBonus += entry.getValue();
                 case "movement_speed_bonus" -> movementSpeed += entry.getValue();
                 case "spell_power_bonus" -> spellPowerBonus += entry.getValue();
+                case "damage_multiplier" -> damageMultiplier *= Math.max(0.1F, entry.getValue());
+                case "stamina_cost_reduction" -> staminaCostReductionBonus += entry.getValue();
+                case "mana_regeneration" -> manaRegenBonus += entry.getValue();
+                case "crit_damage" -> critDamage += entry.getValue();
                 default -> {
                 }
             }

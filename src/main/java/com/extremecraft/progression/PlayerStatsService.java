@@ -1,5 +1,6 @@
 package com.extremecraft.progression;
 
+import com.extremecraft.item.module.ModuleEffectService;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.PlayerStatsPacket;
 import com.extremecraft.progression.capability.PlayerStatsApi;
@@ -44,8 +45,9 @@ public final class PlayerStatsService {
 
     public static void tickResources(ServerPlayer player) {
         PlayerStatsApi.get(player).ifPresent(stats -> {
+            boolean moduleEffectsChanged = ModuleEffectService.applyEquippedModules(player, stats);
             stats.regenerateResources();
-            if ((player.tickCount % 20) == 0) {
+            if (moduleEffectsChanged || (player.tickCount % 20) == 0) {
                 sync(player, stats);
             }
         });

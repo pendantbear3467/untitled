@@ -4,6 +4,7 @@ import com.extremecraft.core.ECConstants;
 import com.extremecraft.item.armor.ECArmorMaterial;
 import com.extremecraft.item.tool.ECToolTier;
 import com.extremecraft.item.tool.HammerItem;
+import com.extremecraft.item.tool.ModularDrillItem;
 import com.extremecraft.machine.material.OreMaterialCatalog;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.AxeItem;
@@ -73,6 +74,7 @@ public final class TechItems {
         ITEMS.register("celestial_engine", () -> new Item(new Item.Properties().fireResistant()));
         ITEMS.register("infinity_sword", () -> new SwordItem(ECToolTier.ENDGAME, 8, -2.2F, new Item.Properties().fireResistant()));
         ITEMS.register("quantum_pickaxe", () -> new PickaxeItem(ECToolTier.ENDGAME, 2, -2.6F, new Item.Properties().fireResistant()));
+        ITEMS.register("modular_drill", () -> new ModularDrillItem(ECToolTier.ENDGAME, 2, -2.7F, new Item.Properties().fireResistant()));
 
         registerArmorSet("celestial", ECArmorMaterial.CELESTIAL);
     }

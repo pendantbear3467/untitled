@@ -15,6 +15,7 @@ import com.extremecraft.future.registry.TechMenuTypes;
 import com.extremecraft.future.registry.TechRecipeSerializers;
 import com.extremecraft.gui.PulverizerScreen;
 import com.extremecraft.item.armor.ArmorBonusHandler;
+import com.extremecraft.item.module.ModuleLoader;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.net.DwNetwork;
 import com.extremecraft.progression.ProgressCommands;
@@ -103,6 +104,7 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new SkillTreeDataLoader());
             MinecraftForge.EVENT_BUS.register(new ClassDefinitionLoader());
             MinecraftForge.EVENT_BUS.register(new ClassAbilityLoader());
+            MinecraftForge.EVENT_BUS.register(new ModuleLoader());
             MinecraftForge.EVENT_BUS.register(new ResearchManager());
             MinecraftForge.EVENT_BUS.register(new WorldgenConsistencyValidator());
             MinecraftForge.EVENT_BUS.register(new DwServerTicker());
