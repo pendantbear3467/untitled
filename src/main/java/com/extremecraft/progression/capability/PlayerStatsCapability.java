@@ -1,11 +1,16 @@
 package com.extremecraft.progression.capability;
 
+import com.extremecraft.progression.skilltree.SkillModifier;
+import com.extremecraft.progression.skilltree.SkillNode;
+import com.extremecraft.progression.skilltree.SkillTreeManager;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class PlayerStatsCapability {
@@ -35,6 +40,19 @@ public class PlayerStatsCapability {
     private int mana = 55;
     private int maxMana = 55;
 
+    // Skill-derived gameplay modifiers.
+    private float damageBonus = 0.0F;
+    private float damageMultiplier = 1.0F;
+    private float manaRegenBonus = 0.0F;
+    private float staminaCostReductionBonus = 0.0F;
+    private float lootRarityBonusSkill = 0.0F;
+    private float spellPowerBonus = 0.0F;
+
+    // Future expansion scaffolding.
+    private int ascensionLevel = 0;
+    private final Set<String> legendaryPerks = new HashSet<>();
+    private final Map<String, Float> equipmentAdditiveModifiers = new HashMap<>();
+
     private final Set<String> unlockedSkillNodes = new HashSet<>();
 
     public int level() { return level; }
@@ -62,6 +80,9 @@ public class PlayerStatsCapability {
     public int mana() { return mana; }
     public int maxMana() { return maxMana; }
 
+    public int ascensionLevel() { return ascensionLevel; }
+    public Set<String> legendaryPerks() { return legendaryPerks; }
+
     public Set<String> unlockedSkillNodes() { return unlockedSkillNodes; }
 
     public int maxHealth() {
@@ -69,11 +90,15 @@ public class PlayerStatsCapability {
     }
 
     public int meleeDamageBonus() {
-        return strength;
+        return Math.round(strength + damageBonus);
+    }
+
+    public float damageMultiplier() {
+        return Math.max(0.1F, damageMultiplier);
     }
 
     public int heavyWeaponDamageBonus() {
-        return Math.max(0, strength / 2);
+        return Math.max(0, Math.round((strength / 2.0F) + (damageBonus * 0.5F)));
     }
 
     public float healthRegenBonus() {
@@ -85,11 +110,15 @@ public class PlayerStatsCapability {
     }
 
     public float staminaCostReduction() {
-        return Math.min(0.40F, endurance * 0.006F);
+        return Math.min(0.80F, Math.min(0.40F, endurance * 0.006F) + staminaCostReductionBonus);
     }
 
     public float lootRarityBonus() {
-        return luck * 0.01F;
+        return (luck * 0.01F) + lootRarityBonusSkill;
+    }
+
+    public float spellPowerBonus() {
+        return spellPowerBonus;
     }
 
     public boolean addExperience(int amount) {
@@ -148,6 +177,7 @@ public class PlayerStatsCapability {
         }
 
         skillPoints -= skillPointCost;
+        recalculateDerivedStats();
         return true;
     }
 
@@ -155,7 +185,27 @@ public class PlayerStatsCapability {
         return unlockedSkillNodes.contains(nodeId);
     }
 
+    public void setEquipmentModifier(String id, float value) {
+        if (id == null || id.isBlank()) {
+            return;
+        }
+        equipmentAdditiveModifiers.put(id, value);
+    }
+
+    public void removeEquipmentModifier(String id) {
+        if (id == null || id.isBlank()) {
+            return;
+        }
+        equipmentAdditiveModifiers.remove(id);
+    }
+
+    public void setAscensionLevel(int ascensionLevel) {
+        this.ascensionLevel = Math.max(0, ascensionLevel);
+        recalculateDerivedStats();
+    }
+
     public void recalculateDerivedStats() {
+        // Base primary formulas.
         maxMana = 50 + (intelligence * 5);
         manaCapacity = maxMana;
         magicPower = intelligence * 2;
@@ -168,13 +218,83 @@ public class PlayerStatsCapability {
 
         maxStamina = 100 + (endurance * 10);
 
+        // Reset skill-derived modifiers before reapplying from unlocked nodes.
+        damageBonus = 0.0F;
+        damageMultiplier = 1.0F;
+        manaRegenBonus = 0.0F;
+        staminaCostReductionBonus = 0.0F;
+        lootRarityBonusSkill = 0.0F;
+        spellPowerBonus = 0.0F;
+
+        // Apply unlocked skill node modifiers.
+        for (String unlockedNode : unlockedSkillNodes) {
+            SkillNode node = SkillTreeManager.getNode(unlockedNode);
+            if (node == null) {
+                continue;
+            }
+
+            for (SkillModifier modifier : node.modifiers()) {
+                applySkillModifier(modifier);
+            }
+        }
+
+        // Future equipment modifiers entry point.
+        for (Map.Entry<String, Float> entry : equipmentAdditiveModifiers.entrySet()) {
+            switch (entry.getKey()) {
+                case "damage_bonus" -> damageBonus += entry.getValue();
+                case "crit_chance_bonus" -> critChance += entry.getValue();
+                case "movement_speed_bonus" -> movementSpeed += entry.getValue();
+                case "spell_power_bonus" -> spellPowerBonus += entry.getValue();
+                default -> {
+                }
+            }
+        }
+
+        // Future ascension scaling.
+        if (ascensionLevel > 0) {
+            damageMultiplier *= (1.0F + (ascensionLevel * 0.01F));
+            critDamage += ascensionLevel * 0.02F;
+            movementSpeed += ascensionLevel * 0.0015F;
+        }
+
+        // Apply spell power bonus to magic power.
+        magicPower = Math.max(1, Math.round(magicPower * (1.0F + spellPowerBonus)));
+
         mana = Math.min(mana, maxMana);
         stamina = Math.min(stamina, maxStamina);
     }
 
     public void regenerateResources() {
-        stamina = Math.min(maxStamina, stamina + Math.max(1, endurance / 3));
-        mana = Math.min(maxMana, mana + Math.max(1, intelligence / 4));
+        int staminaRegen = Math.max(1, endurance / 3);
+        int manaRegen = Math.max(1, intelligence / 4) + Math.max(0, Math.round(manaRegenBonus));
+
+        stamina = Math.min(maxStamina, stamina + staminaRegen);
+        mana = Math.min(maxMana, mana + manaRegen);
+    }
+
+    private void applySkillModifier(SkillModifier modifier) {
+        String id = modifier.modifierId();
+        float value = (float) modifier.value();
+
+        switch (id) {
+            case "damage_bonus" -> damageBonus = applyValue(damageBonus, value, modifier.operation());
+            case "damage_multiplier" -> damageMultiplier = applyValue(damageMultiplier, value, modifier.operation());
+            case "crit_chance_bonus" -> critChance = applyValue(critChance, value, modifier.operation());
+            case "mana_regeneration" -> manaRegenBonus = applyValue(manaRegenBonus, value, modifier.operation());
+            case "stamina_cost_reduction" -> staminaCostReductionBonus = applyValue(staminaCostReductionBonus, value, modifier.operation());
+            case "loot_rarity_bonus" -> lootRarityBonusSkill = applyValue(lootRarityBonusSkill, value, modifier.operation());
+            case "spell_power_bonus" -> spellPowerBonus = applyValue(spellPowerBonus, value, modifier.operation());
+            default -> {
+            }
+        }
+    }
+
+    private float applyValue(float current, float value, SkillModifier.Operation operation) {
+        return switch (operation) {
+            case ADD -> current + value;
+            case MULTIPLY -> current * value;
+            case PERCENT -> current * (1.0F + value);
+        };
     }
 
     public CompoundTag serializeNBT() {
@@ -204,11 +324,19 @@ public class PlayerStatsCapability {
         tag.putInt("mana", mana);
         tag.putInt("maxMana", maxMana);
 
+        tag.putInt("ascensionLevel", ascensionLevel);
+
         ListTag unlocked = new ListTag();
         for (String node : unlockedSkillNodes) {
             unlocked.add(StringTag.valueOf(node));
         }
         tag.put("unlockedSkillNodes", unlocked);
+
+        ListTag perks = new ListTag();
+        for (String perk : legendaryPerks) {
+            perks.add(StringTag.valueOf(perk));
+        }
+        tag.put("legendaryPerks", perks);
 
         return tag;
     }
@@ -230,10 +358,18 @@ public class PlayerStatsCapability {
         mana = Math.max(0, tag.getInt("mana"));
         stamina = Math.max(0, tag.getInt("stamina"));
 
+        ascensionLevel = Math.max(0, tag.getInt("ascensionLevel"));
+
         unlockedSkillNodes.clear();
         ListTag list = tag.getList("unlockedSkillNodes", Tag.TAG_STRING);
         for (Tag entry : list) {
             unlockedSkillNodes.add(entry.getAsString());
+        }
+
+        legendaryPerks.clear();
+        ListTag perks = tag.getList("legendaryPerks", Tag.TAG_STRING);
+        for (Tag entry : perks) {
+            legendaryPerks.add(entry.getAsString());
         }
 
         recalculateDerivedStats();
@@ -265,8 +401,16 @@ public class PlayerStatsCapability {
         this.mana = other.mana;
         this.maxMana = other.maxMana;
 
+        this.ascensionLevel = other.ascensionLevel;
+
         this.unlockedSkillNodes.clear();
         this.unlockedSkillNodes.addAll(other.unlockedSkillNodes);
+
+        this.legendaryPerks.clear();
+        this.legendaryPerks.addAll(other.legendaryPerks);
+
+        this.equipmentAdditiveModifiers.clear();
+        this.equipmentAdditiveModifiers.putAll(other.equipmentAdditiveModifiers);
     }
 
     public static int xpForLevel(int level) {

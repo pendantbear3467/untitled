@@ -7,13 +7,34 @@ assets while preserving existing hand-made textures and valid JSON files.
 
 from __future__ import annotations
 
+import argparse
 import hashlib
+import importlib.util
 import json
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image, ImageDraw
+
+
+def _load_gui_generator() -> callable:
+    module_path = Path(__file__).resolve().parent / "generate_gui_assets.py"
+    spec = importlib.util.spec_from_file_location("ec_generate_gui_assets", module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Failed to load GUI generator module: {module_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    if not hasattr(module, "generate_gui_assets"):
+        raise RuntimeError("generate_gui_assets.py does not expose generate_gui_assets()")
+    return module.generate_gui_assets
+
+
+generate_gui_assets = _load_gui_generator()
 
 MODID = "extremecraft"
 HASH_SEED = "extremecraft-assets-v2"
@@ -428,7 +449,7 @@ def validate_assets(discovery: Discovery) -> dict[str, int]:
     }
 
 
-def main() -> None:
+def run_core_generation() -> None:
     ensure_dirs()
     discovery = load_ids()
     stats = AssetStats()
@@ -462,6 +483,40 @@ def main() -> None:
     print(f"  missing textures: {validation['missing_textures']}")
     print(f"  missing blockstates: {validation['missing_blockstates']}")
     print(f"  broken json: {validation['broken_json']}")
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="ExtremeCraft asset generator")
+    parser.add_argument(
+        "--gui",
+        action="store_true",
+        help="Generate RPG GUI placeholder textures",
+    )
+    parser.add_argument(
+        "--core",
+        action="store_true",
+        help="Generate registry-driven block/item assets",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Allow overwriting existing GUI textures (used with --gui)",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+
+    # Default mode keeps historical behavior unless an explicit mode is selected.
+    run_core = args.core or not args.gui
+    if run_core:
+        run_core_generation()
+
+    if args.gui:
+        gui_result = generate_gui_assets(force=args.force)
+        print(f"GUI textures generated: {gui_result.generated}")
+        print(f"Missing files: {gui_result.missing}")
 
 
 if __name__ == "__main__":

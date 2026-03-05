@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Legacy launcher kept for backward compatibility.
+"""Launcher for the maintained asset generator in tools/generate_assets.py."""
 
-The maintained implementation now lives in tools/generate_assets.py.
-"""
+from __future__ import annotations
 
-from pathlib import Path
 import importlib.util
 import sys
+from pathlib import Path
 
 
 def main() -> None:
@@ -18,9 +17,11 @@ def main() -> None:
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
+
     if not hasattr(module, "main"):
         raise RuntimeError("tools/generate_assets.py does not expose main()")
-    module.main()
+
+    module.main(sys.argv[1:])
 
 
 if __name__ == "__main__":
