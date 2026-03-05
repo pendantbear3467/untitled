@@ -3,12 +3,12 @@ package com.extremecraft.client.gui.player;
 import com.extremecraft.client.gui.layout.GuiScaleContext;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.core.ECConstants;
+import com.extremecraft.modules.runtime.ModuleCatalogClientState;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.InstallModuleC2SPacket;
 import com.extremecraft.network.packet.RemoveModuleC2SPacket;
 import com.extremecraft.network.packet.RequestPlayerStatsPacket;
 import com.extremecraft.network.packet.UpgradeStatPacket;
-import com.extremecraft.modules.runtime.ModuleCatalogClientState;
 import com.extremecraft.progression.capability.PlayerStatsApi;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
 import com.extremecraft.progression.skilltree.SkillTreeManager;
@@ -37,6 +37,7 @@ public class ExtremePlayerScreen extends Screen {
 
     private static final int TAB_WIDTH = 58;
     private static final int TAB_HEIGHT = 18;
+    private static final int MODULES_PAGE_SIZE = 4;
 
     private final Player player;
     private final Screen returnScreen;
@@ -46,6 +47,10 @@ public class ExtremePlayerScreen extends Screen {
 
     private ExtremePlayerTabs.Tab activeTab = ExtremePlayerTabs.Tab.PLAYER_STATS;
     private String activeSkillTree = "combat";
+
+    private String moduleSearchQuery = "";
+    private int toolPage = 0;
+    private int armorPage = 0;
 
     private int guiWidth;
     private int guiHeight;
@@ -350,30 +355,54 @@ public class ExtremePlayerScreen extends Screen {
         graphics.drawString(font, Component.literal("Main: " + main.getHoverName().getString()), x, y + 34, 0xD8DEE9, false);
         graphics.drawString(font, Component.literal("Chest: " + chest.getHoverName().getString()), x, y + 46, 0xD8DEE9, false);
 
-        List<ModuleCatalogClientState.ModuleEntry> toolModules = ModuleCatalogClientState.toolModules();
-        List<ModuleCatalogClientState.ModuleEntry> armorModules = ModuleCatalogClientState.armorModules();
+        int searchX = x;
+        int searchY = y + 60;
+        drawActionButton(graphics, searchX, searchY, 190, 16, "Search: " + (moduleSearchQuery.isBlank() ? "<type to filter>" : moduleSearchQuery));
+        drawActionButton(graphics, searchX + 194, searchY, 32, 16, "CLR");
 
-        graphics.drawString(font, Component.literal("Tool Modules"), x, y + 66, 0xE0E6F2, false);
-        for (int i = 0; i < Math.min(4, toolModules.size()); i++) {
+        List<ModuleCatalogClientState.ModuleEntry> toolFiltered = filteredModules(ModuleCatalogClientState.toolModules());
+        List<ModuleCatalogClientState.ModuleEntry> armorFiltered = filteredModules(ModuleCatalogClientState.armorModules());
+
+        int toolPages = pageCount(toolFiltered.size());
+        int armorPages = pageCount(armorFiltered.size());
+        toolPage = Math.min(toolPage, Math.max(0, toolPages - 1));
+        armorPage = Math.min(armorPage, Math.max(0, armorPages - 1));
+
+        int toolX = x;
+        int armorX = x + 188;
+        int listTopY = y + 84;
+
+        graphics.drawString(font, Component.literal("Tool Modules"), toolX, y + 78, 0xE0E6F2, false);
+        drawActionButton(graphics, toolX + 108, y + 76, 16, 16, "<");
+        drawActionButton(graphics, toolX + 126, y + 76, 16, 16, ">");
+        graphics.drawString(font, Component.literal((toolPage + 1) + "/" + toolPages), toolX + 146, y + 80, 0xAFC0D8, false);
+
+        graphics.drawString(font, Component.literal("Armor Modules"), armorX, y + 78, 0xE0E6F2, false);
+        drawActionButton(graphics, armorX + 108, y + 76, 16, 16, "<");
+        drawActionButton(graphics, armorX + 126, y + 76, 16, 16, ">");
+        graphics.drawString(font, Component.literal((armorPage + 1) + "/" + armorPages), armorX + 146, y + 80, 0xAFC0D8, false);
+
+        List<ModuleCatalogClientState.ModuleEntry> toolModules = pagedModules(toolFiltered, toolPage);
+        List<ModuleCatalogClientState.ModuleEntry> armorModules = pagedModules(armorFiltered, armorPage);
+
+        for (int i = 0; i < toolModules.size(); i++) {
             ModuleCatalogClientState.ModuleEntry entry = toolModules.get(i);
-            int rowY = y + 80 + (i * 18);
-            drawActionButton(graphics, x, rowY, 16, 16, "+");
-            drawActionButton(graphics, x + 18, rowY, 16, 16, "-");
-            graphics.drawString(font, Component.literal(entry.id() + " (" + entry.slotCost() + ")"), x + 40, rowY + 4, 0xD8DEE9, false);
+            int rowY = listTopY + (i * 18);
+            drawActionButton(graphics, toolX, rowY, 16, 16, "+");
+            drawActionButton(graphics, toolX + 18, rowY, 16, 16, "-");
+            graphics.drawString(font, Component.literal(entry.id() + " (" + entry.slotCost() + ")"), toolX + 40, rowY + 4, 0xD8DEE9, false);
         }
 
-        int armorX = x + 188;
-        graphics.drawString(font, Component.literal("Armor Modules"), armorX, y + 66, 0xE0E6F2, false);
-        for (int i = 0; i < Math.min(4, armorModules.size()); i++) {
+        for (int i = 0; i < armorModules.size(); i++) {
             ModuleCatalogClientState.ModuleEntry entry = armorModules.get(i);
-            int rowY = y + 80 + (i * 18);
+            int rowY = listTopY + (i * 18);
             drawActionButton(graphics, armorX, rowY, 16, 16, "+");
             drawActionButton(graphics, armorX + 18, rowY, 16, 16, "-");
             graphics.drawString(font, Component.literal(entry.id() + " (" + entry.slotCost() + ")"), armorX + 40, rowY + 4, 0xD8DEE9, false);
         }
 
-        if (toolModules.isEmpty() && armorModules.isEmpty()) {
-            graphics.drawString(font, Component.literal("Waiting for server module catalog sync..."), x, y + 88, 0xC8CFDB, false);
+        if (toolFiltered.isEmpty() && armorFiltered.isEmpty()) {
+            graphics.drawString(font, Component.literal("No modules match current filter or waiting for sync."), x, y + 166, 0xC8CFDB, false);
         }
     }
 
@@ -391,25 +420,59 @@ public class ExtremePlayerScreen extends Screen {
         int x = leftPos + 16;
         int y = topPos + 62;
 
-        List<ModuleCatalogClientState.ModuleEntry> toolModules = ModuleCatalogClientState.toolModules();
-        List<ModuleCatalogClientState.ModuleEntry> armorModules = ModuleCatalogClientState.armorModules();
+        int searchY = y + 60;
+        if (mouseOver(mouseX, mouseY, x + 194, searchY, 32, 16)) {
+            moduleSearchQuery = "";
+            toolPage = 0;
+            armorPage = 0;
+            return true;
+        }
 
-        for (int i = 0; i < Math.min(4, toolModules.size()); i++) {
-            int rowY = y + 80 + (i * 18);
+        List<ModuleCatalogClientState.ModuleEntry> toolFiltered = filteredModules(ModuleCatalogClientState.toolModules());
+        List<ModuleCatalogClientState.ModuleEntry> armorFiltered = filteredModules(ModuleCatalogClientState.armorModules());
+
+        int toolPages = pageCount(toolFiltered.size());
+        int armorPages = pageCount(armorFiltered.size());
+
+        int toolX = x;
+        int armorX = x + 188;
+
+        if (mouseOver(mouseX, mouseY, toolX + 108, y + 76, 16, 16)) {
+            toolPage = Math.max(0, toolPage - 1);
+            return true;
+        }
+        if (mouseOver(mouseX, mouseY, toolX + 126, y + 76, 16, 16)) {
+            toolPage = Math.min(Math.max(0, toolPages - 1), toolPage + 1);
+            return true;
+        }
+        if (mouseOver(mouseX, mouseY, armorX + 108, y + 76, 16, 16)) {
+            armorPage = Math.max(0, armorPage - 1);
+            return true;
+        }
+        if (mouseOver(mouseX, mouseY, armorX + 126, y + 76, 16, 16)) {
+            armorPage = Math.min(Math.max(0, armorPages - 1), armorPage + 1);
+            return true;
+        }
+
+        List<ModuleCatalogClientState.ModuleEntry> toolModules = pagedModules(toolFiltered, toolPage);
+        List<ModuleCatalogClientState.ModuleEntry> armorModules = pagedModules(armorFiltered, armorPage);
+
+        int listTopY = y + 84;
+        for (int i = 0; i < toolModules.size(); i++) {
+            int rowY = listTopY + (i * 18);
             ModuleCatalogClientState.ModuleEntry entry = toolModules.get(i);
-            if (mouseOver(mouseX, mouseY, x, rowY, 16, 16)) {
+            if (mouseOver(mouseX, mouseY, toolX, rowY, 16, 16)) {
                 ModNetwork.CHANNEL.sendToServer(new InstallModuleC2SPacket(entry.id(), "MAIN_HAND"));
                 return true;
             }
-            if (mouseOver(mouseX, mouseY, x + 18, rowY, 16, 16)) {
+            if (mouseOver(mouseX, mouseY, toolX + 18, rowY, 16, 16)) {
                 ModNetwork.CHANNEL.sendToServer(new RemoveModuleC2SPacket(entry.id(), "MAIN_HAND"));
                 return true;
             }
         }
 
-        int armorX = x + 188;
-        for (int i = 0; i < Math.min(4, armorModules.size()); i++) {
-            int rowY = y + 80 + (i * 18);
+        for (int i = 0; i < armorModules.size(); i++) {
+            int rowY = listTopY + (i * 18);
             ModuleCatalogClientState.ModuleEntry entry = armorModules.get(i);
             if (mouseOver(mouseX, mouseY, armorX, rowY, 16, 16)) {
                 ModNetwork.CHANNEL.sendToServer(new InstallModuleC2SPacket(entry.id(), "CHESTPLATE"));
@@ -422,6 +485,34 @@ public class ExtremePlayerScreen extends Screen {
         }
 
         return false;
+    }
+
+    private List<ModuleCatalogClientState.ModuleEntry> filteredModules(List<ModuleCatalogClientState.ModuleEntry> modules) {
+        if (moduleSearchQuery.isBlank()) {
+            return modules;
+        }
+
+        String query = moduleSearchQuery.toLowerCase();
+        List<ModuleCatalogClientState.ModuleEntry> filtered = new ArrayList<>();
+        for (ModuleCatalogClientState.ModuleEntry entry : modules) {
+            if (entry.id().toLowerCase().contains(query) || entry.requiredSkillNode().toLowerCase().contains(query)) {
+                filtered.add(entry);
+            }
+        }
+        return filtered;
+    }
+
+    private int pageCount(int totalItems) {
+        return Math.max(1, (int) Math.ceil(totalItems / (double) MODULES_PAGE_SIZE));
+    }
+
+    private List<ModuleCatalogClientState.ModuleEntry> pagedModules(List<ModuleCatalogClientState.ModuleEntry> filtered, int page) {
+        int start = Math.max(0, page * MODULES_PAGE_SIZE);
+        int end = Math.min(filtered.size(), start + MODULES_PAGE_SIZE);
+        if (start >= end) {
+            return List.of();
+        }
+        return filtered.subList(start, end);
     }
 
     private Optional<PlayerStatsCapability> getStats() {
@@ -456,6 +547,32 @@ public class ExtremePlayerScreen extends Screen {
     }
 
     @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        if (activeTab == ExtremePlayerTabs.Tab.MODULES && !Character.isISOControl(codePoint)) {
+            if (moduleSearchQuery.length() < 32) {
+                moduleSearchQuery = moduleSearchQuery + codePoint;
+                toolPage = 0;
+                armorPage = 0;
+                return true;
+            }
+        }
+        return super.charTyped(codePoint, modifiers);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (activeTab == ExtremePlayerTabs.Tab.MODULES && keyCode == InputConstants.KEY_BACKSPACE) {
+            if (!moduleSearchQuery.isEmpty()) {
+                moduleSearchQuery = moduleSearchQuery.substring(0, moduleSearchQuery.length() - 1);
+                toolPage = 0;
+                armorPage = 0;
+                return true;
+            }
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
     public void onClose() {
         if (minecraft != null) {
             minecraft.setScreen(returnScreen);
@@ -467,8 +584,3 @@ public class ExtremePlayerScreen extends Screen {
         return false;
     }
 }
-
-
-
-
-

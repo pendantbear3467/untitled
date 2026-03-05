@@ -43,6 +43,7 @@ public final class ModuleInstallService {
         DUPLICATE,
         NO_SLOTS,
         LOCKED_BY_SKILL,
+        NOT_INSTALLED,
         INVALID_INPUT
     }
 
@@ -101,12 +102,31 @@ public final class ModuleInstallService {
 
         Set<String> installed = new LinkedHashSet<>(modularItem.installedModules(stack));
         if (!installed.remove(moduleId.trim().toLowerCase())) {
-            return Result.INVALID_INPUT;
+            return Result.NOT_INSTALLED;
         }
 
         ModuleStackData.writeModules(stack, installed);
         onModuleChanged(player);
         return Result.SUCCESS;
+    }
+
+    public static String formatResultMessage(Result result, boolean install, String moduleId, TargetSlot targetSlot) {
+        String action = install ? "Install" : "Remove";
+        String id = moduleId == null || moduleId.isBlank() ? "module" : moduleId;
+        return switch (result) {
+            case SUCCESS -> action + "d " + id + " on " + targetSlot.name().toLowerCase();
+            case NOT_MODULAR_ITEM -> "Target slot does not contain a modular item.";
+            case MODULE_NOT_FOUND -> "Unknown module: " + id;
+            case DUPLICATE -> "Module already installed: " + id;
+            case NO_SLOTS -> "No available module slots.";
+            case LOCKED_BY_SKILL -> "Skill prerequisite not met for " + id;
+            case NOT_INSTALLED -> "Module is not installed: " + id;
+            case INVALID_INPUT -> "Invalid module request.";
+        };
+    }
+
+    public static boolean isSuccess(Result result) {
+        return result == Result.SUCCESS;
     }
 
     private static int slotsUsed(List<String> modules, ModuleType type) {

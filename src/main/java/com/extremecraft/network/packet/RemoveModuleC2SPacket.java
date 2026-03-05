@@ -1,9 +1,11 @@
 package com.extremecraft.network.packet;
 
 import com.extremecraft.modules.service.ModuleInstallService;
+import com.extremecraft.network.ModNetwork;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.network.PacketDistributor;
 
 import java.util.function.Supplier;
 
@@ -25,7 +27,10 @@ public record RemoveModuleC2SPacket(String moduleId, String targetSlot) {
                 return;
             }
 
-            ModuleInstallService.remove(sender, ModuleInstallService.TargetSlot.byName(packet.targetSlot), packet.moduleId);
+            ModuleInstallService.TargetSlot slot = ModuleInstallService.TargetSlot.byName(packet.targetSlot);
+            ModuleInstallService.Result result = ModuleInstallService.remove(sender, slot, packet.moduleId);
+            String message = ModuleInstallService.formatResultMessage(result, false, packet.moduleId, slot);
+            ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> sender), new SyncModuleActionResultS2CPacket(ModuleInstallService.isSuccess(result), message));
         });
         context.setPacketHandled(true);
     }

@@ -8,6 +8,7 @@ import com.extremecraft.network.packet.RemoveModuleC2SPacket;
 import com.extremecraft.network.packet.RequestPlayerStatsPacket;
 import com.extremecraft.network.packet.SyncClassAbilityStateS2CPacket;
 import com.extremecraft.network.packet.SyncModuleAbilityStateS2CPacket;
+import com.extremecraft.network.packet.SyncModuleActionResultS2CPacket;
 import com.extremecraft.network.packet.SyncModuleCatalogS2CPacket;
 import com.extremecraft.network.packet.SyncProgressPacket;
 import com.extremecraft.network.packet.UpgradeStatPacket;
@@ -77,6 +78,12 @@ public final class ModNetwork {
                 .encoder(SyncModuleCatalogS2CPacket::encode)
                 .decoder(SyncModuleCatalogS2CPacket::decode)
                 .consumerMainThread(SyncModuleCatalogS2CPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncModuleActionResultS2CPacket.class, nextId())
+                .encoder(SyncModuleActionResultS2CPacket::encode)
+                .decoder(SyncModuleActionResultS2CPacket::decode)
+                .consumerMainThread(SyncModuleActionResultS2CPacket::handle)
                 .add();
 
         CHANNEL.messageBuilder(InstallModuleC2SPacket.class, nextId())
