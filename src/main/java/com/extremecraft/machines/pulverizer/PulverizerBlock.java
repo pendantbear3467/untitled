@@ -1,7 +1,10 @@
 package com.extremecraft.machines.pulverizer;
 
+import com.extremecraft.progression.ProgressionGate;
+import com.extremecraft.progression.stage.ProgressionStage;
 import com.extremecraft.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -44,6 +47,11 @@ public class PulverizerBlock extends BaseEntityBlock implements EntityBlock {
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
+        }
+
+        if (!ProgressionGate.canUseMachine(player, "pulverizer")) {
+            player.displayClientMessage(Component.translatable("message.extremecraft.machine_locked", ProgressionStage.INDUSTRIAL.name()), true);
+            return InteractionResult.FAIL;
         }
 
         BlockEntity be = level.getBlockEntity(pos);

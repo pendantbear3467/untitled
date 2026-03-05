@@ -1,6 +1,8 @@
 package com.extremecraft.progression;
 
 import com.extremecraft.progression.capability.ProgressApi;
+import com.extremecraft.progression.stage.ProgressionStage;
+import com.extremecraft.progression.stage.StageManager;
 import com.extremecraft.quest.QuestDefinition;
 import com.extremecraft.quest.QuestManager;
 import com.mojang.brigadier.CommandDispatcher;
@@ -98,6 +100,11 @@ public final class ProgressCommands {
                                         data.addClassSkillPoints(q.rewardClassSkillPoints());
                                         if (!q.rewardUnlockClass().isBlank()) {
                                             data.unlockClass(q.rewardUnlockClass());
+                                        }
+
+                                        if (!q.rewardUnlockStage().isBlank()) {
+                                            ProgressionStage.byName(q.rewardUnlockStage())
+                                                    .ifPresent(stage -> StageManager.upgradePlayerStage(p, stage));
                                         }
 
                                         ProgressionService.applyAttributes(p);

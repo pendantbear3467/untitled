@@ -4,16 +4,22 @@ import com.extremecraft.client.DwClientHooks;
 import com.extremecraft.client.DwKeybinds;
 import com.extremecraft.gui.PulverizerScreen;
 import com.extremecraft.network.ModNetwork;
+import com.extremecraft.progression.StageDataLoader;
 import com.extremecraft.progression.ProgressCommands;
 import com.extremecraft.progression.ProgressionEvents;
 import com.extremecraft.progression.capability.ProgressCapabilityEvents;
+import com.extremecraft.progression.stage.StageCapabilityEvents;
 import com.extremecraft.quest.QuestManager;
+import com.extremecraft.research.ResearchCapabilityEvents;
+import com.extremecraft.research.ResearchManager;
 import com.extremecraft.registry.ModBlockEntities;
 import com.extremecraft.registry.ModBlocks;
 import com.extremecraft.registry.ModItems;
 import com.extremecraft.registry.ModMenuTypes;
 import com.extremecraft.registry.ModRecipeSerializers;
 import com.extremecraft.server.DwServerTicker;
+import com.extremecraft.skills.SkillRegistry;
+import com.extremecraft.skills.SkillsCapabilityEvents;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
@@ -42,8 +48,15 @@ public final class ExtremeCraft {
         modBus.addListener(this::onEntityAttributeModification);
 
         MinecraftForge.EVENT_BUS.register(new ProgressCapabilityEvents());
+        MinecraftForge.EVENT_BUS.register(new StageCapabilityEvents());
+        MinecraftForge.EVENT_BUS.register(new SkillsCapabilityEvents());
+        MinecraftForge.EVENT_BUS.register(new ResearchCapabilityEvents());
+
         MinecraftForge.EVENT_BUS.register(new ProgressionEvents());
         MinecraftForge.EVENT_BUS.register(new QuestManager());
+        MinecraftForge.EVENT_BUS.register(new StageDataLoader());
+        MinecraftForge.EVENT_BUS.register(new SkillRegistry());
+        MinecraftForge.EVENT_BUS.register(new ResearchManager());
         MinecraftForge.EVENT_BUS.addListener(this::registerCommands);
 
         MinecraftForge.EVENT_BUS.register(new DwServerTicker());

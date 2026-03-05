@@ -1,10 +1,10 @@
 package com.extremecraft.machines.pulverizer;
 
+import com.extremecraft.machines.base.AbstractMachineBlockEntity;
 import com.extremecraft.machines.recipe.ModRecipeTypes;
 import com.extremecraft.machines.recipe.PulverizerRecipe;
 import com.extremecraft.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.MenuProvider;
@@ -17,20 +17,14 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.energy.EnergyStorage;
-import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 
 import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Optional;
 
-public class PulverizerBlockEntity extends BlockEntity implements MenuProvider {
+public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements MenuProvider {
     public static final int INPUT_SLOT = 0;
     public static final int FUEL_SLOT = 1;
     public static final int OUTPUT_SLOT = 2;
@@ -42,34 +36,6 @@ public class PulverizerBlockEntity extends BlockEntity implements MenuProvider {
             Items.REDSTONE, 400
     );
 
-    public static class MachineEnergyStorage extends EnergyStorage {
-        public MachineEnergyStorage(int capacity, int maxReceive, int maxExtract) {
-            super(capacity, maxReceive, maxExtract);
-        }
-
-        public void setStored(int value) {
-            this.energy = Math.max(0, Math.min(value, getMaxEnergyStored()));
-        }
-    }
-
-    private final ItemStackHandler itemHandler = new ItemStackHandler(3) {
-        @Override
-        protected void onContentsChanged(int slot) {
-            setChanged();
-        }
-
-        @Override
-        public boolean isItemValid(int slot, ItemStack stack) {
-            if (slot == OUTPUT_SLOT) return false;
-            if (slot == FUEL_SLOT) return FUEL_FE.containsKey(stack.getItem());
-            return true;
-        }
-    };
-
-    private final MachineEnergyStorage energy = new MachineEnergyStorage(100_000, 500, 500);
-    private LazyOptional<IItemHandler> itemCap = LazyOptional.empty();
-    private LazyOptional<MachineEnergyStorage> energyCap = LazyOptional.empty();
-
     private int progress = 0;
     private int maxProgress = 120;
 
@@ -79,8 +45,8 @@ public class PulverizerBlockEntity extends BlockEntity implements MenuProvider {
             return switch (index) {
                 case 0 -> progress;
                 case 1 -> maxProgress;
-                case 2 -> energy.getEnergyStored();
-                case 3 -> energy.getMaxEnergyStored();
+                case 2 -> energyStorage.getEnergyStored();
+                case 3 -> energyStorage.getMaxEnergyStored();
                 default -> 0;
             };
         }
@@ -100,7 +66,7 @@ public class PulverizerBlockEntity extends BlockEntity implements MenuProvider {
     };
 
     public PulverizerBlockEntity(BlockPos pos, BlockState state) {
-        super(ModBlockEntities.PULVERIZER_BE.get(), pos, state);
+        super(ModBlockEntities.PULVERIZER_BE.get(), pos, state, 3, 100_000, 500, 500);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, PulverizerBlockEntity be) {
@@ -118,7 +84,7 @@ public class PulverizerBlockEntity extends BlockEntity implements MenuProvider {
         PulverizerRecipe recipe = recipeOpt.get();
         be.maxProgress = recipe.getProcessTime();
 
-        if (be.energy.getEnergyStored() < recipe.getEnergyPerTick()) {
+        if (be.energyStorage.getEnergyStored() < recipe.getEnergyPerTick()) {
             be.setChanged();
             return;
         }
@@ -129,7 +95,7 @@ public class PulverizerBlockEntity extends BlockEntity implements MenuProvider {
             return;
         }
 
-        be.energy.extractEnergy(recipe.getEnergyPerTick(), false);
+        be.energyStorage.extractEnergy(recipe.getEnergyPerTick(), false);
         be.progress++;
 
         if (be.progress >= be.maxProgress) {
@@ -141,7 +107,7 @@ public class PulverizerBlockEntity extends BlockEntity implements MenuProvider {
     }
 
     private void burnFuelIfNeeded() {
-        if (energy.getEnergyStored() > 90_000) return;
+        if (energyStorage.getEnergyStored() > 90_000) return;
 
         ItemStack fuel = itemHandler.getStackInSlot(FUEL_SLOT);
         if (fuel.isEmpty()) return;
@@ -150,7 +116,7 @@ public class PulverizerBlockEntity extends BlockEntity implements MenuProvider {
         if (fe == null || fe <= 0) return;
 
         fuel.shrink(1);
-        energy.receiveEnergy(fe, false);
+        energyStorage.receiveEnergy(fe, false);
     }
 
     private Optional<PulverizerRecipe> getCurrentRecipe() {
@@ -185,8 +151,8 @@ public class PulverizerBlockEntity extends BlockEntity implements MenuProvider {
         return itemHandler;
     }
 
-    public MachineEnergyStorage getEnergy() {
-        return energy;
+    public com.extremecraft.energy.EnergyStorageExt getEnergy() {
+        return energyStorage;
     }
 
     public ContainerData getContainerData() {
@@ -205,41 +171,27 @@ public class PulverizerBlockEntity extends BlockEntity implements MenuProvider {
     }
 
     @Override
-    public void onLoad() {
-        super.onLoad();
-        itemCap = LazyOptional.of(() -> itemHandler);
-        energyCap = LazyOptional.of(() -> energy);
-    }
-
-    @Override
-    public void invalidateCaps() {
-        super.invalidateCaps();
-        itemCap.invalidate();
-        energyCap.invalidate();
-    }
-
-    @Override
-    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
-        if (cap == ForgeCapabilities.ITEM_HANDLER) return itemCap.cast();
-        if (cap == ForgeCapabilities.ENERGY) return energyCap.cast();
-        return super.getCapability(cap, side);
-    }
-
-    @Override
     protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
-        tag.put("inventory", itemHandler.serializeNBT());
-        tag.putInt("energy", energy.getEnergyStored());
         tag.putInt("progress", progress);
         tag.putInt("max_progress", maxProgress);
+        super.saveAdditional(tag);
     }
 
     @Override
     public void load(CompoundTag tag) {
         super.load(tag);
-        itemHandler.deserializeNBT(tag.getCompound("inventory"));
-        energy.setStored(tag.getInt("energy"));
         progress = tag.getInt("progress");
         maxProgress = Math.max(1, tag.getInt("max_progress"));
+    }
+
+    @Override
+    protected boolean isItemValidForSlot(int slot, ItemStack stack) {
+        if (slot == OUTPUT_SLOT) {
+            return false;
+        }
+        if (slot == FUEL_SLOT) {
+            return FUEL_FE.containsKey(stack.getItem());
+        }
+        return true;
     }
 }

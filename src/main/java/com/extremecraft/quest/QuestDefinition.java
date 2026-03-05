@@ -8,6 +8,7 @@ public record QuestDefinition(
         int rewardXp,
         int rewardPlayerSkillPoints,
         int rewardClassSkillPoints,
-        String rewardUnlockClass
+        String rewardUnlockClass,
+        String rewardUnlockStage
 ) {
 }

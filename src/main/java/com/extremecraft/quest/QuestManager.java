@@ -45,8 +45,9 @@ public class QuestManager extends SimpleJsonResourceReloadListener {
             int playerSkill = Math.max(0, GsonHelper.getAsInt(rewards, "player_skill_points", 0));
             int classSkill = Math.max(0, GsonHelper.getAsInt(rewards, "class_skill_points", 0));
             String unlockClass = GsonHelper.getAsString(rewards, "unlock_class", "");
+            String unlockStage = GsonHelper.getAsString(rewards, "unlock_stage", "");
 
-            QUESTS.put(id, new QuestDefinition(id, title, type, target, xp, playerSkill, classSkill, unlockClass));
+            QUESTS.put(id, new QuestDefinition(id, title, type, target, xp, playerSkill, classSkill, unlockClass, unlockStage));
         }
 
         if (QUESTS.isEmpty()) {
@@ -55,12 +56,12 @@ public class QuestManager extends SimpleJsonResourceReloadListener {
     }
 
     private static void seedDefaultQuests() {
-        QUESTS.put("fighter_trial", new QuestDefinition("fighter_trial", "Fighter Trial", QuestType.KILL, 25, 200, 1, 1, "fighter"));
-        QUESTS.put("miner_trial", new QuestDefinition("miner_trial", "Miner Trial", QuestType.COLLECTION, 64, 150, 1, 1, "miner"));
-        QUESTS.put("explorer_trial", new QuestDefinition("explorer_trial", "Explorer Trial", QuestType.EXPLORATION, 10, 180, 2, 1, "explorer"));
-        QUESTS.put("scientist_trial", new QuestDefinition("scientist_trial", "Scientist Trial", QuestType.CRAFTING, 20, 220, 2, 2, "scientist"));
-        QUESTS.put("medic_trial", new QuestDefinition("medic_trial", "Medic Trial", QuestType.BOSS, 1, 300, 2, 2, "medic"));
-        QUESTS.put("trader_trial", new QuestDefinition("trader_trial", "Trader Trial", QuestType.COLLECTION, 128, 250, 2, 2, "trader"));
+        QUESTS.put("fighter_trial", new QuestDefinition("fighter_trial", "Fighter Trial", QuestType.KILL, 25, 200, 1, 1, "fighter", ""));
+        QUESTS.put("miner_trial", new QuestDefinition("miner_trial", "Miner Trial", QuestType.COLLECTION, 64, 150, 1, 1, "miner", ""));
+        QUESTS.put("explorer_trial", new QuestDefinition("explorer_trial", "Explorer Trial", QuestType.EXPLORATION, 10, 180, 2, 1, "explorer", ""));
+        QUESTS.put("scientist_trial", new QuestDefinition("scientist_trial", "Scientist Trial", QuestType.CRAFTING, 20, 220, 2, 2, "scientist", "INDUSTRIAL"));
+        QUESTS.put("medic_trial", new QuestDefinition("medic_trial", "Medic Trial", QuestType.BOSS, 1, 300, 2, 2, "medic", ""));
+        QUESTS.put("trader_trial", new QuestDefinition("trader_trial", "Trader Trial", QuestType.COLLECTION, 128, 250, 2, 2, "trader", ""));
     }
 
     public static Collection<QuestDefinition> all() {

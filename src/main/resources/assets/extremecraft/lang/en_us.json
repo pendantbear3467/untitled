@@ -15,6 +15,7 @@
   "item.extremecraft.generator_tier_9": "Generator Tier 9",
   "item.extremecraft.generator_tier_4": "Generator Tier 4",
   "item.extremecraft.generator_tier_8": "Generator Tier 8",
+  "message.extremecraft.machine_locked": "Machine locked. Required stage: %s",
   "block.extremecraft.pulverizer": "Pulverizer",
   "item.extremecraft.pulverizer": "Pulverizer",
   "item.extremecraft.reactor_core": "Reactor Core",
