@@ -11,10 +11,11 @@ public final class MachineCatalog {
 
     static {
         register(new MachineDefinition("alloy_furnace", MachineCategory.PROCESSOR, ProgressionStage.INDUSTRIAL, 160, 24, 1, 0));
-        register(new MachineDefinition("crusher", MachineCategory.PROCESSOR, ProgressionStage.INDUSTRIAL, 180, 30, 3, 0));
+        register(new MachineDefinition("crusher", MachineCategory.PROCESSOR, ProgressionStage.PRIMITIVE, 200, 16, 2, 0));
+        register(new MachineDefinition("smelter", MachineCategory.PROCESSOR, ProgressionStage.PRIMITIVE, 240, 18, 1, 0));
         register(new MachineDefinition("compressor", MachineCategory.PROCESSOR, ProgressionStage.INDUSTRIAL, 200, 35, 1, 0));
 
-        register(new MachineDefinition("coal_generator", MachineCategory.GENERATOR, ProgressionStage.INDUSTRIAL, 0, 0, 0, 40));
+        register(new MachineDefinition("coal_generator", MachineCategory.GENERATOR, ProgressionStage.PRIMITIVE, 0, 0, 0, 40));
         register(new MachineDefinition("steam_generator", MachineCategory.GENERATOR, ProgressionStage.ENERGY, 0, 0, 0, 70));
         register(new MachineDefinition("solar_generator", MachineCategory.GENERATOR, ProgressionStage.ENERGY, 0, 0, 0, 25));
         register(new MachineDefinition("fusion_reactor", MachineCategory.GENERATOR, ProgressionStage.ADVANCED, 0, 0, 0, 450));

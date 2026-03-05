@@ -12,6 +12,7 @@ import com.extremecraft.future.registry.TechMenuTypes;
 import com.extremecraft.future.registry.TechRecipeSerializers;
 import com.extremecraft.gui.PulverizerScreen;
 import com.extremecraft.item.armor.ArmorBonusHandler;
+import com.extremecraft.machine.MachineTooltipHandler;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.net.DwNetwork;
 import com.extremecraft.progression.StageDataLoader;
@@ -103,6 +104,7 @@ public final class ExtremeCraft {
             MenuScreens.register(ModMenuTypes.PULVERIZER_MENU.get(), PulverizerScreen::new);
             MenuScreens.register(TechMenuTypes.TECH_MACHINE.get(), TechMachineScreen::new);
             MinecraftForge.EVENT_BUS.register(new DwClientHooks());
+            MinecraftForge.EVENT_BUS.addListener(MachineTooltipHandler::onTooltip);
         });
     }
 

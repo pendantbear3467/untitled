@@ -25,7 +25,6 @@ public class PulverizerMenu extends AbstractContainerMenu {
         this.data = data;
 
         addSlot(new SlotItemHandler(blockEntity.getItemHandler(), PulverizerBlockEntity.INPUT_SLOT, 56, 35));
-        addSlot(new SlotItemHandler(blockEntity.getItemHandler(), PulverizerBlockEntity.FUEL_SLOT, 8, 53));
         addSlot(new SlotItemHandler(blockEntity.getItemHandler(), PulverizerBlockEntity.OUTPUT_SLOT, 116, 35) {
             @Override
             public boolean mayPlace(ItemStack stack) {
@@ -82,13 +81,13 @@ public class PulverizerMenu extends AbstractContainerMenu {
         ItemStack stack = slot.getItem();
         result = stack.copy();
 
-        if (index < 3) {
-            if (!moveItemStackTo(stack, 3, 39, true)) return ItemStack.EMPTY;
+        if (index < 2) {
+            if (!moveItemStackTo(stack, 2, 38, true)) return ItemStack.EMPTY;
         } else {
-            if (!moveItemStackTo(stack, 0, 2, false)) {
-                if (index < 30) {
-                    if (!moveItemStackTo(stack, 30, 39, false)) return ItemStack.EMPTY;
-                } else if (!moveItemStackTo(stack, 3, 30, false)) {
+            if (!moveItemStackTo(stack, 0, 1, false)) {
+                if (index < 29) {
+                    if (!moveItemStackTo(stack, 29, 38, false)) return ItemStack.EMPTY;
+                } else if (!moveItemStackTo(stack, 2, 29, false)) {
                     return ItemStack.EMPTY;
                 }
             }

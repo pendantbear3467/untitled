@@ -23,6 +23,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.items.ItemStackHandler;
@@ -37,6 +38,8 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
 
     private int progress;
     private int maxProgress = 120;
+    private int fuelBurnTime;
+    private int fuelBurnTimeTotal;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -89,20 +92,22 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
     private void tickGenerator(MachineDefinition definition) {
         int generation = definition.generationPerTick();
 
-        if ("coal_generator".equals(definition.id()) || "industrial_generator".equals(definition.id())) {
+        if ("coal_generator".equals(definition.id()) || "industrial_generator".equals(definition.id()) || "steam_generator".equals(definition.id())) {
+            if (fuelBurnTime > 0) {
+                fuelBurnTime--;
+                energyStorage.receiveEnergy(generation, false);
+                return;
+            }
+
             ItemStack fuel = itemHandler.getStackInSlot(FUEL_SLOT);
             if (!fuel.isEmpty() && (fuel.is(Items.COAL) || fuel.is(Items.CHARCOAL))) {
+                int burn = ForgeHooks.getBurnTime(fuel, null);
+                if (burn <= 0) {
+                    return;
+                }
                 fuel.shrink(1);
-                energyStorage.receiveEnergy(generation * 20, false);
-            }
-            return;
-        }
-
-        if ("steam_generator".equals(definition.id())) {
-            ItemStack fuel = itemHandler.getStackInSlot(FUEL_SLOT);
-            if (!fuel.isEmpty() && fuel.is(Items.COAL)) {
-                fuel.shrink(1);
-                energyStorage.receiveEnergy(generation * 30, false);
+                fuelBurnTime = burn;
+                fuelBurnTimeTotal = burn;
             }
             return;
         }
@@ -169,11 +174,16 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
 
         String path = inputId.getPath();
 
-        if ((definition.id().contains("pulverizer") || definition.id().contains("crusher")) && path.endsWith("_ore")) {
-            String dustPath = path.substring(0, path.length() - 4) + "_dust";
-            Item dust = BuiltInRegistries.ITEM.get(new ResourceLocation(inputId.getNamespace(), dustPath));
-            if (dust != Items.AIR) {
-                return Optional.of(new ItemStack(dust, definition.outputMultiplier()));
+        if (definition.id().contains("crusher") && path.endsWith("_ore")) {
+            String base = path.substring(0, path.length() - 4);
+            if (base.startsWith("deepslate_")) {
+                base = base.substring("deepslate_".length());
+            }
+
+            String rawPath = "raw_" + base;
+            Item raw = BuiltInRegistries.ITEM.get(new ResourceLocation(inputId.getNamespace(), rawPath));
+            if (raw != Items.AIR) {
+                return Optional.of(new ItemStack(raw, definition.outputMultiplier()));
             }
         }
 
@@ -297,6 +307,8 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
     protected void saveAdditional(CompoundTag tag) {
         tag.putInt("progress", progress);
         tag.putInt("max_progress", maxProgress);
+        tag.putInt("fuel_burn_time", fuelBurnTime);
+        tag.putInt("fuel_burn_time_total", fuelBurnTimeTotal);
         super.saveAdditional(tag);
     }
 
@@ -305,6 +317,8 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
         super.load(tag);
         progress = tag.getInt("progress");
         maxProgress = Math.max(1, tag.getInt("max_progress"));
+        fuelBurnTime = Math.max(0, tag.getInt("fuel_burn_time"));
+        fuelBurnTimeTotal = Math.max(0, tag.getInt("fuel_burn_time_total"));
     }
 
     @Override

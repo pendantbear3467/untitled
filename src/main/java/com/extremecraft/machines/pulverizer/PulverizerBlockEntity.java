@@ -13,28 +13,17 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.items.ItemStackHandler;
 
 import javax.annotation.Nullable;
-import java.util.Map;
 import java.util.Optional;
 
 public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements MenuProvider {
     public static final int INPUT_SLOT = 0;
-    public static final int FUEL_SLOT = 1;
-    public static final int OUTPUT_SLOT = 2;
-
-    private static final Map<Item, Integer> FUEL_FE = Map.of(
-            Items.COAL, 1600,
-            Items.CHARCOAL, 1600,
-            Items.BLAZE_ROD, 2400,
-            Items.REDSTONE, 400
-    );
+    public static final int OUTPUT_SLOT = 1;
 
     private int progress = 0;
     private int maxProgress = 120;
@@ -66,13 +55,11 @@ public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements
     };
 
     public PulverizerBlockEntity(BlockPos pos, BlockState state) {
-        super(ModBlockEntities.PULVERIZER_BE.get(), pos, state, 3, 100_000, 500, 500);
+        super(ModBlockEntities.PULVERIZER_BE.get(), pos, state, 2, 100_000, 500, 500);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, PulverizerBlockEntity be) {
         if (level.isClientSide) return;
-
-        be.burnFuelIfNeeded();
 
         Optional<PulverizerRecipe> recipeOpt = be.getCurrentRecipe();
         if (recipeOpt.isEmpty()) {
@@ -104,19 +91,6 @@ public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements
         }
 
         be.setChanged();
-    }
-
-    private void burnFuelIfNeeded() {
-        if (energyStorage.getEnergyStored() > 90_000) return;
-
-        ItemStack fuel = itemHandler.getStackInSlot(FUEL_SLOT);
-        if (fuel.isEmpty()) return;
-
-        Integer fe = FUEL_FE.get(fuel.getItem());
-        if (fe == null || fe <= 0) return;
-
-        fuel.shrink(1);
-        energyStorage.receiveEnergy(fe, false);
     }
 
     private Optional<PulverizerRecipe> getCurrentRecipe() {
@@ -186,12 +160,6 @@ public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements
 
     @Override
     protected boolean isItemValidForSlot(int slot, ItemStack stack) {
-        if (slot == OUTPUT_SLOT) {
-            return false;
-        }
-        if (slot == FUEL_SLOT) {
-            return FUEL_FE.containsKey(stack.getItem());
-        }
-        return true;
+        return slot != OUTPUT_SLOT;
     }
 }

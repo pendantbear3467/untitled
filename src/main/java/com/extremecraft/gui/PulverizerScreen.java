@@ -32,7 +32,6 @@ public class PulverizerScreen extends BaseMachineScreen<PulverizerMenu> {
         );
 
         addMachineSlotHighlight(56, 35); // input
-        addMachineSlotHighlight(8, 53);  // fuel
         addMachineSlotHighlight(116, 35); // output
     }
 

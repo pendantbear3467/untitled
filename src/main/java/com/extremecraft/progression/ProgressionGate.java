@@ -16,10 +16,10 @@ public final class ProgressionGate {
     private static final Map<String, ProgressionStage> RECIPE_REQUIREMENTS = new HashMap<>();
 
     static {
-        registerMachineRequirement("pulverizer", ProgressionStage.INDUSTRIAL);
+        registerMachineRequirement("pulverizer", ProgressionStage.PRIMITIVE);
         MachineCatalog.DEFINITIONS.values().forEach(definition -> registerMachineRequirement(definition.id(), definition.stage()));
 
-        registerRecipeRequirement("extremecraft:machine_processing", ProgressionStage.INDUSTRIAL);
+        registerRecipeRequirement("extremecraft:machine_processing", ProgressionStage.PRIMITIVE);
         registerRecipeRequirement("extremecraft:hybrid_crafting", ProgressionStage.ADVANCED);
     }
 
