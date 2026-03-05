@@ -80,9 +80,10 @@ public class SkillTreeScreen extends BaseExtremeScreen {
         }
 
         List<Component> tooltip = new ArrayList<>();
-        tooltip.add(Component.literal(prettyName(hoveredNode.id())));
-        tooltip.add(Component.literal(hoveredNode.bonusText().isBlank() ? "No description" : hoveredNode.bonusText()));
+        tooltip.add(Component.literal(hoveredNode.resolvedDisplayName()));
+        tooltip.add(Component.literal(hoveredNode.resolvedDescription()));
         tooltip.add(Component.literal("Cost: " + hoveredNode.cost() + " skill point(s)"));
+        tooltip.add(Component.literal("Required Level: " + hoveredNode.requiredLevel()));
         if (!hoveredNode.requiredNodes().isEmpty()) {
             tooltip.add(Component.literal("Requirements: " + String.join(", ", hoveredNode.requiredNodes())));
         }
@@ -246,6 +247,13 @@ public class SkillTreeScreen extends BaseExtremeScreen {
 
     private boolean canUnlockNode(SkillNode node) {
         if (isNodeUnlocked(node.id())) {
+            return false;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        int playerLevel = mc.player == null ? 0 : com.extremecraft.progression.capability.PlayerStatsApi.get(mc.player)
+                .map(com.extremecraft.progression.capability.PlayerStatsCapability::level)
+                .orElse(0);
+        if (playerLevel < node.requiredLevel()) {
             return false;
         }
         if (node.requiredNodes().isEmpty()) {

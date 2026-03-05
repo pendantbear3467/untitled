@@ -47,6 +47,13 @@ public class PlayerStatsCapability {
     private float staminaCostReductionBonus = 0.0F;
     private float lootRarityBonusSkill = 0.0F;
     private float spellPowerBonus = 0.0F;
+    private float attackSpeedBonus = 0.0F;
+    private float movementSpeedBonus = 0.0F;
+    private float miningSpeedBonus = 0.0F;
+    private float blockBreakSpeedBonus = 0.0F;
+    private float luckBonus = 0.0F;
+    private float maxManaBonus = 0.0F;
+    private float maxHealthBonus = 0.0F;
 
     // Future expansion scaffolding.
     private int ascensionLevel = 0;
@@ -86,7 +93,7 @@ public class PlayerStatsCapability {
     public Set<String> unlockedSkillNodes() { return unlockedSkillNodes; }
 
     public int maxHealth() {
-        return 20 + (vitality * 2);
+        return 20 + (vitality * 2) + Math.round(maxHealthBonus);
     }
 
     public int meleeDamageBonus() {
@@ -119,6 +126,14 @@ public class PlayerStatsCapability {
 
     public float spellPowerBonus() {
         return spellPowerBonus;
+    }
+
+    public float miningSpeedBonus() {
+        return miningSpeedBonus;
+    }
+
+    public float blockBreakSpeedBonus() {
+        return blockBreakSpeedBonus;
     }
 
     public boolean addExperience(int amount) {
@@ -225,6 +240,13 @@ public class PlayerStatsCapability {
         staminaCostReductionBonus = 0.0F;
         lootRarityBonusSkill = 0.0F;
         spellPowerBonus = 0.0F;
+        attackSpeedBonus = 0.0F;
+        movementSpeedBonus = 0.0F;
+        miningSpeedBonus = 0.0F;
+        blockBreakSpeedBonus = 0.0F;
+        luckBonus = 0.0F;
+        maxManaBonus = 0.0F;
+        maxHealthBonus = 0.0F;
 
         // Apply unlocked skill node modifiers.
         for (String unlockedNode : unlockedSkillNodes) {
@@ -243,12 +265,25 @@ public class PlayerStatsCapability {
             switch (entry.getKey()) {
                 case "damage_bonus" -> damageBonus += entry.getValue();
                 case "crit_chance_bonus" -> critChance += entry.getValue();
+                case "attack_speed", "attack_speed_bonus" -> attackSpeedBonus += entry.getValue();
+                case "max_mana" -> maxManaBonus += entry.getValue();
+                case "max_health" -> maxHealthBonus += entry.getValue();
+                case "luck" -> luckBonus += entry.getValue();
+                case "mining_speed" -> miningSpeedBonus += entry.getValue();
+                case "block_break_speed" -> blockBreakSpeedBonus += entry.getValue();
+                case "movement_speed" -> movementSpeedBonus += entry.getValue();
                 case "movement_speed_bonus" -> movementSpeed += entry.getValue();
                 case "spell_power_bonus" -> spellPowerBonus += entry.getValue();
                 default -> {
                 }
             }
         }
+
+        maxMana += Math.round(maxManaBonus);
+        manaCapacity = maxMana;
+        attackSpeed += attackSpeedBonus;
+        movementSpeed += movementSpeedBonus;
+        critChance += luckBonus * 0.002F;
 
         // Future ascension scaling.
         if (ascensionLevel > 0) {
@@ -280,7 +315,14 @@ public class PlayerStatsCapability {
             case "damage_bonus" -> damageBonus = applyValue(damageBonus, value, modifier.operation());
             case "damage_multiplier" -> damageMultiplier = applyValue(damageMultiplier, value, modifier.operation());
             case "crit_chance_bonus" -> critChance = applyValue(critChance, value, modifier.operation());
+            case "attack_speed" -> attackSpeedBonus = applyValue(attackSpeedBonus, value, modifier.operation());
             case "mana_regeneration" -> manaRegenBonus = applyValue(manaRegenBonus, value, modifier.operation());
+            case "max_mana" -> maxManaBonus = applyValue(maxManaBonus, value, modifier.operation());
+            case "max_health" -> maxHealthBonus = applyValue(maxHealthBonus, value, modifier.operation());
+            case "movement_speed" -> movementSpeedBonus = applyValue(movementSpeedBonus, value, modifier.operation());
+            case "mining_speed" -> miningSpeedBonus = applyValue(miningSpeedBonus, value, modifier.operation());
+            case "luck" -> luckBonus = applyValue(luckBonus, value, modifier.operation());
+            case "block_break_speed" -> blockBreakSpeedBonus = applyValue(blockBreakSpeedBonus, value, modifier.operation());
             case "stamina_cost_reduction" -> staminaCostReductionBonus = applyValue(staminaCostReductionBonus, value, modifier.operation());
             case "loot_rarity_bonus" -> lootRarityBonusSkill = applyValue(lootRarityBonusSkill, value, modifier.operation());
             case "spell_power_bonus" -> spellPowerBonus = applyValue(spellPowerBonus, value, modifier.operation());

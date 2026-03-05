@@ -3,7 +3,8 @@ package com.extremecraft.core;
 import com.extremecraft.client.DwClientHooks;
 import com.extremecraft.client.DwKeybinds;
 import com.extremecraft.client.gui.machine.TechMachineScreen;
-import com.extremecraft.client.gui.player.InventoryButtonInjector;`nimport com.extremecraft.client.gui.player.InventoryXpOverlay;
+import com.extremecraft.client.gui.player.InventoryButtonInjector;
+import com.extremecraft.client.gui.player.InventoryXpOverlay;
 import com.extremecraft.combat.dualwield.PlayerDualWieldEvents;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.future.registry.TechBlockEntities;
@@ -110,7 +111,8 @@ public final class ExtremeCraft {
             MenuScreens.register(ModMenuTypes.PULVERIZER_MENU.get(), PulverizerScreen::new);
             MenuScreens.register(TechMenuTypes.TECH_MACHINE.get(), TechMachineScreen::new);
             MinecraftForge.EVENT_BUS.register(new DwClientHooks());
-            MinecraftForge.EVENT_BUS.register(new InventoryButtonInjector());`n            MinecraftForge.EVENT_BUS.register(new InventoryXpOverlay());
+            MinecraftForge.EVENT_BUS.register(new InventoryButtonInjector());
+            MinecraftForge.EVENT_BUS.register(new InventoryXpOverlay());
         });
     }
 
@@ -122,4 +124,5 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
 

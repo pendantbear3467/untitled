@@ -65,6 +65,10 @@ public final class PlayerStatsService {
             return false;
         }
 
+        if (stats.level() < node.requiredLevel()) {
+            return false;
+        }
+
         for (String req : node.requiredNodes()) {
             if (!stats.isSkillUnlocked(req)) {
                 return false;

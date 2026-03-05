@@ -141,8 +141,8 @@ public class SkillTreeScreenPanel {
             return new NodeUiCache(
                     location,
                     present,
-                    Component.literal(node.id().replace('_', ' ')),
-                    Component.literal(node.bonusText().isBlank() ? "No description" : node.bonusText()),
+                    Component.literal(node.resolvedDisplayName()),
+                    Component.literal(node.resolvedDescription()),
                     Component.literal("Cost: " + node.cost() + " skill point(s)")
             );
         });
@@ -155,7 +155,7 @@ public class SkillTreeScreenPanel {
         }
 
         PlayerStatsCapability stats = statsOpt.get();
-        if (stats.isSkillUnlocked(node.id()) || stats.skillPoints() < node.cost()) {
+        if (stats.isSkillUnlocked(node.id()) || stats.skillPoints() < node.cost() || stats.level() < node.requiredLevel()) {
             return false;
         }
 

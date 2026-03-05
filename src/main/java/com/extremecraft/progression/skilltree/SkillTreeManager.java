@@ -59,12 +59,21 @@ public final class SkillTreeManager {
                 int x = node.has("x") ? node.get("x").getAsInt() : 0;
                 int y = node.has("y") ? node.get("y").getAsInt() : 0;
                 int cost = Math.max(1, node.has("cost") ? node.get("cost").getAsInt() : 1);
+                int requiredLevel = Math.max(1, node.has("requiredLevel") ? node.get("requiredLevel").getAsInt() : 1);
 
                 List<String> requires = new ArrayList<>();
                 if (node.has("requires") && node.get("requires").isJsonArray()) {
                     for (JsonElement req : node.getAsJsonArray("requires")) {
                         String reqId = req.getAsString().trim().toLowerCase();
                         if (!reqId.isBlank()) {
+                            requires.add(reqId);
+                        }
+                    }
+                }
+                if (node.has("requiredNodes") && node.get("requiredNodes").isJsonArray()) {
+                    for (JsonElement req : node.getAsJsonArray("requiredNodes")) {
+                        String reqId = req.getAsString().trim().toLowerCase();
+                        if (!reqId.isBlank() && !requires.contains(reqId)) {
                             requires.add(reqId);
                         }
                     }
@@ -86,11 +95,38 @@ public final class SkillTreeManager {
                             modifiers.add(new SkillModifier(modifierId, value, SkillModifier.Operation.byName(operation)));
                         }
                     }
+                } else if (node.has("modifiers") && node.get("modifiers").isJsonObject()) {
+                    JsonObject modsObject = node.getAsJsonObject("modifiers");
+                    for (Map.Entry<String, JsonElement> modEntry : modsObject.entrySet()) {
+                        String modifierId = modEntry.getKey() == null ? "" : modEntry.getKey().trim().toLowerCase();
+                        if (modifierId.isBlank()) {
+                            continue;
+                        }
+
+                        JsonElement valueElement = modEntry.getValue();
+                        if (valueElement == null || valueElement.isJsonNull()) {
+                            continue;
+                        }
+
+                        if (valueElement.isJsonPrimitive() && valueElement.getAsJsonPrimitive().isNumber()) {
+                            modifiers.add(new SkillModifier(modifierId, valueElement.getAsDouble(), SkillModifier.Operation.ADD));
+                            continue;
+                        }
+
+                        if (valueElement.isJsonObject()) {
+                            JsonObject modObject = valueElement.getAsJsonObject();
+                            double value = modObject.has("value") ? modObject.get("value").getAsDouble() : 0.0D;
+                            String operation = modObject.has("operation") ? modObject.get("operation").getAsString() : "ADD";
+                            modifiers.add(new SkillModifier(modifierId, value, SkillModifier.Operation.byName(operation)));
+                        }
+                    }
                 }
 
-                String bonus = node.has("bonus") ? node.get("bonus").getAsString() : "";
+                String displayName = node.has("displayName") ? node.get("displayName").getAsString() : id.replace('_', ' ');
+                String description = node.has("description") ? node.get("description").getAsString()
+                        : (node.has("bonus") ? node.get("bonus").getAsString() : "");
                 String icon = node.has("icon") ? node.get("icon").getAsString() : "";
-                nodes.add(new SkillNode(id, x, y, cost, List.copyOf(requires), List.copyOf(modifiers), bonus, icon));
+                nodes.add(new SkillNode(id, x, y, cost, requiredLevel, List.copyOf(requires), List.copyOf(modifiers), displayName, description, icon));
             }
 
             if (!nodes.isEmpty()) {
@@ -161,7 +197,7 @@ public final class SkillTreeManager {
     }
 
     private static SkillNode node(String id, int x, int y, int cost, List<String> requiredNodes, List<SkillModifier> modifiers, String bonusText) {
-        return new SkillNode(id, x, y, cost, List.copyOf(requiredNodes), List.copyOf(modifiers), bonusText, "");
+        return new SkillNode(id, x, y, cost, 1, List.copyOf(requiredNodes), List.copyOf(modifiers), id.replace('_', ' '), bonusText, "");
     }
 
     private static void replaceAll(Map<String, List<SkillNode>> trees) {
