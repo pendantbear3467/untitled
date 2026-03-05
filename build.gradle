@@ -1,0 +1,44 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+}
+
+group = 'com.extremecraft'
+version = '1.1.0'
+
+base {
+    archivesName = 'extremecraft'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+    copyIdeResources = true
+
+    runs {
+        client {
+            workingDirectory = file('run')
+            property 'forge.enabledGameTestNamespaces', 'extremecraft'
+        }
+        server {
+            workingDirectory = file('run')
+            property 'forge.enabledGameTestNamespaces', 'extremecraft'
+        }
+    }
+}
+
+repositories {
+    maven { url = 'https://maven.minecraftforge.net' }
+    mavenCentral()
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.4.0'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

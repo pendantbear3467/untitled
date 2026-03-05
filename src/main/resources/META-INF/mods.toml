@@ -1,0 +1,29 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="extremecraft"
+version="${file.jarVersion}"
+displayName="Extreme Craft"
+credits="Dual wield integration + progression framework"
+authors="URwelcome"
+description='''
+Ancient horror + magical tech themed progression mod.
+Includes dual wield support, level scaling, class system, and skill point foundations.
+Currently uses vanilla sounds only.
+'''
+
+[[dependencies.extremecraft]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.extremecraft]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,)"
+ordering="NONE"
+side="BOTH"
