@@ -1,362 +1,298 @@
 package com.extremecraft.client.gui.player;
 
 import com.extremecraft.core.ECConstants;
-import com.extremecraft.machine.menu.PlayerStatsMenu;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.RequestPlayerStatsPacket;
-import com.extremecraft.network.packet.UpgradeSkillPacket;
+import com.extremecraft.network.packet.UpgradeStatPacket;
 import com.extremecraft.progression.capability.PlayerStatsApi;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
-import com.extremecraft.progression.capability.ProgressApi;
-import com.extremecraft.skills.SkillsApi;
+import com.extremecraft.progression.skilltree.SkillTreeManager;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class ExtremePlayerScreen extends AbstractContainerScreen<PlayerStatsMenu> {
-    private static final int GUI_WIDTH = 286;
-    private static final int GUI_HEIGHT = 190;
-    private static final int TAB_WIDTH = 64;
+public class ExtremePlayerScreen extends Screen {
+    private static final ResourceLocation BG_TEXTURE = new ResourceLocation(ECConstants.MODID, "textures/gui/extreme_player_menu.png");
+    private static final ResourceLocation MAGIC_SLOT = new ResourceLocation(ECConstants.MODID, "textures/gui/magic_slot.png");
+
+    private static final int GUI_WIDTH = 306;
+    private static final int GUI_HEIGHT = 206;
+    private static final int TAB_WIDTH = 58;
     private static final int TAB_HEIGHT = 18;
 
-    private static final Component TITLE = Component.literal("Extreme Player Menu");
-    private static final Component NO_DATA = Component.literal("Syncing stats...");
-
-    private static final ResourceLocation MENU_TEXTURE = ResourceLocation.tryParse(ECConstants.MODID + ":textures/gui/player_menu.png");
-    private static final ResourceLocation MAGIC_SLOT_TEXTURE = ResourceLocation.tryParse(ECConstants.MODID + ":textures/gui/magic_slot.png");
-
+    private final Player player;
+    private final Screen returnScreen;
+    private final SkillTreeScreenPanel skillTreePanel;
     private final List<Button> statButtons = new ArrayList<>();
+
     private ExtremePlayerTabs.Tab activeTab = ExtremePlayerTabs.Tab.PLAYER_STATS;
-    private float transition = 1.0F;
+    private String activeSkillTree = "combat";
 
-    public ExtremePlayerScreen(PlayerStatsMenu menu, Inventory inventory, Component title) {
-        this(menu, inventory, title, ExtremePlayerTabs.Tab.PLAYER_STATS);
+    private int leftPos;
+    private int topPos;
+
+    public ExtremePlayerScreen(Player player, Screen returnScreen) {
+        super(Component.literal("ExtremeCraft Player"));
+        this.player = player;
+        this.returnScreen = returnScreen;
+        this.skillTreePanel = new SkillTreeScreenPanel(this::getStats);
     }
 
-    public ExtremePlayerScreen(Player player, ExtremePlayerTabs.Tab tab) {
-        this(new PlayerStatsMenu(0, player.getInventory()), player.getInventory(), TITLE, tab);
-    }
-
-    public ExtremePlayerScreen(PlayerStatsMenu menu, Inventory inventory, Component title, ExtremePlayerTabs.Tab tab) {
-        super(menu, inventory, title);
-        this.imageWidth = GUI_WIDTH;
-        this.imageHeight = GUI_HEIGHT;
-        this.inventoryLabelY = this.imageHeight - 94;
-        this.activeTab = tab;
+    public ExtremePlayerScreen(Player player, ExtremePlayerTabs.Tab defaultTab) {
+        this(player, Minecraft.getInstance().screen instanceof InventoryScreen inv ? inv : null);
+        this.activeTab = defaultTab;
     }
 
     @Override
     protected void init() {
-        super.init();
-        this.titleLabelX = 12;
-        this.titleLabelY = 8;
+        leftPos = (width - GUI_WIDTH) / 2;
+        topPos = (height - GUI_HEIGHT) / 2;
 
-        createTabButtons();
-        createSkillButtons();
-
-        ModNetwork.CHANNEL.sendToServer(new RequestPlayerStatsPacket());
-        updateSkillButtonVisibility();
-    }
-
-    private void createTabButtons() {
-        int tabX = leftPos + 10;
-        int tabY = topPos + 28;
-
+        int tabX = leftPos + 8;
+        int tabY = topPos + 8;
         for (ExtremePlayerTabs.Tab tab : ExtremePlayerTabs.Tab.values()) {
-            Button button = Button.builder(tab.label(), btn -> switchTab(tab))
-                    .bounds(tabX, tabY, TAB_WIDTH, TAB_HEIGHT)
-                    .build();
-            addRenderableWidget(button);
+            final ExtremePlayerTabs.Tab captured = tab;
+            addRenderableWidget(Button.builder(tab.label(), b -> {
+                        activeTab = captured;
+                        updateStatButtonVisibility();
+                    }).bounds(tabX, tabY, TAB_WIDTH, TAB_HEIGHT)
+                    .build());
             tabX += TAB_WIDTH + 2;
         }
+
+        int panelX = leftPos + 200;
+        int rowY = topPos + 74;
+        statButtons.add(addRenderableWidget(statButton("vitality", panelX, rowY)));
+        statButtons.add(addRenderableWidget(statButton("strength", panelX, rowY + 20)));
+        statButtons.add(addRenderableWidget(statButton("agility", panelX, rowY + 40)));
+        statButtons.add(addRenderableWidget(statButton("endurance", panelX, rowY + 60)));
+        statButtons.add(addRenderableWidget(statButton("intelligence", panelX, rowY + 80)));
+        statButtons.add(addRenderableWidget(statButton("luck", panelX, rowY + 100)));
+
+        updateStatButtonVisibility();
+        ModNetwork.CHANNEL.sendToServer(new RequestPlayerStatsPacket());
     }
 
-    private void createSkillButtons() {
-        statButtons.clear();
-
-        statButtons.add(addRenderableWidget(createUpgradeButton("strength", leftPos + 210, topPos + 78)));
-        statButtons.add(addRenderableWidget(createUpgradeButton("agility", leftPos + 210, topPos + 98)));
-        statButtons.add(addRenderableWidget(createUpgradeButton("magic", leftPos + 210, topPos + 118)));
-        statButtons.add(addRenderableWidget(createUpgradeButton("defense", leftPos + 210, topPos + 138)));
-    }
-
-    private Button createUpgradeButton(String statId, int x, int y) {
-        return Button.builder(Component.literal("+"), btn -> ModNetwork.CHANNEL.sendToServer(new UpgradeSkillPacket(statId)))
-                .bounds(x, y, 20, 16)
+    private Button statButton(String stat, int x, int y) {
+        return Button.builder(Component.literal("+"), b -> ModNetwork.CHANNEL.sendToServer(new UpgradeStatPacket(stat)))
+                .bounds(x, y, 18, 16)
                 .build();
     }
 
-    private void switchTab(ExtremePlayerTabs.Tab tab) {
-        if (tab == activeTab) {
-            return;
+    private void updateStatButtonVisibility() {
+        boolean visible = activeTab == ExtremePlayerTabs.Tab.PLAYER_STATS;
+        for (Button b : statButtons) {
+            b.visible = visible;
+            b.active = visible;
         }
-
-        activeTab = tab;
-        transition = 0.0F;
-        updateSkillButtonVisibility();
-    }
-
-    private void updateSkillButtonVisibility() {
-        boolean visible = activeTab == ExtremePlayerTabs.Tab.SKILL_POINTS;
-        for (Button button : statButtons) {
-            button.visible = visible;
-            button.active = visible;
-        }
-    }
-
-    @Override
-    protected void containerTick() {
-        super.containerTick();
-        transition = Math.min(1.0F, transition + 0.12F);
-    }
-
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == GLFW.GLFW_KEY_R) {
-            onClose();
-            return true;
-        }
-        return super.keyPressed(keyCode, scanCode, modifiers);
-    }
-
-    @Override
-    public boolean isPauseScreen() {
-        return false;
-    }
-
-    @Override
-    protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
-        renderPanelBackground(graphics);
-        renderActiveTabContent(graphics, mouseX, mouseY);
-    }
-
-    private void renderPanelBackground(GuiGraphics graphics) {
-        if (MENU_TEXTURE != null && minecraft != null && minecraft.getResourceManager().getResource(MENU_TEXTURE).isPresent()) {
-            graphics.blit(MENU_TEXTURE, leftPos, topPos, 0, 0, imageWidth, imageHeight, imageWidth, imageHeight);
-        } else {
-            graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xF0141720);
-            graphics.fill(leftPos + 2, topPos + 2, leftPos + imageWidth - 2, topPos + imageHeight - 2, 0xE0222630);
-        }
-
-        int pulse = 70 + (int) (Math.sin((minecraft != null ? minecraft.level != null ? minecraft.level.getGameTime() : 0 : 0) * 0.12D) * 25.0D);
-        int glow = (Mth.clamp(pulse, 20, 120) << 24) | 0x005EA2FF;
-        graphics.fill(leftPos + 1, topPos + 1, leftPos + imageWidth - 1, topPos + 3, glow);
-        graphics.fill(leftPos + 1, topPos + imageHeight - 3, leftPos + imageWidth - 1, topPos + imageHeight - 1, glow);
-        graphics.fill(leftPos + 8, topPos + 50, leftPos + imageWidth - 8, topPos + imageHeight - 12, 0xAA0F1118);
-    }
-
-    private void renderActiveTabContent(GuiGraphics graphics, int mouseX, int mouseY) {
-        switch (activeTab) {
-            case PLAYER_STATS -> renderPlayerStatsTab(graphics);
-            case MAGIC -> renderMagicTab(graphics, mouseX, mouseY);
-            case DUAL_WIELD -> renderDualWieldTab(graphics, mouseX, mouseY);
-            case CLASS_SKILLS -> renderClassSkillsTab(graphics);
-            case SKILL_POINTS -> renderSkillPointsTab(graphics);
-        }
-    }
-
-    private void renderPlayerStatsTab(GuiGraphics graphics) {
-        int x = leftPos + 16;
-        int y = topPos + 58;
-
-        Optional<PlayerStatsCapability> statsOpt = getStats();
-        if (statsOpt.isEmpty()) {
-            graphics.drawString(font, NO_DATA, x, y, 0xD8DEE9, false);
-            return;
-        }
-
-        PlayerStatsCapability stats = statsOpt.get();
-        graphics.drawString(font, Component.literal("Class: " + stats.playerClass()), x, y, 0xE3E9F5, false);
-        graphics.drawString(font, Component.literal("Skill Points: " + stats.skillPoints()), x, y + 14, 0xF0CD8E, false);
-        drawStatRow(graphics, "Strength", stats.strength(), x, y + 32, 160, 0xFFBC5656);
-        drawStatRow(graphics, "Agility", stats.agility(), x, y + 50, 160, 0xFF62BE7D);
-        drawStatRow(graphics, "Magic", stats.magic(), x, y + 68, 160, 0xFF7E6DDA);
-        drawStatRow(graphics, "Defense", stats.defense(), x, y + 86, 160, 0xFF74A4D6);
-    }
-
-    private void renderMagicTab(GuiGraphics graphics, int mouseX, int mouseY) {
-        int x = leftPos + 16;
-        int y = topPos + 58;
-
-        Optional<PlayerStatsCapability> statsOpt = getStats();
-        if (statsOpt.isEmpty()) {
-            graphics.drawString(font, NO_DATA, x, y, 0xD8DEE9, false);
-            return;
-        }
-
-        PlayerStatsCapability stats = statsOpt.get();
-        int maxMana = 80 + stats.magic() * 20;
-        int mana = Math.min(maxMana, stats.magic() * 18);
-
-        graphics.drawString(font, Component.literal("Mana Pool"), x, y, 0xC5A0FF, false);
-        drawBar(graphics, x, y + 14, 190, 10, mana, maxMana, 0xFF6D4BC7);
-        graphics.drawString(font, Component.literal(mana + " / " + maxMana), x + 8, y + 16, 0xEEE7FF, false);
-        graphics.drawString(font, Component.literal("Magic Unlock: " + (stats.magicUnlocked() ? "Unlocked" : "Locked")), x, y + 30, 0xD0D6E2, false);
-
-        int runes = stats.magicUnlocked() ? 4 : 1;
-        int time = minecraft != null && minecraft.level != null ? (int) minecraft.level.getGameTime() : 0;
-        for (int i = 0; i < 5; i++) {
-            int slotX = x + (i * 28);
-            int slotY = y + 46;
-            boolean active = i < runes;
-            renderRuneSlot(graphics, slotX, slotY, time, active);
-
-            if (mouseX >= slotX && mouseX < slotX + 22 && mouseY >= slotY && mouseY < slotY + 22) {
-                graphics.renderTooltip(font, Component.literal(active ? "Rune Slot " + (i + 1) : "Locked Rune"), mouseX, mouseY);
-            }
-        }
-    }
-
-    private void renderRuneSlot(GuiGraphics graphics, int x, int y, int time, boolean active) {
-        if (MAGIC_SLOT_TEXTURE != null && minecraft != null && minecraft.getResourceManager().getResource(MAGIC_SLOT_TEXTURE).isPresent()) {
-            int frame = (time / 6) % 4;
-            graphics.blit(MAGIC_SLOT_TEXTURE, x, y, frame * 22, 0, 22, 22, 88, 22);
-        } else {
-            int pulse = 70 + Math.abs(10 - (time % 20)) * 4;
-            int color = ((active ? pulse : 40) << 24) | (active ? 0x008F6FFF : 0x003B3E55);
-            graphics.fill(x, y, x + 22, y + 22, color);
-            graphics.drawCenteredString(font, Component.literal("R"), x + 11, y + 7, active ? 0xFFE5D6FF : 0xFF7B7C8A);
-        }
-    }
-
-    private void renderDualWieldTab(GuiGraphics graphics, int mouseX, int mouseY) {
-        int x = leftPos + 16;
-        int y = topPos + 58;
-
-        if (minecraft == null || minecraft.player == null) {
-            graphics.drawString(font, NO_DATA, x, y, 0xD8DEE9, false);
-            return;
-        }
-
-        Player player = minecraft.player;
-        Optional<PlayerStatsCapability> statsOpt = getStats();
-        boolean unlocked = statsOpt.map(PlayerStatsCapability::dualWieldUnlocked).orElse(false);
-
-        graphics.drawString(font, Component.literal("Main Hand"), x, y, 0xE6E2D5, false);
-        graphics.drawString(font, Component.literal("Offhand"), x + 92, y, 0xE6E2D5, false);
-
-        int mainX = x;
-        int offX = x + 92;
-        int slotY = y + 14;
-        drawItemSlot(graphics, mainX, slotY, player.getMainHandItem());
-        drawItemSlot(graphics, offX, slotY, player.getOffhandItem());
-
-        graphics.drawString(font, Component.literal("Dual Wield Unlock: " + (unlocked ? "Unlocked" : "Locked")), x, y + 42, 0xD0D6E2, false);
-
-        if (isHovering(mainX - leftPos, slotY - topPos, 18, 18, mouseX, mouseY)) {
-            graphics.renderTooltip(font, player.getMainHandItem(), mouseX, mouseY);
-        }
-        if (isHovering(offX - leftPos, slotY - topPos, 18, 18, mouseX, mouseY)) {
-            graphics.renderTooltip(font, player.getOffhandItem(), mouseX, mouseY);
-        }
-    }
-
-    private void drawItemSlot(GuiGraphics graphics, int x, int y, ItemStack stack) {
-        graphics.fill(x, y, x + 18, y + 18, 0xAA1A1D24);
-        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0x66090B10);
-        graphics.renderItem(stack, x + 1, y + 1);
-    }
-
-    private void renderClassSkillsTab(GuiGraphics graphics) {
-        int x = leftPos + 16;
-        int y = topPos + 58;
-
-        if (minecraft == null || minecraft.player == null) {
-            graphics.drawString(font, NO_DATA, x, y, 0xD8DEE9, false);
-            return;
-        }
-
-        ProgressApi.get(minecraft.player).ifPresentOrElse(progress -> {
-            graphics.drawString(font, Component.literal("Class: " + progress.currentClass()), x, y, 0xE3E9F5, false);
-            graphics.drawString(font, Component.literal("Level: " + progress.level()), x, y + 14, 0xD0D6E2, false);
-            graphics.drawString(font, Component.literal("Class Points: " + progress.classSkillPoints()), x, y + 28, 0xE1BF84, false);
-        }, () -> graphics.drawString(font, NO_DATA, x, y, 0xD8DEE9, false));
-
-        SkillsApi.get(minecraft.player).ifPresent(skills -> {
-            graphics.drawString(font, Component.literal("Mining: " + skills.getSkillLevel("mining")), x + 140, y, 0xC3CAD6, false);
-            graphics.drawString(font, Component.literal("Combat: " + skills.getSkillLevel("combat")), x + 140, y + 14, 0xC3CAD6, false);
-            graphics.drawString(font, Component.literal("Engineering: " + skills.getSkillLevel("engineering")), x + 140, y + 28, 0xC3CAD6, false);
-            graphics.drawString(font, Component.literal("Arcane: " + skills.getSkillLevel("arcane")), x + 140, y + 42, 0xC3CAD6, false);
-        });
-    }
-
-    private void renderSkillPointsTab(GuiGraphics graphics) {
-        int x = leftPos + 16;
-        int y = topPos + 58;
-
-        Optional<PlayerStatsCapability> statsOpt = getStats();
-        if (statsOpt.isEmpty()) {
-            graphics.drawString(font, NO_DATA, x, y, 0xD8DEE9, false);
-            return;
-        }
-
-        PlayerStatsCapability stats = statsOpt.get();
-        graphics.drawString(font, Component.literal("Available Skill Points: " + stats.skillPoints()), x, y, 0xF0CD8E, false);
-
-        drawSkillPointLine(graphics, "Strength", stats.strength(), x, y + 20, 180);
-        drawSkillPointLine(graphics, "Agility", stats.agility(), x, y + 40, 180);
-        drawSkillPointLine(graphics, "Magic Power", stats.magic(), x, y + 60, 180);
-        drawSkillPointLine(graphics, "Defense", stats.defense(), x, y + 80, 180);
-    }
-
-    private void drawSkillPointLine(GuiGraphics graphics, String label, int value, int x, int y, int width) {
-        graphics.drawString(font, Component.literal(label), x, y, 0xDEE3ED, false);
-        drawBar(graphics, x + 70, y + 3, width - 90, 8, value, 30, 0xFF4A8CBF);
-        graphics.drawString(font, Component.literal(String.valueOf(value)), x + width - 32, y, 0xE8EDF7, false);
-    }
-
-    private void drawStatRow(GuiGraphics graphics, String label, int value, int x, int y, int width, int color) {
-        graphics.drawString(font, Component.literal(label + ": " + value), x, y, 0xDEE3ED, false);
-        drawBar(graphics, x + 80, y + 4, width - 84, 8, value, 30, color);
-    }
-
-    private void drawBar(GuiGraphics graphics, int x, int y, int width, int height, int value, int max, int color) {
-        int safeMax = Math.max(1, max);
-        int fill = Math.min(width, (int) ((value / (double) safeMax) * width));
-        int alphaColor = 0xAA0E121A;
-        graphics.fill(x, y, x + width, y + height, alphaColor);
-
-        int eased = (int) (fill * transition);
-        graphics.fill(x + 1, y + 1, x + eased, y + height - 1, color);
-    }
-
-    private Optional<PlayerStatsCapability> getStats() {
-        if (minecraft == null || minecraft.player == null) {
-            return Optional.empty();
-        }
-        return PlayerStatsApi.get(minecraft.player);
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics);
+        renderFrame(graphics);
+
+        switch (activeTab) {
+            case PLAYER_STATS -> renderStatsTab(graphics);
+            case SKILLS -> renderSkillsTab(graphics, mouseX, mouseY);
+            case MAGIC -> renderMagicTab(graphics, mouseX, mouseY);
+            case DUAL_WIELD -> renderDualWieldTab(graphics, mouseX, mouseY);
+            case CLASS_SKILLS -> renderClassTab(graphics);
+        }
+
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
-    @Override
-    protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, TITLE, titleLabelX, titleLabelY, 0xF0D8A8, false);
-        graphics.drawString(font, playerInventoryTitle, 12, inventoryLabelY, 0xBFC7D4, false);
+    private void renderFrame(GuiGraphics graphics) {
+        if (minecraft != null && minecraft.getResourceManager().getResource(BG_TEXTURE).isPresent()) {
+            graphics.blit(BG_TEXTURE, leftPos, topPos, 0, 0, GUI_WIDTH, GUI_HEIGHT, GUI_WIDTH, GUI_HEIGHT);
+        } else {
+            graphics.fill(leftPos, topPos, leftPos + GUI_WIDTH, topPos + GUI_HEIGHT, 0xF01A1B22);
+            graphics.fill(leftPos + 2, topPos + 2, leftPos + GUI_WIDTH - 2, topPos + GUI_HEIGHT - 2, 0xE0282B35);
+        }
+
+        int pulse = 80 + (int) (Math.sin((player.tickCount + minecraft.getFrameTime()) * 0.07F) * 30);
+        int glow = (Mth.clamp(pulse, 30, 140) << 24) | 0x00468DFF;
+        graphics.fill(leftPos + 2, topPos + 2, leftPos + GUI_WIDTH - 2, topPos + 4, glow);
+
+        graphics.drawString(font, Component.literal("ExtremeCraft Progression"), leftPos + 10, topPos + 32, 0xF3D6A0, false);
+        graphics.fill(leftPos + 8, topPos + 52, leftPos + GUI_WIDTH - 8, topPos + GUI_HEIGHT - 10, 0xAA0C0F16);
+    }
+
+    private void renderStatsTab(GuiGraphics graphics) {
+        Optional<PlayerStatsCapability> statsOpt = getStats();
+        int x = leftPos + 16;
+        int y = topPos + 62;
+
+        if (statsOpt.isEmpty()) {
+            graphics.drawString(font, Component.literal("Syncing stats..."), x, y, 0xD5D9E2, false);
+            return;
+        }
+
+        PlayerStatsCapability stats = statsOpt.get();
+        graphics.drawString(font, Component.literal("Level: " + stats.level()), x, y, 0xEAEFF7, false);
+        graphics.drawString(font, Component.literal("XP: " + stats.experience() + " / " + stats.experienceToNextLevel()), x, y + 12, 0xC8CFDB, false);
+        graphics.drawString(font, Component.literal("Stat Points: " + stats.statPoints()), x, y + 24, 0xF1C98F, false);
+        graphics.drawString(font, Component.literal("Skill Points: " + stats.skillPoints()), x, y + 36, 0xCFB5FF, false);
+
+        drawPrimaryRow(graphics, "Vitality", stats.vitality(), x, y + 56);
+        drawPrimaryRow(graphics, "Strength", stats.strength(), x, y + 76);
+        drawPrimaryRow(graphics, "Agility", stats.agility(), x, y + 96);
+        drawPrimaryRow(graphics, "Endurance", stats.endurance(), x, y + 116);
+        drawPrimaryRow(graphics, "Intelligence", stats.intelligence(), x, y + 136);
+        drawPrimaryRow(graphics, "Luck", stats.luck(), x, y + 156);
+
+        int rx = leftPos + 236;
+        graphics.drawString(font, Component.literal("HP " + stats.maxHealth()), rx, y, 0xE6EAF2, false);
+        graphics.drawString(font, Component.literal("Mana " + stats.maxMana()), rx, y + 12, 0xE6EAF2, false);
+        graphics.drawString(font, Component.literal("Crit " + (int) (stats.critChance() * 100) + "%"), rx, y + 24, 0xE6EAF2, false);
+        graphics.drawString(font, Component.literal("MS " + String.format("%.2f", stats.movementSpeed())), rx, y + 36, 0xE6EAF2, false);
+    }
+
+    private void drawPrimaryRow(GuiGraphics graphics, String label, int value, int x, int y) {
+        graphics.drawString(font, Component.literal(label), x, y, 0xD9DEEA, false);
+        graphics.fill(x + 74, y + 3, x + 168, y + 10, 0xAA212735);
+        int fill = Math.min(94, (int) (value / 40.0F * 94));
+        graphics.fill(x + 75, y + 4, x + 75 + fill, y + 9, 0xFF4B7FC9);
+        graphics.drawString(font, Component.literal(String.valueOf(value)), x + 172, y, 0xF0F4FA, false);
+    }
+
+    private void renderSkillsTab(GuiGraphics graphics, int mouseX, int mouseY) {
+        int x = leftPos + 14;
+        int y = topPos + 58;
+        int w = GUI_WIDTH - 28;
+        int h = GUI_HEIGHT - 70;
+
+        graphics.drawString(font, Component.literal("Skill Tree"), x, y - 10, 0xE8C78D, false);
+
+        int treeButtonX = x;
+        for (String treeId : SkillTreeManager.treeIds()) {
+            int color = treeId.equals(activeSkillTree) ? 0xFFD6B37A : 0xFF9EA7B6;
+            graphics.drawString(font, Component.literal("[" + treeId + "]"), treeButtonX, y + h - 12, color, false);
+            treeButtonX += 62;
+        }
+
+        skillTreePanel.render(graphics, font, x, y, w, h - 16, activeSkillTree, mouseX, mouseY);
+    }
+
+    private void renderMagicTab(GuiGraphics graphics, int mouseX, int mouseY) {
+        int x = leftPos + 16;
+        int y = topPos + 62;
+
+        Optional<PlayerStatsCapability> statsOpt = getStats();
+        if (statsOpt.isEmpty()) {
+            graphics.drawString(font, Component.literal("Syncing magic..."), x, y, 0xD5D9E2, false);
+            return;
+        }
+
+        PlayerStatsCapability stats = statsOpt.get();
+        graphics.drawString(font, Component.literal("Mana: " + stats.mana() + " / " + stats.maxMana()), x, y, 0xCFAEFF, false);
+        graphics.drawString(font, Component.literal("Magic Power: " + stats.magicPower()), x, y + 14, 0xCFAEFF, false);
+
+        int time = player.tickCount;
+        for (int i = 0; i < 6; i++) {
+            int sx = x + i * 28;
+            int sy = y + 36;
+
+            if (minecraft != null && minecraft.getResourceManager().getResource(MAGIC_SLOT).isPresent()) {
+                int frame = (time / 6) % 4;
+                graphics.blit(MAGIC_SLOT, sx, sy, frame * 22, 0, 22, 22, 88, 22);
+            } else {
+                int pulse = (80 + Math.abs(10 - ((time + i * 3) % 20)) * 6) << 24;
+                graphics.fill(sx, sy, sx + 22, sy + 22, pulse | 0x003E5C96);
+                graphics.drawCenteredString(font, Component.literal("R"), sx + 11, sy + 7, 0xFFE8D6FF);
+            }
+
+            if (mouseX >= sx && mouseX <= sx + 22 && mouseY >= sy && mouseY <= sy + 22) {
+                graphics.renderTooltip(font, Component.literal("Rune Slot " + (i + 1)), mouseX, mouseY);
+            }
+        }
+    }
+
+    private void renderDualWieldTab(GuiGraphics graphics, int mouseX, int mouseY) {
+        int x = leftPos + 16;
+        int y = topPos + 62;
+
+        ItemStack main = player.getMainHandItem();
+        ItemStack off = player.getOffhandItem();
+
+        graphics.drawString(font, Component.literal("Main Hand"), x, y, 0xD8DEE9, false);
+        graphics.drawString(font, Component.literal("Offhand"), x + 100, y, 0xD8DEE9, false);
+
+        drawItemSlot(graphics, x, y + 14, main);
+        drawItemSlot(graphics, x + 100, y + 14, off);
+
+        if (mouseX >= x && mouseX <= x + 18 && mouseY >= y + 14 && mouseY <= y + 32) {
+            graphics.renderTooltip(font, main, mouseX, mouseY);
+        }
+        if (mouseX >= x + 100 && mouseX <= x + 118 && mouseY >= y + 14 && mouseY <= y + 32) {
+            graphics.renderTooltip(font, off, mouseX, mouseY);
+        }
+    }
+
+    private void drawItemSlot(GuiGraphics graphics, int x, int y, ItemStack stack) {
+        graphics.fill(x, y, x + 18, y + 18, 0xAA1F2432);
+        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0x660A0C11);
+        graphics.renderItem(stack, x + 1, y + 1);
+    }
+
+    private void renderClassTab(GuiGraphics graphics) {
+        int x = leftPos + 16;
+        int y = topPos + 62;
+
+        graphics.drawString(font, Component.literal("Class System (Future Expansion)"), x, y, 0xE3CDA0, false);
+        graphics.drawString(font, Component.literal("Reserved for specialization branches and class perks."), x, y + 16, 0xC8CFDB, false);
+    }
+
+    private Optional<PlayerStatsCapability> getStats() {
+        return PlayerStatsApi.get(player);
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == InputConstants.MOUSE_BUTTON_RIGHT) {
-            return super.mouseClicked(mouseX, mouseY, button);
+        if (activeTab == ExtremePlayerTabs.Tab.SKILLS && button == InputConstants.MOUSE_BUTTON_LEFT) {
+            int panelX = leftPos + 14;
+            int panelY = topPos + 58;
+            int panelW = GUI_WIDTH - 28;
+            int panelH = GUI_HEIGHT - 70;
+            if (skillTreePanel.mouseClicked(panelX, panelY, panelW, panelH - 16, activeSkillTree, mouseX, mouseY)) {
+                return true;
+            }
+
+            int treeButtonX = panelX;
+            int treeButtonY = panelY + panelH - 12;
+            for (String treeId : SkillTreeManager.treeIds()) {
+                if (mouseX >= treeButtonX && mouseX <= treeButtonX + 56 && mouseY >= treeButtonY && mouseY <= treeButtonY + 10) {
+                    activeSkillTree = treeId;
+                    return true;
+                }
+                treeButtonX += 62;
+            }
         }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public void onClose() {
+        if (minecraft != null) {
+            minecraft.setScreen(returnScreen);
+        }
+    }
+
+    @Override
+    public boolean isPauseScreen() {
+        return false;
     }
 }

@@ -4,7 +4,7 @@ import com.extremecraft.core.ECConstants;
 import com.extremecraft.network.packet.PlayerStatsPacket;
 import com.extremecraft.network.packet.RequestPlayerStatsPacket;
 import com.extremecraft.network.packet.SyncProgressPacket;
-import com.extremecraft.network.packet.UpgradeSkillPacket;
+import com.extremecraft.network.packet.UpgradeStatPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
@@ -37,10 +37,10 @@ public final class ModNetwork {
                 .consumerMainThread(PlayerStatsPacket::handle)
                 .add();
 
-        CHANNEL.messageBuilder(UpgradeSkillPacket.class, nextId())
-                .encoder(UpgradeSkillPacket::encode)
-                .decoder(UpgradeSkillPacket::decode)
-                .consumerMainThread(UpgradeSkillPacket::handle)
+        CHANNEL.messageBuilder(UpgradeStatPacket.class, nextId())
+                .encoder(UpgradeStatPacket::encode)
+                .decoder(UpgradeStatPacket::decode)
+                .consumerMainThread(UpgradeStatPacket::handle)
                 .add();
 
         CHANNEL.messageBuilder(RequestPlayerStatsPacket.class, nextId())

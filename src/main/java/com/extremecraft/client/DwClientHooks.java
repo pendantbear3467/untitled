@@ -1,8 +1,6 @@
 package com.extremecraft.client;
 
-import com.extremecraft.client.gui.player.ExtremePlayerScreen;
 import com.extremecraft.config.DwConfig;
-import com.extremecraft.machine.menu.PlayerStatsMenu;
 import com.extremecraft.net.DwNetwork;
 import com.extremecraft.net.OffhandActionC2S;
 import com.extremecraft.net.OffhandActionC2S.Action;
@@ -16,7 +14,6 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -105,25 +102,5 @@ public final class DwClientHooks {
 
     private static boolean shouldBypassOverride(ItemStack stack) {
         return false;
-    }
-
-    @SubscribeEvent
-    public void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || DwKeybinds.OPEN_PLAYER_MENU == null) {
-            return;
-        }
-
-        if (DwKeybinds.OPEN_PLAYER_MENU.consumeClick()) {
-            if (mc.screen instanceof ExtremePlayerScreen) {
-                mc.setScreen(null);
-            } else {
-                mc.setScreen(new ExtremePlayerScreen(new PlayerStatsMenu(0, mc.player.getInventory()), mc.player.getInventory(), mc.player.getDisplayName()));
-            }
-        }
     }
 }
