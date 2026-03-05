@@ -1,6 +1,6 @@
 {
   "parent": "item/generated",
   "textures": {
-    "layer0": "minecraft:item/gunpowder"
+    "layer0": "extremecraft:item/copper_dust"
   }
 }

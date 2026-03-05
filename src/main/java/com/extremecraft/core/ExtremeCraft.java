@@ -3,6 +3,7 @@ package com.extremecraft.core;
 import com.extremecraft.client.DwClientHooks;
 import com.extremecraft.client.DwKeybinds;
 import com.extremecraft.client.gui.machine.TechMachineScreen;
+import com.extremecraft.client.gui.player.ExtremePlayerScreen;
 import com.extremecraft.combat.dualwield.PlayerDualWieldEvents;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.future.registry.TechBlockEntities;
@@ -12,17 +13,18 @@ import com.extremecraft.future.registry.TechMenuTypes;
 import com.extremecraft.future.registry.TechRecipeSerializers;
 import com.extremecraft.gui.PulverizerScreen;
 import com.extremecraft.item.armor.ArmorBonusHandler;
-import com.extremecraft.machine.MachineTooltipHandler;
+import com.extremecraft.machine.menu.PlayerStatsMenu;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.net.DwNetwork;
-import com.extremecraft.progression.StageDataLoader;
 import com.extremecraft.progression.ProgressCommands;
 import com.extremecraft.progression.ProgressionEvents;
+import com.extremecraft.progression.StageDataLoader;
+import com.extremecraft.progression.capability.PlayerStatsCapabilityEvents;
 import com.extremecraft.progression.capability.ProgressCapabilityEvents;
-import com.extremecraft.progression.stage.StageCapabilityEvents;
-import com.extremecraft.progression.unlock.UnlockRuleLoader;
 import com.extremecraft.progression.skilltree.PlayerSkillTreeEvents;
 import com.extremecraft.progression.skilltree.SkillTreeDataLoader;
+import com.extremecraft.progression.stage.StageCapabilityEvents;
+import com.extremecraft.progression.unlock.UnlockRuleLoader;
 import com.extremecraft.quest.QuestManager;
 import com.extremecraft.research.ResearchCapabilityEvents;
 import com.extremecraft.research.ResearchManager;
@@ -35,6 +37,8 @@ import com.extremecraft.server.DwServerTicker;
 import com.extremecraft.skills.SkillRegistry;
 import com.extremecraft.skills.SkillsCapabilityEvents;
 import net.minecraft.client.gui.screens.MenuScreens;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -81,6 +85,7 @@ public final class ExtremeCraft {
             DwNetwork.init();
 
             MinecraftForge.EVENT_BUS.register(new ProgressCapabilityEvents());
+            MinecraftForge.EVENT_BUS.register(new PlayerStatsCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new StageCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new SkillsCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new ResearchCapabilityEvents());
@@ -103,8 +108,9 @@ public final class ExtremeCraft {
         event.enqueueWork(() -> {
             MenuScreens.register(ModMenuTypes.PULVERIZER_MENU.get(), PulverizerScreen::new);
             MenuScreens.register(TechMenuTypes.TECH_MACHINE.get(), TechMachineScreen::new);
+            MenuScreens.register(TechMenuTypes.PLAYER_STATS.get(),
+                    (PlayerStatsMenu menu, Inventory inv, Component title) -> new ExtremePlayerScreen(menu, inv, title));
             MinecraftForge.EVENT_BUS.register(new DwClientHooks());
-            MinecraftForge.EVENT_BUS.addListener(MachineTooltipHandler::onTooltip);
         });
     }
 
