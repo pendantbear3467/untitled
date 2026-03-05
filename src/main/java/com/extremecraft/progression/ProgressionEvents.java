@@ -1,6 +1,7 @@
 package com.extremecraft.progression;
 
 import com.extremecraft.progression.capability.ProgressApi;
+import com.extremecraft.progression.classsystem.ability.ClassAbilityService;
 import com.extremecraft.quest.QuestDefinition;
 import com.extremecraft.quest.QuestManager;
 import com.extremecraft.quest.QuestType;
@@ -20,6 +21,7 @@ public class ProgressionEvents {
         if (event.getEntity() instanceof ServerPlayer player) {
             ProgressApi.get(player).ifPresent(data -> data.markAttributesDirty());
             ProgressionService.flushDirty(player);
+            ClassAbilityService.syncState(player);
         }
     }
 

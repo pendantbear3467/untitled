@@ -1,9 +1,12 @@
 package com.extremecraft.client;
 
 import com.extremecraft.config.DwConfig;
+import com.extremecraft.network.ModNetwork;
+import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
 import com.extremecraft.net.DwNetwork;
 import com.extremecraft.net.OffhandActionC2S;
 import com.extremecraft.net.OffhandActionC2S.Action;
+import com.extremecraft.progression.classsystem.ability.ClassAbilityClientState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
@@ -16,6 +19,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.client.event.InputEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -84,6 +88,24 @@ public final class DwClientHooks {
         if (DwKeybinds.OFFHAND_OVERRIDE != null && !DwKeybinds.OFFHAND_OVERRIDE.isDown() && isMining) {
             DwNetwork.sendToServer(new OffhandActionC2S(Action.HOLD_ABORT_BREAK, 0, null, null));
             isMining = false;
+        }
+    }
+
+    @SubscribeEvent
+    public void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+
+        ClassAbilityClientState.tickDown();
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.screen != null) {
+            return;
+        }
+
+        if (DwKeybinds.CLASS_ABILITY != null && DwKeybinds.CLASS_ABILITY.consumeClick()) {
+            ModNetwork.CHANNEL.sendToServer(new ActivateClassAbilityC2SPacket(""));
         }
     }
 

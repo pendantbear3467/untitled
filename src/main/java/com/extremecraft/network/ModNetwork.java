@@ -1,8 +1,10 @@
 package com.extremecraft.network;
 
 import com.extremecraft.core.ECConstants;
+import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
 import com.extremecraft.network.packet.PlayerStatsPacket;
 import com.extremecraft.network.packet.RequestPlayerStatsPacket;
+import com.extremecraft.network.packet.SyncClassAbilityStateS2CPacket;
 import com.extremecraft.network.packet.SyncProgressPacket;
 import com.extremecraft.network.packet.UpgradeStatPacket;
 import net.minecraft.resources.ResourceLocation;
@@ -47,6 +49,18 @@ public final class ModNetwork {
                 .encoder(RequestPlayerStatsPacket::encode)
                 .decoder(RequestPlayerStatsPacket::decode)
                 .consumerMainThread(RequestPlayerStatsPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(ActivateClassAbilityC2SPacket.class, nextId())
+                .encoder(ActivateClassAbilityC2SPacket::encode)
+                .decoder(ActivateClassAbilityC2SPacket::decode)
+                .consumerMainThread(ActivateClassAbilityC2SPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncClassAbilityStateS2CPacket.class, nextId())
+                .encoder(SyncClassAbilityStateS2CPacket::encode)
+                .decoder(SyncClassAbilityStateS2CPacket::decode)
+                .consumerMainThread(SyncClassAbilityStateS2CPacket::handle)
                 .add();
     }
 

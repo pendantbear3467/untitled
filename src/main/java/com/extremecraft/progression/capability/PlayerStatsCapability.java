@@ -307,6 +307,19 @@ public class PlayerStatsCapability {
         mana = Math.min(maxMana, mana + manaRegen);
     }
 
+    public boolean tryConsumeMana(int amount) {
+        if (amount <= 0) {
+            return true;
+        }
+
+        if (mana < amount) {
+            return false;
+        }
+
+        mana -= amount;
+        return true;
+    }
+
     private void applySkillModifier(SkillModifier modifier) {
         String id = modifier.modifierId();
         float value = (float) modifier.value();
