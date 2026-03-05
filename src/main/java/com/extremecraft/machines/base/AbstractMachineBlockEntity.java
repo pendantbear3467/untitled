@@ -1,9 +1,10 @@
 package com.extremecraft.machines.base;
 
-import com.extremecraft.energy.EnergyStorageExt;
+import com.extremecraft.energy.ECPowerStorage;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -13,13 +14,12 @@ import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
-import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nullable;
 
 public abstract class AbstractMachineBlockEntity extends BlockEntity {
     protected final ItemStackHandler itemHandler;
-    protected final EnergyStorageExt energyStorage;
+    protected final ECPowerStorage energyStorage;
 
     private LazyOptional<IItemHandler> itemCap = LazyOptional.empty();
     private LazyOptional<IEnergyStorage> energyCap = LazyOptional.empty();
@@ -37,7 +37,7 @@ public abstract class AbstractMachineBlockEntity extends BlockEntity {
                 return isItemValidForSlot(slot, stack);
             }
         };
-        this.energyStorage = new EnergyStorageExt(energyCapacity, maxReceive, maxExtract);
+        this.energyStorage = new ECPowerStorage(energyCapacity, maxReceive, maxExtract);
     }
 
     protected boolean isItemValidForSlot(int slot, ItemStack stack) {

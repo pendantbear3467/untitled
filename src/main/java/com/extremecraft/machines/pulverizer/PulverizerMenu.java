@@ -43,16 +43,32 @@ public class PulverizerMenu extends AbstractContainerMenu {
         return data.get(0) > 0;
     }
 
+    public int getProgress() {
+        return data.get(0);
+    }
+
+    public int getMaxProgress() {
+        return Math.max(1, data.get(1));
+    }
+
     public int getProgressScaled() {
-        int progress = data.get(0);
-        int max = data.get(1);
+        int progress = getProgress();
+        int max = getMaxProgress();
         int width = 24;
         return max == 0 ? 0 : progress * width / max;
     }
 
+    public int getEnergyStored() {
+        return data.get(2);
+    }
+
+    public int getMaxEnergy() {
+        return Math.max(1, data.get(3));
+    }
+
     public int getEnergyScaled() {
-        int energy = data.get(2);
-        int max = data.get(3);
+        int energy = getEnergyStored();
+        int max = getMaxEnergy();
         int height = 52;
         return max == 0 ? 0 : energy * height / max;
     }
