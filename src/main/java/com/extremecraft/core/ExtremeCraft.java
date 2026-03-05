@@ -13,31 +13,33 @@ import com.extremecraft.future.registry.TechCreativeTabs;
 import com.extremecraft.future.registry.TechItems;
 import com.extremecraft.future.registry.TechMenuTypes;
 import com.extremecraft.future.registry.TechRecipeSerializers;
-import com.extremecraft.gui.PulverizerScreen;`nimport com.extremecraft.modules.loader.ModuleAbilityLoader;`nimport com.extremecraft.modules.loader.ModuleDefinitionLoader;`nimport com.extremecraft.modules.runtime.ModuleRuntimeEvents;
+import com.extremecraft.gui.PulverizerScreen;
 import com.extremecraft.item.armor.ArmorBonusHandler;
-import com.extremecraft.item.module.ModuleLoader;
-import com.extremecraft.network.ModNetwork;
+import com.extremecraft.modules.loader.ModuleAbilityLoader;
+import com.extremecraft.modules.loader.ModuleDefinitionLoader;
+import com.extremecraft.modules.runtime.ModuleRuntimeEvents;
 import com.extremecraft.net.DwNetwork;
+import com.extremecraft.network.ModNetwork;
 import com.extremecraft.progression.ProgressCommands;
 import com.extremecraft.progression.ProgressionEvents;
 import com.extremecraft.progression.StageDataLoader;
-import com.extremecraft.progression.classsystem.data.ClassAbilityLoader;
-import com.extremecraft.progression.classsystem.data.ClassDefinitionLoader;
 import com.extremecraft.progression.capability.PlayerStatsCapabilityEvents;
 import com.extremecraft.progression.capability.PlayerStatsGameplayEvents;
 import com.extremecraft.progression.capability.ProgressCapabilityEvents;
+import com.extremecraft.progression.classsystem.data.ClassAbilityLoader;
+import com.extremecraft.progression.classsystem.data.ClassDefinitionLoader;
 import com.extremecraft.progression.skilltree.PlayerSkillTreeEvents;
 import com.extremecraft.progression.skilltree.SkillTreeDataLoader;
 import com.extremecraft.progression.stage.StageCapabilityEvents;
 import com.extremecraft.progression.unlock.UnlockRuleLoader;
 import com.extremecraft.quest.QuestManager;
-import com.extremecraft.research.ResearchCapabilityEvents;
-import com.extremecraft.research.ResearchManager;
 import com.extremecraft.registry.ModBlockEntities;
 import com.extremecraft.registry.ModBlocks;
 import com.extremecraft.registry.ModItems;
 import com.extremecraft.registry.ModMenuTypes;
 import com.extremecraft.registry.ModRecipeSerializers;
+import com.extremecraft.research.ResearchCapabilityEvents;
+import com.extremecraft.research.ResearchManager;
 import com.extremecraft.server.DwServerTicker;
 import com.extremecraft.skills.SkillRegistry;
 import com.extremecraft.skills.SkillsCapabilityEvents;
@@ -103,14 +105,16 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new SkillRegistry());
             MinecraftForge.EVENT_BUS.register(new SkillTreeDataLoader());
             MinecraftForge.EVENT_BUS.register(new ClassDefinitionLoader());
-            MinecraftForge.EVENT_BUS.register(new ClassAbilityLoader());`n            MinecraftForge.EVENT_BUS.register(new ModuleDefinitionLoader());`n            MinecraftForge.EVENT_BUS.register(new ModuleAbilityLoader());
-            MinecraftForge.EVENT_BUS.register(new ModuleLoader());
+            MinecraftForge.EVENT_BUS.register(new ClassAbilityLoader());
+            MinecraftForge.EVENT_BUS.register(new ModuleDefinitionLoader());
+            MinecraftForge.EVENT_BUS.register(new ModuleAbilityLoader());
             MinecraftForge.EVENT_BUS.register(new ResearchManager());
             MinecraftForge.EVENT_BUS.register(new WorldgenConsistencyValidator());
             MinecraftForge.EVENT_BUS.register(new DwServerTicker());
             MinecraftForge.EVENT_BUS.register(new ArmorBonusHandler());
             MinecraftForge.EVENT_BUS.register(new PlayerDualWieldEvents());
-            MinecraftForge.EVENT_BUS.register(new PlayerSkillTreeEvents());`n            MinecraftForge.EVENT_BUS.register(new ModuleRuntimeEvents());
+            MinecraftForge.EVENT_BUS.register(new PlayerSkillTreeEvents());
+            MinecraftForge.EVENT_BUS.register(new ModuleRuntimeEvents());
         });
     }
 
@@ -132,6 +136,3 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
-
-
-

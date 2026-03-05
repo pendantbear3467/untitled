@@ -1,6 +1,13 @@
 package com.extremecraft.registry;
 
 import com.extremecraft.core.ECConstants;
+import com.extremecraft.modules.item.ArcaneStaffItem;
+import com.extremecraft.modules.item.ChronoPickaxeItem;
+import com.extremecraft.modules.item.GravitonHammerItem;
+import com.extremecraft.modules.item.ModularMiningDrillItem;
+import com.extremecraft.modules.item.PioneerArmorItem;
+import com.extremecraft.modules.item.QuantumMultiToolItem;
+import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.DeferredRegister;
@@ -17,5 +24,20 @@ public final class ModItems {
     public static final RegistryObject<Item> BRONZE_INGOT = ITEMS.register("bronze_ingot", () -> new Item(new Item.Properties()));
     public static final RegistryObject<Item> STEEL_INGOT = ITEMS.register("steel_ingot", () -> new Item(new Item.Properties()));
 
-    private ModItems() {}
+    public static final RegistryObject<Item> PIONEER_CHESTPLATE = ITEMS.register("pioneer_chestplate",
+            () -> new PioneerArmorItem(ArmorItem.Type.CHESTPLATE, 2, new Item.Properties().stacksTo(1)));
+
+    public static final RegistryObject<Item> MODULAR_MINING_DRILL = ITEMS.register("modular_mining_drill",
+            () -> new ModularMiningDrillItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> GRAVITON_HAMMER = ITEMS.register("graviton_hammer",
+            () -> new GravitonHammerItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> ARCANE_STAFF = ITEMS.register("arcane_staff",
+            () -> new ArcaneStaffItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> CHRONO_PICKAXE = ITEMS.register("chrono_pickaxe",
+            () -> new ChronoPickaxeItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> QUANTUM_MULTI_TOOL = ITEMS.register("quantum_multi_tool",
+            () -> new QuantumMultiToolItem(new Item.Properties().stacksTo(1)));
+
+    private ModItems() {
+    }
 }

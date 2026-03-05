@@ -16,7 +16,6 @@ import com.extremecraft.progression.capability.PlayerStatsCapability;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.PacketDistributor;
 
@@ -32,23 +31,16 @@ public final class ModuleRuntimeService {
     private ModuleRuntimeService() {
     }
 
-    public static void applyPassiveModules(Player player, ItemStack sourceStack) {
-        if (!(player instanceof ServerPlayer serverPlayer) || sourceStack.isEmpty()) {
-            return;
-        }
+    public static void refreshPassiveModifiers(ServerPlayer player) {
+        PlayerStatsApi.get(player).ifPresent(stats -> {
+            Map<String, Float> next = new LinkedHashMap<>();
 
-        if (!(sourceStack.getItem() instanceof IModularItem modularItem)) {
-            return;
-        }
+            for (ItemStack armor : player.getArmorSlots()) {
+                collectItemModifiers(stats, armor, next);
+            }
+            collectItemModifiers(stats, player.getMainHandItem(), next);
 
-        List<String> modules = modularItem.installedModules(sourceStack);
-        if (modules.isEmpty()) {
-            return;
-        }
-
-        PlayerStatsApi.get(serverPlayer).ifPresent(stats -> {
-            Map<String, Float> active = collectStatModifiers(stats, modules, modularItem.moduleType());
-            mergeEquipmentModifiers(serverPlayer, stats, active);
+            mergeEquipmentModifiers(player, stats, next);
         });
     }
 
@@ -177,21 +169,22 @@ public final class ModuleRuntimeService {
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncModuleAbilityStateS2CPacket(root));
     }
 
-    private static Map<String, Float> collectStatModifiers(PlayerStatsCapability stats, List<String> moduleIds, ModuleType type) {
-        Map<String, Float> active = new LinkedHashMap<>();
+    private static void collectItemModifiers(PlayerStatsCapability stats, ItemStack stack, Map<String, Float> next) {
+        if (stack.isEmpty() || !(stack.getItem() instanceof IModularItem modularItem)) {
+            return;
+        }
 
+        List<String> moduleIds = modularItem.installedModules(stack);
         for (String moduleId : moduleIds) {
-            ModuleDefinition module = module(type, moduleId);
+            ModuleDefinition module = module(modularItem.moduleType(), moduleId);
             if (module == null || !isUnlocked(stats, module)) {
                 continue;
             }
 
             for (Map.Entry<String, Float> stat : module.statModifiers().entrySet()) {
-                active.merge(stat.getKey(), stat.getValue(), Float::sum);
+                next.merge(stat.getKey(), stat.getValue(), Float::sum);
             }
         }
-
-        return active;
     }
 
     private static void mergeEquipmentModifiers(ServerPlayer player, PlayerStatsCapability stats, Map<String, Float> next) {

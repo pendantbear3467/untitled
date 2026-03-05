@@ -4,7 +4,7 @@ import com.extremecraft.modules.data.ModuleTrigger;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -14,6 +14,7 @@ public class ModuleRuntimeEvents {
     public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             ModuleRuntimeService.syncState(player);
+            ModuleRuntimeService.refreshPassiveModifiers(player);
         }
     }
 
@@ -26,20 +27,13 @@ public class ModuleRuntimeEvents {
             return;
         }
 
-        if ((player.tickCount % 20) != 0) {
-            return;
+        if ((player.tickCount % 20) == 0) {
+            ModuleRuntimeService.refreshPassiveModifiers(player);
         }
-
-        for (ItemStack armor : player.getArmorSlots()) {
-            ModuleRuntimeService.applyPassiveModules(player, armor);
-        }
-
-        ItemStack held = player.getMainHandItem();
-        ModuleRuntimeService.applyPassiveModules(player, held);
     }
 
     @SubscribeEvent
-    public void onLivingAttack(LivingAttackEvent event) {
+    public void onLivingAttack(LivingHurtEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
