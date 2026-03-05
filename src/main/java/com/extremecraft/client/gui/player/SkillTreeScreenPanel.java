@@ -7,6 +7,7 @@ import com.extremecraft.network.packet.UpgradeStatPacket;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
 import com.extremecraft.progression.skilltree.SkillNode;
 import com.extremecraft.progression.skilltree.SkillTreeManager;
+import com.extremecraft.progression.skilltree.service.SkillNodeStateService;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -52,8 +53,9 @@ public class SkillTreeScreenPanel {
 
             int x = nodeScreenX(centerX, node.x(), zoom);
             int y = nodeScreenY(centerY, node.y(), zoom);
-            boolean unlocked = isUnlocked(node.id());
-            boolean canUnlock = canUnlock(node);
+            SkillNodeStateService.NodeState state = nodeState(node);
+            boolean unlocked = state == SkillNodeStateService.NodeState.UNLOCKED;
+            boolean canUnlock = state == SkillNodeStateService.NodeState.UNLOCKABLE;
 
             int fill = unlocked ? 0xCC5AA6FF : (canUnlock ? 0xAA6B5FA3 : 0xAA2E3140);
             graphics.fill(x, y, x + NODE_SIZE, y + NODE_SIZE, fill);
@@ -89,7 +91,8 @@ public class SkillTreeScreenPanel {
             int x = nodeScreenX(centerX, node.x(), zoom);
             int y = nodeScreenY(centerY, node.y(), zoom);
 
-            if (mouseX >= x && mouseX <= x + NODE_SIZE && mouseY >= y && mouseY <= y + NODE_SIZE && canUnlock(node)) {
+            if (mouseX >= x && mouseX <= x + NODE_SIZE && mouseY >= y && mouseY <= y + NODE_SIZE
+                    && nodeState(node) == SkillNodeStateService.NodeState.UNLOCKABLE) {
                 ModNetwork.CHANNEL.sendToServer(new UpgradeStatPacket("skill:" + node.id()));
                 return true;
             }
@@ -148,28 +151,11 @@ public class SkillTreeScreenPanel {
         });
     }
 
-    private boolean canUnlock(SkillNode node) {
+    private SkillNodeStateService.NodeState nodeState(SkillNode node) {
         Optional<PlayerStatsCapability> statsOpt = statsSupplier.get();
-        if (statsOpt.isEmpty()) {
-            return false;
-        }
-
-        PlayerStatsCapability stats = statsOpt.get();
-        if (stats.isSkillUnlocked(node.id()) || stats.skillPoints() < node.cost() || stats.level() < node.requiredLevel()) {
-            return false;
-        }
-
-        for (String required : node.requiredNodes()) {
-            if (!stats.isSkillUnlocked(required)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private boolean isUnlocked(String nodeId) {
-        return statsSupplier.get().map(stats -> stats.isSkillUnlocked(nodeId)).orElse(false);
+        return statsOpt
+            .map(stats -> SkillNodeStateService.stateFor(stats, node))
+            .orElse(SkillNodeStateService.NodeState.LOCKED);
     }
 
     private void drawLine(GuiGraphics graphics, int x0, int y0, int x1, int y1, int color) {

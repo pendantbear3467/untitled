@@ -1,5 +1,6 @@
 package com.extremecraft.client.gui.player;
 
+import com.extremecraft.client.gui.layout.GuiScaleContext;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.network.ModNetwork;
@@ -47,6 +48,7 @@ public class ExtremePlayerScreen extends Screen {
     private int guiHeight;
     private int leftPos;
     private int topPos;
+    private GuiScaleContext layoutContext;
 
     public ExtremePlayerScreen(Player player, Screen returnScreen) {
         super(Component.literal("ExtremeCraft Player"));
@@ -107,12 +109,22 @@ public class ExtremePlayerScreen extends Screen {
             return;
         }
 
-        float scale = (float) Mth.clamp(DwConfig.CLIENT.guiScaleMultiplier.get(), 0.75D, 1.75D);
-        guiWidth = Math.max(320, Math.round(activeTab.preferredWidth() * scale));
-        guiHeight = Math.max(214, Math.round(activeTab.preferredHeight() * scale));
+        layoutContext = GuiScaleContext.from(
+                width,
+                height,
+                activeTab.preferredWidth(),
+                activeTab.preferredHeight(),
+                DwConfig.CLIENT.guiScaleMultiplier.get(),
+                0.75D,
+                1.75D,
+                320,
+                214
+        );
 
-        leftPos = (width - guiWidth) / 2;
-        topPos = (height - guiHeight) / 2;
+        guiWidth = layoutContext.contentWidth();
+        guiHeight = layoutContext.contentHeight();
+        leftPos = layoutContext.left();
+        topPos = layoutContext.top();
 
         int tabsStartX = leftPos + 10;
         int tabsY = topPos + 8;
