@@ -4,7 +4,9 @@ import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.quest.QuestDefinition;
 import com.extremecraft.quest.QuestManager;
 import com.extremecraft.quest.QuestType;
+import com.extremecraft.skills.SkillsApi;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
@@ -42,7 +44,6 @@ public class ProgressionEvents {
 
         ProgressionService.flushDirty(player);
 
-        // Exploration XP source: discover new 256x256 regions.
         if (player.tickCount % 80 == 0) {
             int rx = player.blockPosition().getX() >> 8;
             int rz = player.blockPosition().getZ() >> 8;
@@ -51,6 +52,7 @@ public class ProgressionEvents {
                 if (data.discoverRegion(regionKey)) {
                     data.addXp(8);
                     incrementQuest(player, QuestType.EXPLORATION, 1);
+                    SkillsApi.get(player).ifPresent(skills -> skills.addSkillLevel("engineering", 1));
                     ProgressionService.flushDirty(player);
                 }
             });
@@ -64,6 +66,7 @@ public class ProgressionEvents {
 
         int xp = Math.max(5, (int) (event.getEntity().getMaxHealth() * 2.0D));
         ProgressionService.addXp(player, xp);
+        SkillsApi.get(player).ifPresent(skills -> skills.addSkillLevel("combat", 1));
 
         incrementQuest(player, QuestType.KILL, 1);
         if (event.getEntity().getMaxHealth() >= 100.0F) {
@@ -77,6 +80,17 @@ public class ProgressionEvents {
         int count = Math.max(1, event.getCrafting().getCount());
         ProgressionService.addXp(player, count * 2);
         incrementQuest(player, QuestType.CRAFTING, count);
+
+        ItemStack crafted = event.getCrafting();
+        String itemId = crafted.getItem().builtInRegistryHolder().key().location().getPath();
+        SkillsApi.get(player).ifPresent(skills -> {
+            if (itemId.contains("rune") || itemId.contains("mana") || itemId.contains("arcane")) {
+                skills.addSkillLevel("arcane", 1);
+            }
+            if (itemId.contains("machine") || itemId.contains("generator") || itemId.contains("reactor") || itemId.contains("cable")) {
+                skills.addSkillLevel("engineering", 1);
+            }
+        });
     }
 
     @SubscribeEvent
@@ -90,6 +104,7 @@ public class ProgressionEvents {
     public void onBlockBreak(BlockEvent.BreakEvent event) {
         if (event.getPlayer() instanceof ServerPlayer player) {
             incrementQuest(player, QuestType.COLLECTION, 1);
+            SkillsApi.get(player).ifPresent(skills -> skills.addSkillLevel("mining", 1));
         }
     }
 

@@ -14,7 +14,8 @@ public final class ExtremePlayerTabs {
         INVENTORY("Inventory"),
         DUAL_WIELD("Dual Wield"),
         MAGIC("Magic"),
-        PROGRESSION("Progression");
+        PLAYER_STATS("Player Stats"),
+        CLASS_SYSTEM("Class System");
 
         private final String title;
 
@@ -50,16 +51,16 @@ public final class ExtremePlayerTabs {
         }
     }
 
-    public static void addTabButtons(ExtremePlayerScreen screen, Consumer<ExtremePlayerTabs.Tab> onTabClicked) {
-        int startX = screen.getGuiLeft() - 76;
-        int startY = screen.getGuiTop() + 8;
+    public static void addTabButtons(ExtremePlayerScreen screen, Consumer<Tab> onTabClicked) {
+        int startX = screen.getGuiLeft() - 78;
+        int startY = screen.getGuiTop() + 6;
         int buttonHeight = 20;
 
         for (int i = 0; i < Tab.values().length; i++) {
             Tab tab = Tab.values()[i];
             int y = startY + i * (buttonHeight + 2);
             Button button = Button.builder(tab.label(), btn -> onTabClicked.accept(tab))
-                    .bounds(startX, y, 72, buttonHeight)
+                    .bounds(startX, y, 74, buttonHeight)
                     .build();
             screen.addTabWidget(button);
         }

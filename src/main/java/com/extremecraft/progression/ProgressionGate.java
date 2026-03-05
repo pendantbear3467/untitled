@@ -1,7 +1,9 @@
 package com.extremecraft.progression;
 
+import com.extremecraft.machine.core.MachineCatalog;
 import com.extremecraft.progression.stage.ProgressionStage;
 import com.extremecraft.progression.stage.StageManager;
+import com.extremecraft.progression.unlock.UnlockRuleLoader;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 
@@ -15,9 +17,14 @@ public final class ProgressionGate {
 
     static {
         registerMachineRequirement("pulverizer", ProgressionStage.INDUSTRIAL);
+        MachineCatalog.DEFINITIONS.values().forEach(definition -> registerMachineRequirement(definition.id(), definition.stage()));
+
+        registerRecipeRequirement("extremecraft:machine_processing", ProgressionStage.INDUSTRIAL);
+        registerRecipeRequirement("extremecraft:hybrid_crafting", ProgressionStage.ADVANCED);
     }
 
-    private ProgressionGate() {}
+    private ProgressionGate() {
+    }
 
     public static void registerMachineRequirement(String machineId, ProgressionStage stage) {
         MACHINE_REQUIREMENTS.put(machineId, stage);
@@ -46,7 +53,12 @@ public final class ProgressionGate {
     }
 
     public static boolean canUseMachine(Player player, String machineId) {
-        return requiredMachineStage(machineId).map(stage -> StageManager.hasStage(player, stage)).orElse(true);
+        boolean stageAllowed = requiredMachineStage(machineId).map(stage -> StageManager.hasStage(player, stage)).orElse(true);
+        if (!stageAllowed) {
+            return false;
+        }
+
+        return UnlockRuleLoader.canUnlock(player, "machine:" + machineId);
     }
 
     public static boolean canUseRecipe(Player player, ResourceLocation recipeId) {
@@ -54,6 +66,11 @@ public final class ProgressionGate {
     }
 
     public static boolean canUseRecipe(Player player, String recipeId) {
-        return requiredRecipeStage(recipeId).map(stage -> StageManager.hasStage(player, stage)).orElse(true);
+        boolean stageAllowed = requiredRecipeStage(recipeId).map(stage -> StageManager.hasStage(player, stage)).orElse(true);
+        if (!stageAllowed) {
+            return false;
+        }
+
+        return UnlockRuleLoader.canUnlock(player, "recipe:" + recipeId);
     }
 }

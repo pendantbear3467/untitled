@@ -12,6 +12,7 @@ import java.util.Set;
 public final class EnergyNetworkManager {
     private static final Map<ResourceKey<Level>, Set<BlockPos>> PRODUCERS = new HashMap<>();
     private static final Map<ResourceKey<Level>, Set<BlockPos>> CONSUMERS = new HashMap<>();
+    private static final Map<ResourceKey<Level>, Set<BlockPos>> CABLES = new HashMap<>();
 
     private EnergyNetworkManager() {}
 
@@ -21,6 +22,10 @@ public final class EnergyNetworkManager {
 
     public static void registerConsumer(Level level, BlockPos pos) {
         CONSUMERS.computeIfAbsent(level.dimension(), key -> new HashSet<>()).add(pos.immutable());
+    }
+
+    public static void registerCable(Level level, BlockPos pos) {
+        CABLES.computeIfAbsent(level.dimension(), key -> new HashSet<>()).add(pos.immutable());
     }
 
     public static void unregister(Level level, BlockPos pos) {
@@ -33,9 +38,18 @@ public final class EnergyNetworkManager {
         if (consumers != null) {
             consumers.remove(pos);
         }
+
+        Set<BlockPos> cables = CABLES.get(level.dimension());
+        if (cables != null) {
+            cables.remove(pos);
+        }
     }
 
-    // Reserved for future cable/network transfer simulation.
+    public static int cableCount(Level level) {
+        return CABLES.getOrDefault(level.dimension(), Set.of()).size();
+    }
+
     public static void tick(Level level) {
+        // Cable transfer is currently handled by CableBlockEntity ticks.
     }
 }

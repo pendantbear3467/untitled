@@ -1,25 +1,33 @@
 package com.extremecraft.client.gui.player;
 
+import com.extremecraft.combat.dualwield.PlayerDualWieldApi;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.progression.capability.ProgressApi;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 
-public class DualWieldScreen extends ExtremePlayerScreen {
+public class DualWieldScreen extends StandalonePlayerScreen {
     public DualWieldScreen(Player player) {
-        super(player, ExtremePlayerTabs.Tab.DUAL_WIELD);
+        super(player, Component.literal("Dual Wield"));
     }
 
     @Override
-    protected void renderTabContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        int x = getGuiLeft() + 14;
-        int y = getGuiTop() + 14;
+    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        int x = 116;
+        int y = 40;
         guiGraphics.drawString(font, Component.literal("Dual Wield System"), x, y, 0xFFD166, false);
         String offhandName = minecraft != null && minecraft.player != null
             ? minecraft.player.getOffhandItem().getDisplayName().getString()
             : "None";
         guiGraphics.drawString(font, Component.literal("Offhand Item: " + offhandName), x, y + 14, 0xFFFFFF, false);
+
+        if (minecraft != null && minecraft.player != null) {
+            PlayerDualWieldApi.get(minecraft.player).ifPresent(data ->
+                    guiGraphics.drawString(font, Component.literal("Active Loadout: " + (data.activeLoadoutIndex() + 1) + " / 3 (Z to cycle)"), x, y + 62, 0xE0E0E0, false)
+            );
+        }
 
         boolean allowBlockBreak;
         try {

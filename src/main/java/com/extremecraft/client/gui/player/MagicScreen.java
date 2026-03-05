@@ -5,15 +5,16 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 
-public class MagicScreen extends ExtremePlayerScreen {
+public class MagicScreen extends StandalonePlayerScreen {
     public MagicScreen(Player player) {
-        super(player, ExtremePlayerTabs.Tab.MAGIC);
+        super(player, Component.literal("Magic"));
     }
 
     @Override
-    protected void renderTabContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        int x = getGuiLeft() + 14;
-        int y = getGuiTop() + 14;
+    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        int x = 116;
+        int y = 40;
         guiGraphics.drawString(font, Component.literal("Magic System"), x, y, 0xA0C4FF, false);
         guiGraphics.drawString(font, Component.literal("Mana: 0 / 100"), x, y + 14, 0xFFFFFF, false);
         guiGraphics.drawString(font, Component.literal("Spell Slots: [ ] [ ] [ ]"), x, y + 26, 0xE0E0E0, false);

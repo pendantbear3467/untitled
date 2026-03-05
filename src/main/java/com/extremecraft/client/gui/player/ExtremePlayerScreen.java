@@ -30,11 +30,6 @@ public class ExtremePlayerScreen extends InventoryScreen {
     }
 
     @Override
-    public void onClose() {
-        super.onClose();
-    }
-
-    @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         renderLabels(guiGraphics, mouseX, mouseY);
@@ -52,7 +47,7 @@ public class ExtremePlayerScreen extends InventoryScreen {
         int x0 = getGuiLeft() + 8;
         int y0 = getGuiTop() + 8;
         int x1 = x0 + 160;
-        int y1 = y0 + 60;
+        int y1 = y0 + 68;
         guiGraphics.fill(x0, y0, x1, y1, 0x99000000);
     }
 
@@ -68,9 +63,10 @@ public class ExtremePlayerScreen extends InventoryScreen {
     protected ExtremePlayerScreen createForTab(ExtremePlayerTabs.Tab tab, Player player) {
         return switch (tab) {
             case INVENTORY -> new ExtremePlayerScreen(player);
-            case DUAL_WIELD -> new DualWieldScreen(player);
-            case MAGIC -> new MagicScreen(player);
-            case PROGRESSION -> new ProgressionScreen(player);
+            case DUAL_WIELD -> new PlayerStatsScreen(player);
+            case MAGIC -> new ClassSystemScreen(player);
+            case PLAYER_STATS -> new PlayerStatsScreen(player);
+            case CLASS_SYSTEM -> new ClassSystemScreen(player);
         };
     }
 

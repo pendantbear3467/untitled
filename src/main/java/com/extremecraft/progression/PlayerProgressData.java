@@ -85,6 +85,16 @@ public class PlayerProgressData {
         }
     }
 
+    public boolean consumePlayerSkillPoints(int amount) {
+        if (amount <= 0 || playerSkillPoints < amount) {
+            return false;
+        }
+
+        playerSkillPoints -= amount;
+        markSyncDirty();
+        return true;
+    }
+
     public void addClassSkillPoints(int amount) {
         if (amount > 0) {
             classSkillPoints += amount;

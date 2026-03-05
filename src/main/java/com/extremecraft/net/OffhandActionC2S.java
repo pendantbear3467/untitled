@@ -12,8 +12,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.SwordItem;
-import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.NetworkEvent;
@@ -62,9 +60,13 @@ public record OffhandActionC2S(Action action, int entityId, BlockPos pos, Direct
                         }
 
                         Entity target = level.getEntity(msg.entityId);
-                        if (target != null && target.isAlive() && target != sp && withinReach(sp, target.blockPosition())) {
+                        if (target != null
+                                && target.isAlive()
+                                && target != sp
+                                && !target.isRemoved()
+                                && withinReach(sp, target.blockPosition())) {
                             ItemStack off = sp.getOffhandItem();
-                            if (!off.isEmpty() && !(off.getItem() instanceof SwordItem)) {
+                            if (!off.isEmpty()) {
                                 invokeOffhandExecutorIfPresent(sp, target);
                             }
                         }
@@ -79,10 +81,9 @@ public record OffhandActionC2S(Action action, int entityId, BlockPos pos, Direct
                     case USE_ON_BLOCK -> {
                         if (msg.pos != null && msg.face != null && withinReach(sp, msg.pos)) {
                             BlockHitResult hit = centeredFaceHit(msg.pos, msg.face);
-                            UseOnContext useCtx = new UseOnContext(sp, InteractionHand.OFF_HAND, hit);
                             ItemStack off = sp.getOffhandItem();
                             if (!off.isEmpty()) {
-                                InteractionResult r = off.useOn(useCtx);
+                                InteractionResult r = sp.gameMode.useItemOn(sp, level, off, InteractionHand.OFF_HAND, hit);
                                 if (r.consumesAction()) {
                                     sp.swing(InteractionHand.OFF_HAND, true);
                                 } else {

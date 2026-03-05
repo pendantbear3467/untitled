@@ -1,18 +1,24 @@
 package com.extremecraft.client;
 
+import com.extremecraft.client.gui.player.DualWieldScreen;
+import com.extremecraft.client.gui.player.MagicScreen;
+import com.extremecraft.client.gui.player.ProgressionScreen;
+import com.extremecraft.combat.dualwield.CycleLoadoutC2S;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.net.DwNetwork;
 import com.extremecraft.net.OffhandActionC2S;
 import com.extremecraft.net.OffhandActionC2S.Action;
+import com.extremecraft.progression.skilltree.SkillTreeScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.client.event.InputEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -46,6 +52,7 @@ public final class DwClientHooks {
 
         // Crazy Craft-style intent: let offhand drive entity/block/item interaction regardless of item category.
         if (hit instanceof EntityHitResult ehr) {
+            pl.swing(InteractionHand.OFF_HAND);
             DwNetwork.sendToServer(new OffhandActionC2S(Action.ATTACK_ENTITY, ehr.getEntity().getId(), null, null));
             return;
         }
@@ -103,7 +110,38 @@ public final class DwClientHooks {
     }
 
     private static boolean shouldBypassOverride(ItemStack stack) {
-        // Keep vanilla combat flow for swords to avoid offhand attack packet conflicts.
-        return stack.getItem() instanceof SwordItem;
+        return false;
+    }
+
+    @SubscribeEvent
+    public void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) {
+            return;
+        }
+
+        if (DwKeybinds.CYCLE_LOADOUT != null && DwKeybinds.CYCLE_LOADOUT.consumeClick()) {
+            DwNetwork.sendToServer(new CycleLoadoutC2S());
+        }
+
+        if (DwKeybinds.OPEN_SKILL_TREE != null && DwKeybinds.OPEN_SKILL_TREE.consumeClick()) {
+            mc.setScreen(new SkillTreeScreen());
+        }
+
+        if (DwKeybinds.OPEN_MAGIC != null && DwKeybinds.OPEN_MAGIC.consumeClick()) {
+            mc.setScreen(new MagicScreen(mc.player));
+        }
+
+        if (DwKeybinds.OPEN_DUAL_WIELD != null && DwKeybinds.OPEN_DUAL_WIELD.consumeClick()) {
+            mc.setScreen(new DualWieldScreen(mc.player));
+        }
+
+        if (DwKeybinds.OPEN_PROGRESSION != null && DwKeybinds.OPEN_PROGRESSION.consumeClick()) {
+            mc.setScreen(new ProgressionScreen(mc.player));
+        }
     }
 }

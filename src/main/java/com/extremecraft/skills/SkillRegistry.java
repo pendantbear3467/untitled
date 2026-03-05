@@ -36,11 +36,16 @@ public class SkillRegistry extends SimpleJsonResourceReloadListener {
         for (Map.Entry<ResourceLocation, JsonElement> entry : map.entrySet()) {
             JsonObject json = GsonHelper.convertToJsonObject(entry.getValue(), "skill_definition");
             String id = GsonHelper.getAsString(json, "skill", entry.getKey().getPath());
-            int maxLevel = Math.max(1, GsonHelper.getAsInt(json, "max_level", 1));
+            int maxLevel = Math.max(1, GsonHelper.getAsInt(json, "max_level", 100));
             double bonusPerLevel = Math.max(0.0D, GsonHelper.getAsDouble(json, "bonus_per_level", 0.0D));
 
             SKILLS.put(id, new SkillDefinition(id, maxLevel, bonusPerLevel));
         }
+
+        SKILLS.putIfAbsent("mining", new SkillDefinition("mining", 100, 0.03D));
+        SKILLS.putIfAbsent("combat", new SkillDefinition("combat", 100, 0.02D));
+        SKILLS.putIfAbsent("engineering", new SkillDefinition("engineering", 100, 0.02D));
+        SKILLS.putIfAbsent("arcane", new SkillDefinition("arcane", 100, 0.02D));
     }
 
     public static SkillDefinition byId(String id) {
