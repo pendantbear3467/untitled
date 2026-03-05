@@ -7,6 +7,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
@@ -60,11 +61,11 @@ public class ExtremePlayerScreen extends InventoryScreen {
         mc.setScreen(createForTab(tab, mc.player));
     }
 
-    protected ExtremePlayerScreen createForTab(ExtremePlayerTabs.Tab tab, Player player) {
+    protected Screen createForTab(ExtremePlayerTabs.Tab tab, Player player) {
         return switch (tab) {
             case INVENTORY -> new ExtremePlayerScreen(player);
-            case DUAL_WIELD -> new PlayerStatsScreen(player);
-            case MAGIC -> new ClassSystemScreen(player);
+            case DUAL_WIELD -> new DualWieldScreen(player);
+            case MAGIC -> new MagicScreen(player);
             case PLAYER_STATS -> new PlayerStatsScreen(player);
             case CLASS_SYSTEM -> new ClassSystemScreen(player);
         };

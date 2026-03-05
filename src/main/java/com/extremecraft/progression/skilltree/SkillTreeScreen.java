@@ -1,24 +1,33 @@
 package com.extremecraft.progression.skilltree;
 
+import com.extremecraft.client.gui.BaseExtremeScreen;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.net.DwNetwork;
 import com.extremecraft.progression.capability.ProgressApi;
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
-public class SkillTreeScreen extends Screen {
-    private static final ResourceLocation NODE_LOCKED = new ResourceLocation(ECConstants.MODID, "textures/gui/node_locked.png");
-    private static final ResourceLocation NODE_UNLOCKED = new ResourceLocation(ECConstants.MODID, "textures/gui/node_unlocked.png");
-    private static final ResourceLocation NODE_HOVER = new ResourceLocation(ECConstants.MODID, "textures/gui/node_hover.png");
+public class SkillTreeScreen extends BaseExtremeScreen {
+    private static final ResourceLocation NODE_LOCKED = new ResourceLocation(ECConstants.MODID, "textures/gui/skill_node_locked.png");
+    private static final ResourceLocation NODE_UNLOCKED = new ResourceLocation(ECConstants.MODID, "textures/gui/skill_node_unlocked.png");
+    private static final ResourceLocation NODE_HOVER = new ResourceLocation(ECConstants.MODID, "textures/gui/skill_node_hover.png");
 
-    private static final int NODE_SIZE = 16;
+    private static final ResourceLocation CONNECTION_LOCKED = new ResourceLocation(ECConstants.MODID, "textures/gui/skill_connection_locked.png");
+    private static final ResourceLocation CONNECTION_AVAILABLE = new ResourceLocation(ECConstants.MODID, "textures/gui/skill_connection_unlocked.png");
+    private static final ResourceLocation CONNECTION_ACTIVE = new ResourceLocation(ECConstants.MODID, "textures/gui/skill_connection_active.png");
+
+    private static final ResourceLocation ICON_ATTACK = new ResourceLocation(ECConstants.MODID, "textures/gui/skills/attack.png");
+    private static final ResourceLocation ICON_MINING = new ResourceLocation(ECConstants.MODID, "textures/gui/skills/mining.png");
+    private static final ResourceLocation ICON_DEFENSE = new ResourceLocation(ECConstants.MODID, "textures/gui/skills/defense.png");
+    private static final ResourceLocation ICON_MAGIC = new ResourceLocation(ECConstants.MODID, "textures/gui/skills/magic.png");
+
+    private static final int NODE_SIZE = 26;
 
     private String activeTreeId = "warrior";
     private SkillNode hoveredNode;
@@ -33,6 +42,8 @@ public class SkillTreeScreen extends Screen {
 
     public SkillTreeScreen() {
         super(Component.literal("Skill Tree"));
+        this.panelWidth = 332;
+        this.panelHeight = 228;
     }
 
     @Override
@@ -48,29 +59,46 @@ public class SkillTreeScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(guiGraphics);
-
+    protected void drawContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         hoveredNode = null;
         SkillTree tree = SkillTreeRegistry.get(activeTreeId);
         if (tree == null) {
-            guiGraphics.drawString(this.font, Component.literal("No skill tree JSON loaded."), 14, 14, 0xFFFFFF, false);
+            guiGraphics.drawString(this.font, Component.literal("No skill tree JSON loaded."), panelLeft + 14, panelTop + 14, 0xEADFC8, false);
             return;
         }
 
         drawHeader(guiGraphics);
+        drawTreeBounds(guiGraphics);
         drawConnections(guiGraphics, tree);
-        drawNodes(guiGraphics, tree, mouseX, mouseY);
-        drawTooltips(guiGraphics, mouseX, mouseY);
+        drawNodes(guiGraphics, tree, mouseX, mouseY, partialTick);
+    }
 
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+    @Override
+    protected void drawTooltips(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        if (hoveredNode == null) {
+            return;
+        }
+
+        List<Component> tooltip = new ArrayList<>();
+        tooltip.add(Component.literal(prettyName(hoveredNode.id())));
+        tooltip.add(Component.literal(hoveredNode.bonusText().isBlank() ? "No description" : hoveredNode.bonusText()));
+        tooltip.add(Component.literal("Cost: " + hoveredNode.cost() + " skill point(s)"));
+        if (!hoveredNode.requiredNodes().isEmpty()) {
+            tooltip.add(Component.literal("Requirements: " + String.join(", ", hoveredNode.requiredNodes())));
+        }
+        guiGraphics.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
     }
 
     private void drawHeader(GuiGraphics guiGraphics) {
-        guiGraphics.drawString(this.font, Component.literal("Skill Tree: " + activeTreeId), 12, 10, 0xFFFFFF, false);
         int skillPoints = Minecraft.getInstance().player == null ? 0 : ProgressApi.get(Minecraft.getInstance().player).map(data -> data.playerSkillPoints()).orElse(0);
-        guiGraphics.drawString(this.font, Component.literal("Points: " + skillPoints), 12, 24, 0xE0E0E0, false);
-        guiGraphics.drawString(this.font, Component.literal("Scroll = Zoom | Drag = Pan | Click = Unlock"), 12, 38, 0xB0B0B0, false);
+        guiGraphics.drawString(this.font, Component.literal("Skill Tree: " + activeTreeId.toUpperCase(Locale.ROOT)), panelLeft + 16, panelTop + 14, 0xF2D28C, false);
+        guiGraphics.drawString(this.font, Component.literal("Points: " + skillPoints), panelLeft + 16, panelTop + 28, 0xD8DEE8, false);
+        guiGraphics.drawString(this.font, Component.literal("Drag=Pan  Scroll=Zoom  Click=Unlock"), panelLeft + 132, panelTop + 14, 0xA6B0C0, false);
+    }
+
+    private void drawTreeBounds(GuiGraphics guiGraphics) {
+        guiGraphics.fill(treeLeft(), treeTop(), treeRight(), treeBottom(), 0x7A101420);
+        guiGraphics.fillGradient(treeLeft(), treeTop(), treeRight(), treeBottom(), 0x2200729C, 0x220D1230);
     }
 
     private void drawConnections(GuiGraphics guiGraphics, SkillTree tree) {
@@ -81,51 +109,73 @@ public class SkillTreeScreen extends Screen {
                     continue;
                 }
 
+                boolean requiredUnlocked = isNodeUnlocked(requiredNode.id());
+                boolean unlocked = isNodeUnlocked(node.id());
+                ConnectionState state = unlocked && requiredUnlocked ? ConnectionState.ACTIVE
+                        : requiredUnlocked ? ConnectionState.AVAILABLE
+                        : ConnectionState.LOCKED;
+
                 int x0 = toScreenX(requiredNode.x()) + (NODE_SIZE / 2);
                 int y0 = toScreenY(requiredNode.y()) + (NODE_SIZE / 2);
                 int x1 = toScreenX(node.x()) + (NODE_SIZE / 2);
                 int y1 = toScreenY(node.y()) + (NODE_SIZE / 2);
-                drawLine(guiGraphics, x0, y0, x1, y1, 0x70FFFFFF);
+                drawConnection(guiGraphics, x0, y0, x1, y1, state);
             }
         }
     }
 
-    private void drawNodes(GuiGraphics guiGraphics, SkillTree tree, int mouseX, int mouseY) {
+    private void drawNodes(GuiGraphics guiGraphics, SkillTree tree, int mouseX, int mouseY, float partialTick) {
         for (SkillNode node : tree.nodes()) {
             int x = toScreenX(node.x());
             int y = toScreenY(node.y());
             boolean hovered = mouseX >= x && mouseX <= x + NODE_SIZE && mouseY >= y && mouseY <= y + NODE_SIZE;
             boolean unlocked = isNodeUnlocked(node.id());
 
-            ResourceLocation texture = unlocked ? NODE_UNLOCKED : NODE_LOCKED;
             if (hovered) {
-                texture = NODE_HOVER;
                 hoveredNode = node;
             }
 
-            // Fill first so the node remains visible even if textures are missing from a pack.
-            guiGraphics.fill(x, y, x + NODE_SIZE, y + NODE_SIZE, unlocked ? 0xAA3B7A3E : 0xAA4A4A4A);
-            RenderSystem.enableBlend();
-            guiGraphics.blit(texture, x, y, 0, 0, NODE_SIZE, NODE_SIZE, NODE_SIZE, NODE_SIZE);
-            guiGraphics.drawString(this.font, Component.literal(String.valueOf(node.cost())), x + 5, y + 5, 0xFFFFFF, false);
+            ResourceLocation baseTexture = hovered ? NODE_HOVER : (unlocked ? NODE_UNLOCKED : NODE_LOCKED);
+            guiGraphics.blit(baseTexture, x, y, 0, 0, NODE_SIZE, NODE_SIZE, NODE_SIZE, NODE_SIZE);
+
+            if (unlocked) {
+                float pulse = 0.45F + (float) (Math.sin((Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getGameTime() : 0) / 6.0D + node.x()) * 0.25F);
+                int glow = ((int) (pulse * 255.0F) << 24) | 0x4B88FF;
+                guiGraphics.fill(x - 2, y - 2, x + NODE_SIZE + 2, y + NODE_SIZE + 2, glow);
+            }
+
+            ResourceLocation icon = iconForNode(node);
+            guiGraphics.blit(icon, x + 5, y + 5, 0, 0, 16, 16, 16, 16);
+
+            if (hovered || canUnlockNode(node)) {
+                int ringColor = hovered ? 0x99EAC270 : 0x5580A9FF;
+                guiGraphics.fill(x - 1, y - 1, x + NODE_SIZE + 1, y, ringColor);
+                guiGraphics.fill(x - 1, y + NODE_SIZE, x + NODE_SIZE + 1, y + NODE_SIZE + 1, ringColor);
+                guiGraphics.fill(x - 1, y, x, y + NODE_SIZE, ringColor);
+                guiGraphics.fill(x + NODE_SIZE, y, x + NODE_SIZE + 1, y + NODE_SIZE, ringColor);
+            }
         }
     }
 
-    private void drawTooltips(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        if (hoveredNode == null) {
+    private void drawConnection(GuiGraphics guiGraphics, int x0, int y0, int x1, int y1, ConnectionState state) {
+        int dx = Math.abs(x1 - x0);
+        int dy = Math.abs(y1 - y0);
+        int steps = Math.max(dx, dy);
+        if (steps == 0) {
             return;
         }
 
-        List<Component> tooltip = new ArrayList<>();
-        tooltip.add(Component.literal(hoveredNode.id()));
-        tooltip.add(Component.literal("Cost: " + hoveredNode.cost()));
-        if (!hoveredNode.requiredNodes().isEmpty()) {
-            tooltip.add(Component.literal("Requires: " + String.join(", ", hoveredNode.requiredNodes())));
+        ResourceLocation texture = switch (state) {
+            case LOCKED -> CONNECTION_LOCKED;
+            case AVAILABLE -> CONNECTION_AVAILABLE;
+            case ACTIVE -> CONNECTION_ACTIVE;
+        };
+
+        for (int i = 0; i <= steps; i += 2) {
+            int x = x0 + (x1 - x0) * i / steps;
+            int y = y0 + (y1 - y0) * i / steps;
+            guiGraphics.blit(texture, x - 1, y - 1, 0, 0, 3, 3, 3, 3);
         }
-        if (!hoveredNode.bonusText().isBlank()) {
-            tooltip.add(Component.literal(hoveredNode.bonusText()));
-        }
-        guiGraphics.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
     }
 
     @Override
@@ -133,11 +183,10 @@ public class SkillTreeScreen extends Screen {
         double previousZoom = zoom;
         zoom = Math.max(0.45D, Math.min(2.8D, zoom + (delta > 0 ? 0.1D : -0.1D)));
 
-        // Keep cursor focus stable while zooming.
-        double worldX = (mouseX - (this.width / 2.0D)) / previousZoom - panX;
-        double worldY = (mouseY - (this.height / 2.0D)) / previousZoom - panY;
-        panX = (mouseX - (this.width / 2.0D)) / zoom - worldX;
-        panY = (mouseY - (this.height / 2.0D)) / zoom - worldY;
+        double worldX = (mouseX - treeCenterX()) / previousZoom - panX;
+        double worldY = (mouseY - treeCenterY()) / previousZoom - panY;
+        panX = (mouseX - treeCenterX()) / zoom - worldX;
+        panY = (mouseY - treeCenterY()) / zoom - worldY;
         return true;
     }
 
@@ -195,27 +244,85 @@ public class SkillTreeScreen extends Screen {
                 .orElse(false);
     }
 
+    private boolean canUnlockNode(SkillNode node) {
+        if (isNodeUnlocked(node.id())) {
+            return false;
+        }
+        if (node.requiredNodes().isEmpty()) {
+            return true;
+        }
+        for (String req : node.requiredNodes()) {
+            if (!isNodeUnlocked(req)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private ResourceLocation iconForNode(SkillNode node) {
+        String key = (node.id() + " " + node.bonusText()).toLowerCase(Locale.ROOT);
+        if (key.contains("mine") || key.contains("ore") || key.contains("dig")) {
+            return ICON_MINING;
+        }
+        if (key.contains("magic") || key.contains("mana") || key.contains("arcane")) {
+            return ICON_MAGIC;
+        }
+        if (key.contains("defense") || key.contains("armor") || key.contains("health")) {
+            return ICON_DEFENSE;
+        }
+        return ICON_ATTACK;
+    }
+
+    private String prettyName(String id) {
+        String[] parts = id.split("[_-]");
+        StringBuilder builder = new StringBuilder();
+        for (String part : parts) {
+            if (part.isBlank()) {
+                continue;
+            }
+            if (!builder.isEmpty()) {
+                builder.append(' ');
+            }
+            builder.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1));
+        }
+        return builder.toString();
+    }
+
+    private int treeLeft() {
+        return panelLeft + 16;
+    }
+
+    private int treeTop() {
+        return panelTop + 48;
+    }
+
+    private int treeRight() {
+        return panelLeft + panelWidth - 16;
+    }
+
+    private int treeBottom() {
+        return panelTop + panelHeight - 14;
+    }
+
+    private int treeCenterX() {
+        return (treeLeft() + treeRight()) / 2;
+    }
+
+    private int treeCenterY() {
+        return (treeTop() + treeBottom()) / 2;
+    }
+
     private int toScreenX(int worldX) {
-        return (int) Math.round((this.width / 2.0D) + (worldX + panX) * zoom);
+        return (int) Math.round(treeCenterX() + (worldX + panX) * zoom);
     }
 
     private int toScreenY(int worldY) {
-        return (int) Math.round((this.height / 2.0D) + (worldY + panY) * zoom);
+        return (int) Math.round(treeCenterY() + (worldY + panY) * zoom);
     }
 
-    private void drawLine(GuiGraphics guiGraphics, int x0, int y0, int x1, int y1, int color) {
-        int dx = Math.abs(x1 - x0);
-        int dy = Math.abs(y1 - y0);
-        int steps = Math.max(dx, dy);
-        if (steps == 0) {
-            guiGraphics.fill(x0, y0, x0 + 1, y0 + 1, color);
-            return;
-        }
-
-        for (int i = 0; i <= steps; i++) {
-            int x = x0 + (x1 - x0) * i / steps;
-            int y = y0 + (y1 - y0) * i / steps;
-            guiGraphics.fill(x, y, x + 1, y + 1, color);
-        }
+    private enum ConnectionState {
+        LOCKED,
+        AVAILABLE,
+        ACTIVE
     }
 }
