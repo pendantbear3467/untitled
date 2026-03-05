@@ -3,14 +3,37 @@ package com.extremecraft.progression.capability;
 import com.extremecraft.progression.PlayerStatsService;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.LivingDropsEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
 public class PlayerStatsGameplayEvents {
+    @SubscribeEvent
+    public void onLivingHurt(LivingHurtEvent event) {
+        if (!(event.getSource().getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+
+        PlayerStatsApi.get(player).ifPresent(stats -> {
+            float damage = event.getAmount();
+            damage += stats.meleeDamageBonus();
+            damage *= stats.damageMultiplier();
+
+            if (player.getRandom().nextFloat() < stats.critChance()) {
+                damage *= stats.critDamage();
+            }
+
+            event.setAmount(Math.max(0.0F, damage));
+        });
+    }
+
     @SubscribeEvent
     public void onMobKill(LivingDeathEvent event) {
         if (!(event.getSource().getEntity() instanceof ServerPlayer player)) {
@@ -20,6 +43,29 @@ public class PlayerStatsGameplayEvents {
         LivingEntity living = event.getEntity();
         int xp = Math.max(4, (int) living.getMaxHealth() / 2);
         PlayerStatsService.addExperience(player, xp);
+    }
+
+    @SubscribeEvent
+    public void onLivingDrops(LivingDropsEvent event) {
+        if (!(event.getSource().getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+
+        PlayerStatsApi.get(player).ifPresent(stats -> {
+            if (event.getDrops().isEmpty()) {
+                return;
+            }
+
+            float bonus = stats.lootRarityBonus();
+            if (bonus <= 0.0F || player.getRandom().nextFloat() >= Math.min(0.65F, bonus)) {
+                return;
+            }
+
+            ItemEntity original = event.getDrops().iterator().next();
+            ItemStack copy = original.getItem().copy();
+            ItemEntity extra = new ItemEntity(event.getEntity().level(), original.getX(), original.getY(), original.getZ(), copy);
+            event.getDrops().add(extra);
+        });
     }
 
     @SubscribeEvent
@@ -57,3 +103,4 @@ public class PlayerStatsGameplayEvents {
         }
     }
 }
+

@@ -12,6 +12,7 @@ import hashlib
 import importlib.util
 import json
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,6 +36,13 @@ def _load_gui_generator() -> callable:
 
 
 generate_gui_assets = _load_gui_generator()
+
+
+def launch_skill_tree_editor() -> None:
+    editor_path = Path(__file__).resolve().parent / "extremecraft_skill_tree_editor.py"
+    if not editor_path.exists():
+        raise RuntimeError(f"Skill tree editor not found: {editor_path}")
+    subprocess.run([sys.executable, str(editor_path)], check=True)
 
 MODID = "extremecraft"
 HASH_SEED = "extremecraft-assets-v2"
@@ -488,6 +496,11 @@ def run_core_generation() -> None:
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="ExtremeCraft asset generator")
     parser.add_argument(
+        "--editor",
+        action="store_true",
+        help="Launch the ExtremeCraft Skill Tree Editor",
+    )
+    parser.add_argument(
         "--gui",
         action="store_true",
         help="Generate RPG GUI placeholder textures",
@@ -508,8 +521,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
 
+    explicit_mode = args.editor or args.gui or args.core
+
     # Default mode keeps historical behavior unless an explicit mode is selected.
-    run_core = args.core or not args.gui
+    run_core = args.core or not explicit_mode
     if run_core:
         run_core_generation()
 
@@ -517,6 +532,9 @@ def main(argv: list[str] | None = None) -> None:
         gui_result = generate_gui_assets(force=args.force)
         print(f"GUI textures generated: {gui_result.generated}")
         print(f"Missing files: {gui_result.missing}")
+
+    if args.editor:
+        launch_skill_tree_editor()
 
 
 if __name__ == "__main__":
