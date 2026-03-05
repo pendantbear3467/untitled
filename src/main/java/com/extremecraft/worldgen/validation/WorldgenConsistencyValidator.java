@@ -29,9 +29,9 @@ public class WorldgenConsistencyValidator {
     private static final class Loader extends SimplePreparableReloadListener<ValidationReport> {
         @Override
         protected ValidationReport prepare(ResourceManager resourceManager, ProfilerFiller profiler) {
-            Set<String> configured = collectIds(resourceManager, "worldgen/configured_feature/");
-            Set<String> placed = collectIds(resourceManager, "worldgen/placed_feature/");
-            Set<String> modifiers = collectIds(resourceManager, "forge/biome_modifier/");
+            Set<String> configured = collectIds(resourceManager, "worldgen/configured_feature");
+            Set<String> placed = collectIds(resourceManager, "worldgen/placed_feature");
+            Set<String> modifiers = collectIds(resourceManager, "forge/biome_modifier");
             return new ValidationReport(configured, placed, modifiers);
         }
 
