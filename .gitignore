@@ -39,3 +39,10 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+#HOTFIX#
+run/
+logs/
+*.log
+*.log.gz
+crash-reports/
