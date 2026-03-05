@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -18,6 +19,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.Objects;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,7 +42,7 @@ public final class DwClientHooks {
 
         HitResult hit = mc.hitResult;
         ItemStack off = pl.getOffhandItem();
-        if (off.isEmpty() || isBlacklisted(off)) return;
+        if (off.isEmpty() || isBlacklisted(off) || shouldBypassOverride(off)) return;
 
         // Crazy Craft-style intent: let offhand drive entity/block/item interaction regardless of item category.
         if (hit instanceof EntityHitResult ehr) {
@@ -85,11 +87,23 @@ public final class DwClientHooks {
     }
 
     private static Set<ResourceLocation> getBlacklistedItems() {
-        return DwConfig.CLIENT.blacklistedItems.get().stream()
+        List<? extends String> configured;
+        try {
+            configured = DwConfig.CLIENT.blacklistedItems.get();
+        } catch (Exception e) {
+            configured = List.of();
+        }
+
+        return configured.stream()
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .map(ResourceLocation::tryParse)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
+    }
+
+    private static boolean shouldBypassOverride(ItemStack stack) {
+        // Keep vanilla combat flow for swords to avoid offhand attack packet conflicts.
+        return stack.getItem() instanceof SwordItem;
     }
 }

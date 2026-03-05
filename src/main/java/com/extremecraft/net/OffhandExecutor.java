@@ -9,8 +9,15 @@ public final class OffhandExecutor {
 
     /** Reuse vanilla attack logic by temporarily swapping hands. */
     public static void attackEntityWithOffhand(ServerPlayer sp, Entity target) {
-        ItemStack main = sp.getMainHandItem().copy();
-        ItemStack off  = sp.getOffhandItem().copy();
+        if (target == null || !target.isAlive() || target == sp) {
+            return;
+        }
+
+        ItemStack main = sp.getMainHandItem();
+        ItemStack off = sp.getOffhandItem();
+        if (off.isEmpty()) {
+            return;
+        }
 
         try {
             sp.setItemInHand(InteractionHand.MAIN_HAND, off);
@@ -20,9 +27,11 @@ public final class OffhandExecutor {
             sp.attack(target);
             sp.resetAttackStrengthTicker();
         } finally {
-            // Always swap back even if something throws
-            sp.setItemInHand(InteractionHand.MAIN_HAND, main);
-            sp.setItemInHand(InteractionHand.OFF_HAND, off);
+            // Swap back using current stacks so durability/breakage changes are preserved.
+            ItemStack currentMain = sp.getMainHandItem();
+            ItemStack currentOff = sp.getOffhandItem();
+            sp.setItemInHand(InteractionHand.MAIN_HAND, currentOff);
+            sp.setItemInHand(InteractionHand.OFF_HAND, currentMain);
         }
     }
 }

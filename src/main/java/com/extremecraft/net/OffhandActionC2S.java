@@ -12,6 +12,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -53,50 +54,61 @@ public record OffhandActionC2S(Action action, int entityId, BlockPos pos, Direct
             if (sp == null) return;
             ServerLevel level = sp.serverLevel();
 
-            switch (msg.action) {
-                case ATTACK_ENTITY -> {
-                    Entity target = level.getEntity(msg.entityId);
-                    if (target != null && withinReach(sp, target.blockPosition())) {
-                        invokeOffhandExecutorIfPresent(sp, target);
-                    }
-                }
-                case USE_ITEM -> {
-                    ItemStack off = sp.getOffhandItem();
-                    if (!off.isEmpty()) {
-                        InteractionResultHolder<ItemStack> res = off.use(level, sp, InteractionHand.OFF_HAND);
-                        if (res.getResult().consumesAction()) sp.swing(InteractionHand.OFF_HAND, true);
-                    }
-                }
-                case USE_ON_BLOCK -> {
-                    if (msg.pos != null && msg.face != null && withinReach(sp, msg.pos)) {
-                        BlockHitResult hit = centeredFaceHit(msg.pos, msg.face);
-                        UseOnContext useCtx = new UseOnContext(sp, InteractionHand.OFF_HAND, hit);
-                        ItemStack off = sp.getOffhandItem();
-                        if (!off.isEmpty()) {
-                            InteractionResult r = off.useOn(useCtx);
-                            if (r.consumesAction()) {
-                                sp.swing(InteractionHand.OFF_HAND, true);
-                            } else {
-                                InteractionResultHolder<ItemStack> fallback = off.use(level, sp, InteractionHand.OFF_HAND);
-                                if (fallback.getResult().consumesAction()) sp.swing(InteractionHand.OFF_HAND, true);
+            try {
+                switch (msg.action) {
+                    case ATTACK_ENTITY -> {
+                        if (msg.entityId < 0) {
+                            return;
+                        }
+
+                        Entity target = level.getEntity(msg.entityId);
+                        if (target != null && target.isAlive() && target != sp && withinReach(sp, target.blockPosition())) {
+                            ItemStack off = sp.getOffhandItem();
+                            if (!off.isEmpty() && !(off.getItem() instanceof SwordItem)) {
+                                invokeOffhandExecutorIfPresent(sp, target);
                             }
                         }
                     }
-                }
-                case TAP_BREAK -> {
-                    if (msg.pos != null && msg.face != null && withinReach(sp, msg.pos)) {
-                        callHandleBlockBreakAction(sp, msg.pos, msg.face, ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK);
-                        callHandleBlockBreakAction(sp, msg.pos, msg.face, ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK);
-                        sp.swing(InteractionHand.OFF_HAND, true);
+                    case USE_ITEM -> {
+                        ItemStack off = sp.getOffhandItem();
+                        if (!off.isEmpty()) {
+                            InteractionResultHolder<ItemStack> res = off.use(level, sp, InteractionHand.OFF_HAND);
+                            if (res.getResult().consumesAction()) sp.swing(InteractionHand.OFF_HAND, true);
+                        }
                     }
-                }
-                case HOLD_START_BREAK -> {
-                    if (msg.pos != null && msg.face != null && withinReach(sp, msg.pos)) {
-                        DwServerTicker.startOffhandBreak(sp, msg.pos, msg.face);
-                        sp.swing(InteractionHand.OFF_HAND, true);
+                    case USE_ON_BLOCK -> {
+                        if (msg.pos != null && msg.face != null && withinReach(sp, msg.pos)) {
+                            BlockHitResult hit = centeredFaceHit(msg.pos, msg.face);
+                            UseOnContext useCtx = new UseOnContext(sp, InteractionHand.OFF_HAND, hit);
+                            ItemStack off = sp.getOffhandItem();
+                            if (!off.isEmpty()) {
+                                InteractionResult r = off.useOn(useCtx);
+                                if (r.consumesAction()) {
+                                    sp.swing(InteractionHand.OFF_HAND, true);
+                                } else {
+                                    InteractionResultHolder<ItemStack> fallback = off.use(level, sp, InteractionHand.OFF_HAND);
+                                    if (fallback.getResult().consumesAction()) sp.swing(InteractionHand.OFF_HAND, true);
+                                }
+                            }
+                        }
                     }
+                    case TAP_BREAK -> {
+                        if (msg.pos != null && msg.face != null && withinReach(sp, msg.pos)) {
+                            callHandleBlockBreakAction(sp, msg.pos, msg.face, ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK);
+                            callHandleBlockBreakAction(sp, msg.pos, msg.face, ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK);
+                            sp.swing(InteractionHand.OFF_HAND, true);
+                        }
+                    }
+                    case HOLD_START_BREAK -> {
+                        if (msg.pos != null && msg.face != null && withinReach(sp, msg.pos)) {
+                            DwServerTicker.startOffhandBreak(sp, msg.pos, msg.face);
+                            sp.swing(InteractionHand.OFF_HAND, true);
+                        }
+                    }
+                    case HOLD_ABORT_BREAK -> DwServerTicker.abortOffhandBreak(sp, true);
                 }
-                case HOLD_ABORT_BREAK -> DwServerTicker.abortOffhandBreak(sp, true);
+            } catch (Throwable ignored) {
+                // Never let malformed/unexpected offhand input crash the server thread.
             }
         });
         context.setPacketHandled(true);

@@ -2,12 +2,15 @@ package com.extremecraft.core;
 
 import com.extremecraft.client.DwClientHooks;
 import com.extremecraft.client.DwKeybinds;
+import com.extremecraft.client.gui.player.ExtremePlayerTabs;
+import com.extremecraft.config.DwConfig;
 import com.extremecraft.gui.PulverizerScreen;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.progression.StageDataLoader;
 import com.extremecraft.progression.ProgressCommands;
 import com.extremecraft.progression.ProgressionEvents;
 import com.extremecraft.progression.capability.ProgressCapabilityEvents;
+import com.extremecraft.progression.capability.PlayerProgressCapabilityEvents;
 import com.extremecraft.progression.stage.StageCapabilityEvents;
 import com.extremecraft.quest.QuestManager;
 import com.extremecraft.research.ResearchCapabilityEvents;
@@ -35,6 +38,8 @@ import net.minecraftforge.fml.loading.FMLEnvironment;
 @Mod(ECConstants.MODID)
 public final class ExtremeCraft {
     public ExtremeCraft() {
+        DwConfig.register();
+
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
 
         ModBlocks.BLOCKS.register(modBus);
@@ -51,6 +56,7 @@ public final class ExtremeCraft {
         MinecraftForge.EVENT_BUS.register(new StageCapabilityEvents());
         MinecraftForge.EVENT_BUS.register(new SkillsCapabilityEvents());
         MinecraftForge.EVENT_BUS.register(new ResearchCapabilityEvents());
+        MinecraftForge.EVENT_BUS.register(new PlayerProgressCapabilityEvents());
 
         MinecraftForge.EVENT_BUS.register(new ProgressionEvents());
         MinecraftForge.EVENT_BUS.register(new QuestManager());
@@ -71,7 +77,10 @@ public final class ExtremeCraft {
     }
 
     private void clientSetup(final FMLClientSetupEvent event) {
-        event.enqueueWork(() -> MenuScreens.register(ModMenuTypes.PULVERIZER_MENU.get(), PulverizerScreen::new));
+        event.enqueueWork(() -> {
+            MenuScreens.register(ModMenuTypes.PULVERIZER_MENU.get(), PulverizerScreen::new);
+            ExtremePlayerTabs.registerHooks();
+        });
     }
 
     private void registerCommands(RegisterCommandsEvent event) {
