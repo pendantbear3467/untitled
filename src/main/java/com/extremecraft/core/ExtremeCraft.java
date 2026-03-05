@@ -10,7 +10,6 @@ import com.extremecraft.progression.StageDataLoader;
 import com.extremecraft.progression.ProgressCommands;
 import com.extremecraft.progression.ProgressionEvents;
 import com.extremecraft.progression.capability.ProgressCapabilityEvents;
-import com.extremecraft.progression.capability.PlayerProgressCapabilityEvents;
 import com.extremecraft.progression.stage.StageCapabilityEvents;
 import com.extremecraft.quest.QuestManager;
 import com.extremecraft.research.ResearchCapabilityEvents;
@@ -51,35 +50,36 @@ public final class ExtremeCraft {
         modBus.addListener(this::commonSetup);
         modBus.addListener(this::clientSetup);
         modBus.addListener(this::onEntityAttributeModification);
-
-        MinecraftForge.EVENT_BUS.register(new ProgressCapabilityEvents());
-        MinecraftForge.EVENT_BUS.register(new StageCapabilityEvents());
-        MinecraftForge.EVENT_BUS.register(new SkillsCapabilityEvents());
-        MinecraftForge.EVENT_BUS.register(new ResearchCapabilityEvents());
-        MinecraftForge.EVENT_BUS.register(new PlayerProgressCapabilityEvents());
-
-        MinecraftForge.EVENT_BUS.register(new ProgressionEvents());
-        MinecraftForge.EVENT_BUS.register(new QuestManager());
-        MinecraftForge.EVENT_BUS.register(new StageDataLoader());
-        MinecraftForge.EVENT_BUS.register(new SkillRegistry());
-        MinecraftForge.EVENT_BUS.register(new ResearchManager());
-        MinecraftForge.EVENT_BUS.addListener(this::registerCommands);
-
-        MinecraftForge.EVENT_BUS.register(new DwServerTicker());
         if (FMLEnvironment.dist == Dist.CLIENT) {
             modBus.addListener(DwKeybinds::onRegisterKeyMappings);
-            MinecraftForge.EVENT_BUS.register(new DwClientHooks());
         }
+
+        MinecraftForge.EVENT_BUS.addListener(this::registerCommands);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
-        event.enqueueWork(ModNetwork::init);
+        event.enqueueWork(() -> {
+            ModNetwork.init();
+
+            MinecraftForge.EVENT_BUS.register(new ProgressCapabilityEvents());
+            MinecraftForge.EVENT_BUS.register(new StageCapabilityEvents());
+            MinecraftForge.EVENT_BUS.register(new SkillsCapabilityEvents());
+            MinecraftForge.EVENT_BUS.register(new ResearchCapabilityEvents());
+
+            MinecraftForge.EVENT_BUS.register(new ProgressionEvents());
+            MinecraftForge.EVENT_BUS.register(new QuestManager());
+            MinecraftForge.EVENT_BUS.register(new StageDataLoader());
+            MinecraftForge.EVENT_BUS.register(new SkillRegistry());
+            MinecraftForge.EVENT_BUS.register(new ResearchManager());
+            MinecraftForge.EVENT_BUS.register(new DwServerTicker());
+        });
     }
 
     private void clientSetup(final FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
             MenuScreens.register(ModMenuTypes.PULVERIZER_MENU.get(), PulverizerScreen::new);
             ExtremePlayerTabs.registerHooks();
+            MinecraftForge.EVENT_BUS.register(new DwClientHooks());
         });
     }
 

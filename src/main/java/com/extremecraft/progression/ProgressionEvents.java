@@ -16,8 +16,8 @@ public class ProgressionEvents {
     @SubscribeEvent
     public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            ProgressionService.applyAttributes(player);
-            ProgressionService.sync(player);
+            ProgressApi.get(player).ifPresent(data -> data.markAttributesDirty());
+            ProgressionService.flushDirty(player);
         }
     }
 
@@ -30,8 +30,7 @@ public class ProgressionEvents {
         ProgressApi.get(oldPlayer).ifPresent(oldData ->
                 ProgressApi.get(newPlayer).ifPresent(newData -> {
                     newData.copyFrom(oldData);
-                    ProgressionService.applyAttributes(newPlayer);
-                    ProgressionService.sync(newPlayer);
+                    ProgressionService.flushDirty(newPlayer);
                 })
         );
     }
@@ -41,7 +40,7 @@ public class ProgressionEvents {
         if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide) return;
         if (!(event.player instanceof ServerPlayer player)) return;
 
-        ProgressionService.applyAttributes(player);
+        ProgressionService.flushDirty(player);
 
         // Exploration XP source: discover new 256x256 regions.
         if (player.tickCount % 80 == 0) {
@@ -49,10 +48,10 @@ public class ProgressionEvents {
             int rz = player.blockPosition().getZ() >> 8;
             String regionKey = player.level().dimension().location() + "|" + rx + "|" + rz;
             ProgressApi.get(player).ifPresent(data -> {
-                if (data.discoveredRegions().add(regionKey)) {
+                if (data.discoverRegion(regionKey)) {
                     data.addXp(8);
                     incrementQuest(player, QuestType.EXPLORATION, 1);
-                    ProgressionService.sync(player);
+                    ProgressionService.flushDirty(player);
                 }
             });
         }
@@ -97,6 +96,8 @@ public class ProgressionEvents {
     private static void incrementQuest(ServerPlayer player, QuestType type, int amount) {
         if (amount <= 0) return;
 
+        final boolean[] changed = {false};
+
         for (QuestDefinition quest : QuestManager.all()) {
             if (quest.type() != type) continue;
 
@@ -104,9 +105,16 @@ public class ProgressionEvents {
                 if (data.isQuestCompleted(quest.id())) return;
                 int current = data.getQuestProgress(quest.id());
                 int next = Math.min(quest.target(), current + amount);
-                data.questProgress().put(quest.id(), next);
-                ProgressionService.sync(player);
+                int delta = next - current;
+                if (delta > 0) {
+                    data.addQuestProgress(quest.id(), delta);
+                    changed[0] = true;
+                }
             });
+        }
+
+        if (changed[0]) {
+            ProgressionService.flushDirty(player);
         }
     }
 }

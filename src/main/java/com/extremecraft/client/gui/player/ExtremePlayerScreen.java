@@ -1,9 +1,7 @@
 package com.extremecraft.client.gui.player;
 
-import com.extremecraft.network.ModNetwork;
-import com.extremecraft.network.packet.RequestPlayerProgressSyncPacket;
-import com.extremecraft.progression.capability.PlayerProgressCapabilityApi;
-import com.extremecraft.progression.capability.PlayerProgressCapability;
+import com.extremecraft.progression.PlayerProgressData;
+import com.extremecraft.progression.capability.ProgressApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Renderable;
@@ -28,7 +26,6 @@ public class ExtremePlayerScreen extends InventoryScreen {
     @Override
     protected void init() {
         super.init();
-        ModNetwork.CHANNEL.sendToServer(new RequestPlayerProgressSyncPacket());
         ExtremePlayerTabs.addTabButtons(this, this::switchTab);
     }
 
@@ -65,7 +62,6 @@ public class ExtremePlayerScreen extends InventoryScreen {
             return;
         }
 
-        ModNetwork.CHANNEL.sendToServer(new RequestPlayerProgressSyncPacket());
         mc.setScreen(createForTab(tab, mc.player));
     }
 
@@ -83,14 +79,14 @@ public class ExtremePlayerScreen extends InventoryScreen {
             return;
         }
 
-        PlayerProgressCapabilityApi.get(minecraft.player).ifPresentOrElse(data -> drawProgressData(guiGraphics, x, y, data),
+        ProgressApi.get(minecraft.player).ifPresentOrElse(data -> drawProgressData(guiGraphics, x, y, data),
                 () -> guiGraphics.drawString(font, Component.literal("Syncing progression..."), x, y, 0xE0E0E0, false));
     }
 
-    private void drawProgressData(GuiGraphics guiGraphics, int x, int y, PlayerProgressCapability data) {
-        guiGraphics.drawString(font, Component.literal("Class: " + data.playerClass()), x, y, 0xFFFFFF, false);
-        guiGraphics.drawString(font, Component.literal("Level: " + data.playerLevel()), x, y + 12, 0xFFFFFF, false);
-        guiGraphics.drawString(font, Component.literal("Skill Points: " + data.skillPoints()), x, y + 24, 0xFFFFFF, false);
+    private void drawProgressData(GuiGraphics guiGraphics, int x, int y, PlayerProgressData data) {
+        guiGraphics.drawString(font, Component.literal("Class: " + data.currentClass()), x, y, 0xFFFFFF, false);
+        guiGraphics.drawString(font, Component.literal("Level: " + data.level()), x, y + 12, 0xFFFFFF, false);
+        guiGraphics.drawString(font, Component.literal("Skill Points: " + data.playerSkillPoints()), x, y + 24, 0xFFFFFF, false);
     }
 
     public int getGuiLeft() {

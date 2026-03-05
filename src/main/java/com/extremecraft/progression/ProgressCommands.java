@@ -35,8 +35,7 @@ public final class ProgressCommands {
                                         while (data.level() < value) {
                                             data.addXp(PlayerProgressData.xpToNextLevel(data.level()));
                                         }
-                                        ProgressionService.applyAttributes(p);
-                                        ProgressionService.sync(p);
+                                        ProgressionService.flushDirty(p);
                                         return 1;
                                     }).orElse(0);
                                 }))))
@@ -107,8 +106,7 @@ public final class ProgressCommands {
                                                     .ifPresent(stage -> StageManager.upgradePlayerStage(p, stage));
                                         }
 
-                                        ProgressionService.applyAttributes(p);
-                                        ProgressionService.sync(p);
+                                        ProgressionService.flushDirty(p);
                                         ctx.getSource().sendSuccess(() -> Component.literal("Quest claimed: " + q.title()), false);
                                         return 1;
                                     }).orElse(0);

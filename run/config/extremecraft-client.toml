@@ -1,0 +1,5 @@
+
+[client]
+	allowOffhandBlockBreaking = true
+	blacklistedItems = ["minecraft:debug_stick"]
+

@@ -22,42 +22,44 @@ public final class ProgressionService {
     private ProgressionService() {}
 
     public static void addXp(ServerPlayer player, int amount) {
-        ProgressApi.get(player).ifPresent(data -> {
-            data.addXp(amount);
-            applyAttributes(player);
-            sync(player);
-        });
+        ProgressApi.get(player).ifPresent(data -> data.addXp(amount));
+        flushDirty(player);
     }
 
     public static void addPlayerSkillPoints(ServerPlayer player, int amount) {
-        ProgressApi.get(player).ifPresent(data -> {
-            data.addPlayerSkillPoints(amount);
-            sync(player);
-        });
+        ProgressApi.get(player).ifPresent(data -> data.addPlayerSkillPoints(amount));
+        flushDirty(player);
     }
 
     public static void addClassSkillPoints(ServerPlayer player, int amount) {
-        ProgressApi.get(player).ifPresent(data -> {
-            data.addClassSkillPoints(amount);
-            sync(player);
-        });
+        ProgressApi.get(player).ifPresent(data -> data.addClassSkillPoints(amount));
+        flushDirty(player);
     }
 
     public static void unlockClass(ServerPlayer player, String classId) {
-        ProgressApi.get(player).ifPresent(data -> {
-            data.unlockClass(classId);
-            sync(player);
-        });
+        ProgressApi.get(player).ifPresent(data -> data.unlockClass(classId));
+        flushDirty(player);
     }
 
     public static boolean switchClass(ServerPlayer player, String classId) {
         return ProgressApi.get(player).map(data -> {
             if (!data.unlockedClasses().contains(classId)) return false;
             data.setCurrentClass(classId);
-            applyAttributes(player);
-            sync(player);
+            flushDirty(player);
             return true;
         }).orElse(false);
+    }
+
+    public static void flushDirty(ServerPlayer player) {
+        ProgressApi.get(player).ifPresent(data -> {
+            if (data.consumeAttributesDirty()) {
+                applyAttributes(player);
+            }
+
+            if (data.consumeSyncDirty()) {
+                sync(player);
+            }
+        });
     }
 
     public static void applyAttributes(ServerPlayer player) {

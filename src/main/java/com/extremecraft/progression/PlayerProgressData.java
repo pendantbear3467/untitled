@@ -22,6 +22,9 @@ public class PlayerProgressData {
     private final Map<String, Integer> questProgress = new HashMap<>();
     private final Set<String> discoveredRegions = new HashSet<>();
 
+    private boolean syncDirty = true;
+    private boolean attributesDirty = true;
+
     public PlayerProgressData() {
         unlockedClasses.add(PlayerClass.WARRIOR.id());
     }
@@ -38,11 +41,23 @@ public class PlayerProgressData {
     public Set<String> discoveredRegions() { return discoveredRegions; }
 
     public void setCurrentClass(String classId) {
+        if (classId == null || classId.isBlank() || classId.equalsIgnoreCase(this.currentClass)) {
+            return;
+        }
+
         this.currentClass = classId;
+        markAttributesDirty();
+        markSyncDirty();
     }
 
     public void unlockClass(String classId) {
-        unlockedClasses.add(classId);
+        if (classId == null || classId.isBlank()) {
+            return;
+        }
+
+        if (unlockedClasses.add(classId)) {
+            markSyncDirty();
+        }
     }
 
     public void addXp(int amount) {
@@ -56,20 +71,31 @@ public class PlayerProgressData {
             if (level % 3 == 0) {
                 classSkillPoints += 1;
             }
+
+            markAttributesDirty();
         }
+
+        markSyncDirty();
     }
 
     public void addPlayerSkillPoints(int amount) {
-        if (amount > 0) playerSkillPoints += amount;
+        if (amount > 0) {
+            playerSkillPoints += amount;
+            markSyncDirty();
+        }
     }
 
     public void addClassSkillPoints(int amount) {
-        if (amount > 0) classSkillPoints += amount;
+        if (amount > 0) {
+            classSkillPoints += amount;
+            markSyncDirty();
+        }
     }
 
     public void addQuestProgress(String questId, int amount) {
         if (amount <= 0) return;
         questProgress.merge(questId, amount, Integer::sum);
+        markSyncDirty();
     }
 
     public boolean isQuestCompleted(String questId) {
@@ -77,11 +103,47 @@ public class PlayerProgressData {
     }
 
     public void setQuestCompleted(String questId) {
-        completedQuests.add(questId);
+        if (completedQuests.add(questId)) {
+            markSyncDirty();
+        }
     }
 
     public int getQuestProgress(String questId) {
         return questProgress.getOrDefault(questId, 0);
+    }
+
+    public boolean discoverRegion(String regionKey) {
+        if (regionKey == null || regionKey.isBlank()) {
+            return false;
+        }
+
+        if (discoveredRegions.add(regionKey)) {
+            markSyncDirty();
+            return true;
+        }
+
+        return false;
+    }
+
+    public void markSyncDirty() {
+        syncDirty = true;
+    }
+
+    public void markAttributesDirty() {
+        attributesDirty = true;
+        syncDirty = true;
+    }
+
+    public boolean consumeSyncDirty() {
+        boolean dirty = syncDirty;
+        syncDirty = false;
+        return dirty;
+    }
+
+    public boolean consumeAttributesDirty() {
+        boolean dirty = attributesDirty;
+        attributesDirty = false;
+        return dirty;
     }
 
     public static int xpToNextLevel(int level) {
@@ -148,6 +210,9 @@ public class PlayerProgressData {
             ListTag regions = tag.getList("discovered_regions", Tag.TAG_STRING);
             for (Tag t : regions) discoveredRegions.add(t.getAsString());
         }
+
+        syncDirty = false;
+        attributesDirty = false;
     }
 
     public void copyFrom(PlayerProgressData other) {
@@ -168,5 +233,8 @@ public class PlayerProgressData {
 
         this.discoveredRegions.clear();
         this.discoveredRegions.addAll(other.discoveredRegions);
+
+        markAttributesDirty();
+        markSyncDirty();
     }
 }
