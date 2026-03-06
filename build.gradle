@@ -41,6 +41,15 @@ dependencies {
     implementation project(':api')
 }
 
+sourceSets {
+    main {
+        java {
+            // Keep API interfaces on the same dev runtime output used by Forge mod loading.
+            srcDir project(':api').file('src/main/java')
+        }
+    }
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
