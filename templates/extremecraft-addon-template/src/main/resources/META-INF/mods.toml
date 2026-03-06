@@ -1,0 +1,11 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="extremecraftaddon"
+version="0.1.0"
+displayName="ExtremeCraft Addon Template"
+description='''
+Template addon that extends ExtremeCraft via the public API.
+'''

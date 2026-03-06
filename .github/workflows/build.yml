@@ -1,0 +1,23 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build
+        run: ./gradlew --no-daemon clean compileJava jar
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extremecraft-core
+          path: build/libs/*.jar

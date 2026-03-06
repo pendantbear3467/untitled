@@ -1,0 +1,40 @@
+{
+  "materials": [
+    {
+      "name": "titanium",
+      "color": "#9bb7d4",
+      "tier": 3,
+      "glow": false
+    },
+    {
+      "name": "uranium",
+      "color": "#62ff3a",
+      "tier": 4,
+      "glow": true
+    },
+    {
+      "name": "silver",
+      "color": "#cfd9e8",
+      "tier": 2,
+      "glow": false
+    },
+    {
+      "name": "mythril",
+      "color": "#57d6ff",
+      "tier": 5,
+      "glow": true
+    },
+    {
+      "name": "adamantium",
+      "color": "#7f8c9a",
+      "tier": 6,
+      "glow": false
+    },
+    {
+      "name": "quantum_alloy",
+      "color": "#4ef0c9",
+      "tier": 7,
+      "glow": true
+    }
+  ]
+}

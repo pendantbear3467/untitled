@@ -1,11 +1,13 @@
 package com.extremecraft.core;
 
+import com.extremecraft.api.ExtremeCraftAPI;
 import com.extremecraft.client.DwClientHooks;
 import com.extremecraft.client.DwKeybinds;
 import com.extremecraft.client.gui.machine.TechMachineScreen;
 import com.extremecraft.client.gui.player.InventoryButtonInjector;
 import com.extremecraft.client.gui.player.InventoryXpOverlay;
 import com.extremecraft.combat.dualwield.PlayerDualWieldEvents;
+import com.extremecraft.command.ECDevCommands;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.future.registry.TechBlockEntities;
 import com.extremecraft.future.registry.TechBlocks;
@@ -20,6 +22,11 @@ import com.extremecraft.modules.loader.ModuleDefinitionLoader;
 import com.extremecraft.modules.runtime.ModuleRuntimeEvents;
 import com.extremecraft.net.DwNetwork;
 import com.extremecraft.network.ModNetwork;
+import com.extremecraft.platform.CompatibilityGate;
+import com.extremecraft.platform.ExtremeCraftApiProviderImpl;
+import com.extremecraft.platform.module.CoreGameplayModule;
+import com.extremecraft.platform.module.ExtremeCraftModuleLoader;
+import com.extremecraft.platform.module.ModuleRegistry;
 import com.extremecraft.progression.ProgressCommands;
 import com.extremecraft.progression.ProgressionEvents;
 import com.extremecraft.progression.StageDataLoader;
@@ -91,6 +98,16 @@ public final class ExtremeCraft {
             ModNetwork.init();
             DwNetwork.init();
 
+            ExtremeCraftApiProviderImpl apiProvider = new ExtremeCraftApiProviderImpl();
+            ExtremeCraftAPI.bootstrap(apiProvider);
+
+            CoreGameplayModule coreModule = new CoreGameplayModule();
+            if (CompatibilityGate.isCompatible(coreModule)) {
+                coreModule.register(apiProvider);
+                ModuleRegistry.register(coreModule);
+            }
+            ExtremeCraftModuleLoader.loadAll(apiProvider);
+
             MinecraftForge.EVENT_BUS.register(new ProgressCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerStatsCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerStatsGameplayEvents());
@@ -130,6 +147,7 @@ public final class ExtremeCraft {
 
     private void registerCommands(RegisterCommandsEvent event) {
         ProgressCommands.register(event.getDispatcher());
+        ECDevCommands.register(event.getDispatcher());
     }
 
     private void onEntityAttributeModification(EntityAttributeModificationEvent event) {

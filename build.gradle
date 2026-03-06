@@ -2,14 +2,15 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'maven-publish'
+    id 'checkstyle'
     id 'net.minecraftforge.gradle' version '[6.0,6.2)'
 }
 
 group = 'com.extremecraft'
-version = '1.1.0'
+version = '1.2.0'
 
 base {
-    archivesName = 'extremecraft'
+    archivesName = 'extremecraft-core'
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -41,4 +42,41 @@ dependencies {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+checkstyle {
+    toolVersion = '10.12.4'
+    configFile = file('config/checkstyle/checkstyle.xml')
+}
+
+if (project.hasProperty('curseforgeApiKey') && project.hasProperty('curseforgeProjectId')) {
+    buildscript {
+        repositories {
+            maven { url = 'https://plugins.gradle.org/m2/' }
+            mavenCentral()
+        }
+        dependencies {
+            classpath 'gradle.plugin.com.matthewprenger:CurseGradle:1.4.0'
+        }
+    }
+
+    apply plugin: 'com.matthewprenger.cursegradle'
+
+    curseforge {
+        apiKey = project.property('curseforgeApiKey')
+        project {
+            id = project.property('curseforgeProjectId').toString()
+            changelogType = 'markdown'
+            changelog = System.getenv('CHANGELOG') ?: "ExtremeCraft ${project.version} automated release"
+            releaseType = 'release'
+
+            mainArtifact(tasks.jar)
+            addGameVersion '1.20.1'
+            addGameVersion 'Forge'
+        }
+    }
+
+    tasks.named('curseforge').configure {
+        dependsOn tasks.jar
+    }
 }

@@ -111,10 +111,10 @@ public final class ModuleInstallService {
     }
 
     public static String formatResultMessage(Result result, boolean install, String moduleId, TargetSlot targetSlot) {
-        String action = install ? "Install" : "Remove";
+        String action = install ? "Installed" : "Removed";
         String id = moduleId == null || moduleId.isBlank() ? "module" : moduleId;
         return switch (result) {
-            case SUCCESS -> action + "d " + id + " on " + targetSlot.name().toLowerCase();
+            case SUCCESS -> action + " " + id + " on " + targetSlot.name().toLowerCase();
             case NOT_MODULAR_ITEM -> "Target slot does not contain a modular item.";
             case MODULE_NOT_FOUND -> "Unknown module: " + id;
             case DUPLICATE -> "Module already installed: " + id;

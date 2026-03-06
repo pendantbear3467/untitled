@@ -1,6 +1,6 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "all": "minecraft:block/deepslate_iron_ore"
+    "all": "extremecraft:block/silver_ore"
   }
 }

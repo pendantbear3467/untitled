@@ -39,6 +39,7 @@ public final class ModuleRuntimeService {
                 collectItemModifiers(stats, armor, next);
             }
             collectItemModifiers(stats, player.getMainHandItem(), next);
+            collectItemModifiers(stats, player.getOffhandItem(), next);
 
             mergeEquipmentModifiers(player, stats, next);
         });
