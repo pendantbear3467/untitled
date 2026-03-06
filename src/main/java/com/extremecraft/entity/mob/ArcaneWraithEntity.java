@@ -1,5 +1,9 @@
 package com.extremecraft.entity.mob;
 
+import com.extremecraft.combat.CombatEngine;
+import com.extremecraft.combat.DamageContext;
+import com.extremecraft.combat.DamageResult;
+import com.extremecraft.combat.DamageType;
 import com.extremecraft.registry.ModSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -11,6 +15,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 public final class ArcaneWraithEntity extends AbstractECMonster {
@@ -37,8 +42,18 @@ public final class ArcaneWraithEntity extends AbstractECMonster {
 
         if (this.tickCount % 50 == 0 && this.distanceToSqr(target) <= 16.0D) {
             float lifeDrainDamage = 2.5F + (float) (this.attackDamage() * 0.35D);
-            if (target.hurt(this.damageSources().magic(), lifeDrainDamage)) {
-                this.heal(Math.max(1.0F, lifeDrainDamage * 0.35F));
+            DamageResult result = CombatEngine.applyDamage(DamageContext.builder()
+                    .attacker(this)
+                    .target(target)
+                    .damageAmount(lifeDrainDamage)
+                    .damageType(DamageType.MAGIC)
+                    .abilitySource("mob:arcane_life_drain")
+                    .weaponSource(ItemStack.EMPTY)
+                    .armorValue(target.getArmorValue())
+                    .build());
+
+            if (result.finalDamage() > 0.0F) {
+                this.heal(Math.max(1.0F, result.finalDamage() * 0.35F));
                 target.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 80, 0));
                 this.emitAbilityParticles(ParticleTypes.WITCH, 18, 0.45D, 0.06D);
             }

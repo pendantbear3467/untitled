@@ -1,5 +1,8 @@
 package com.extremecraft.entity.boss;
 
+import com.extremecraft.combat.CombatEngine;
+import com.extremecraft.combat.DamageContext;
+import com.extremecraft.combat.DamageType;
 import com.extremecraft.entity.mob.AbstractECMonster;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.server.level.ServerBossEvent;
@@ -14,6 +17,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.phys.Vec3;
@@ -141,7 +145,16 @@ public abstract class AbstractECBoss extends AbstractECMonster {
                 entity -> entity != this && entity.isAlive());
 
         for (LivingEntity entity : nearby) {
-            entity.hurt(this.damageSources().mobAttack(this), damage);
+            CombatEngine.applyDamage(DamageContext.builder()
+                    .attacker(this)
+                    .target(entity)
+                    .damageAmount(damage)
+                    .damageType(DamageType.PHYSICAL)
+                    .abilitySource("boss:pulse")
+                    .weaponSource(ItemStack.EMPTY)
+                    .armorValue(entity.getArmorValue())
+                    .build());
+
             Vec3 push = entity.position().subtract(this.position());
             Vec3 flat = new Vec3(push.x, 0.0D, push.z);
             if (flat.lengthSqr() < 1.0E-4D) {

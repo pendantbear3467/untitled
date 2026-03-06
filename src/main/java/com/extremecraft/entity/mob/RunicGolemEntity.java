@@ -1,5 +1,8 @@
 package com.extremecraft.entity.mob;
 
+import com.extremecraft.combat.CombatEngine;
+import com.extremecraft.combat.DamageContext;
+import com.extremecraft.combat.DamageType;
 import com.extremecraft.registry.ModSounds;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.sounds.SoundEvent;
@@ -9,6 +12,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -68,13 +72,29 @@ public final class RunicGolemEntity extends AbstractECMonster {
 
         LivingEntity target = this.getTarget();
         if (target != null && target.isAlive()) {
-            target.hurt(this.damageSources().mobAttack(this), (float) (this.attackDamage() * 1.3D));
+            CombatEngine.applyDamage(DamageContext.builder()
+                    .attacker(this)
+                    .target(target)
+                    .damageAmount((float) (this.attackDamage() * 1.3D))
+                    .damageType(DamageType.PHYSICAL)
+                    .abilitySource("mob:runic_slam")
+                    .weaponSource(ItemStack.EMPTY)
+                    .armorValue(target.getArmorValue())
+                    .build());
             knockbackFromCenter(target, 1.1F, 0.25D);
             target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 60, 1));
         }
 
         for (LivingEntity entity : impacted) {
-            entity.hurt(this.damageSources().mobAttack(this), (float) (this.attackDamage() * 0.75D));
+            CombatEngine.applyDamage(DamageContext.builder()
+                    .attacker(this)
+                    .target(entity)
+                    .damageAmount((float) (this.attackDamage() * 0.75D))
+                    .damageType(DamageType.PHYSICAL)
+                    .abilitySource("mob:runic_shock")
+                    .weaponSource(ItemStack.EMPTY)
+                    .armorValue(entity.getArmorValue())
+                    .build());
             knockbackFromCenter(entity, 0.8F, 0.18D);
         }
 

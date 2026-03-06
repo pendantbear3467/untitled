@@ -48,7 +48,9 @@ public class RuntimeSyncEvents {
         SpellCastingSystem.tickChanneling(player);
         AbilityEngine.tickChanneling(player);
 
-        if ((player.tickCount % 40) == 0) {
+        int syncInterval = 40;
+        int offset = Math.floorMod(player.getUUID().hashCode(), syncInterval);
+        if (((player.tickCount + offset) % syncInterval) == 0) {
             RuntimeSyncService.syncStats(player);
             RuntimeSyncService.syncMachineStates(player);
         }

@@ -1,5 +1,8 @@
 package com.extremecraft.entity.mob;
 
+import com.extremecraft.combat.CombatEngine;
+import com.extremecraft.combat.DamageContext;
+import com.extremecraft.combat.DamageType;
 import com.extremecraft.config.Config;
 import com.extremecraft.registry.ModSounds;
 import net.minecraft.core.BlockPos;
@@ -11,6 +14,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
@@ -46,7 +50,16 @@ public final class EnergyParasiteEntity extends AbstractECMonster {
 
         if (this.tickCount % 70 == 0 && this.hasTargetInRange(5.0D)) {
             LivingEntity target = this.getTarget();
-            if (target != null && target.hurt(this.damageSources().magic(), (float) (this.attackDamage() * 0.7D + 1.5D))) {
+            if (target != null) {
+                CombatEngine.applyDamage(DamageContext.builder()
+                        .attacker(this)
+                        .target(target)
+                        .damageAmount((float) (this.attackDamage() * 0.7D + 1.5D))
+                        .damageType(DamageType.MAGIC)
+                        .abilitySource("mob:energy_parasite_drain")
+                        .weaponSource(ItemStack.EMPTY)
+                        .armorValue(target.getArmorValue())
+                        .build());
                 target.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 80, 0));
                 this.emitAbilityParticles(ParticleTypes.WITCH, 12, 0.35D, 0.02D);
             }
@@ -74,11 +87,11 @@ public final class EnergyParasiteEntity extends AbstractECMonster {
     }
 
     private int drainNearbyMachines(int radius, int maxTotalDrain) {
-        int[] drained = new int[]{0};
+        int drained = 0;
         BlockPos center = this.blockPosition();
 
         for (BlockPos pos : BlockPos.betweenClosed(center.offset(-radius, -2, -radius), center.offset(radius, 2, radius))) {
-            if (drained[0] >= maxTotalDrain) {
+            if (drained >= maxTotalDrain) {
                 break;
             }
 
@@ -87,10 +100,15 @@ public final class EnergyParasiteEntity extends AbstractECMonster {
                 continue;
             }
 
-            blockEntity.getCapability(ForgeCapabilities.ENERGY).ifPresent(storage -> drained[0] += drainFromStorage(storage, maxTotalDrain - drained[0]));
+            IEnergyStorage storage = blockEntity.getCapability(ForgeCapabilities.ENERGY).orElse(null);
+            if (storage == null) {
+                continue;
+            }
+
+            drained += drainFromStorage(storage, maxTotalDrain - drained);
         }
 
-        return drained[0];
+        return drained;
     }
 
     private int drainFromStorage(IEnergyStorage storage, int remaining) {

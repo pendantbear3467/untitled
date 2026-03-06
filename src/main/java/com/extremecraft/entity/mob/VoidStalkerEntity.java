@@ -1,5 +1,8 @@
 package com.extremecraft.entity.mob;
 
+import com.extremecraft.combat.CombatEngine;
+import com.extremecraft.combat.DamageContext;
+import com.extremecraft.combat.DamageType;
 import com.extremecraft.registry.ModSounds;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.util.Mth;
@@ -11,6 +14,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -56,7 +60,15 @@ public final class VoidStalkerEntity extends AbstractECMonster {
         float facingDot = (float) target.getLookAngle().dot(toAttacker);
         if (facingDot < -0.25F) {
             float bonusDamage = Math.max(2.0F, (float) this.attackDamage() * 0.55F);
-            target.hurt(this.damageSources().mobAttack(this), bonusDamage);
+            CombatEngine.applyDamage(DamageContext.builder()
+                    .attacker(this)
+                    .target(target)
+                    .damageAmount(bonusDamage)
+                    .damageType(DamageType.PHYSICAL)
+                    .abilitySource("mob:void_ambush")
+                    .weaponSource(ItemStack.EMPTY)
+                    .armorValue(target.getArmorValue())
+                    .build());
             target.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 50, 0));
             this.emitAbilityParticles(ParticleTypes.DRAGON_BREATH, 20, 0.5D, 0.03D);
         }

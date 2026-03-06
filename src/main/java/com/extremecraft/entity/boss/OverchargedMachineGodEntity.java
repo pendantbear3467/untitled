@@ -1,5 +1,8 @@
 package com.extremecraft.entity.boss;
 
+import com.extremecraft.combat.CombatEngine;
+import com.extremecraft.combat.DamageContext;
+import com.extremecraft.combat.DamageType;
 import com.extremecraft.entity.ModEntities;
 import com.extremecraft.registry.ModSounds;
 import net.minecraft.core.particles.ParticleTypes;
@@ -11,6 +14,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 public final class OverchargedMachineGodEntity extends AbstractECBoss {
@@ -94,7 +98,15 @@ public final class OverchargedMachineGodEntity extends AbstractECBoss {
 
     private void fireMachineLaser(LivingEntity target, int phase) {
         float damage = (float) (this.attackDamage() * (phase >= 3 ? 1.25D : 1.0D) + 2.0D);
-        target.hurt(this.damageSources().mobAttack(this), damage);
+        CombatEngine.applyDamage(DamageContext.builder()
+                .attacker(this)
+                .target(target)
+                .damageAmount(damage)
+                .damageType(DamageType.LIGHTNING)
+                .abilitySource("boss:machine_laser")
+                .weaponSource(ItemStack.EMPTY)
+                .armorValue(target.getArmorValue())
+                .build());
         target.setSecondsOnFire(phase >= 3 ? 3 : 1);
 
         this.pulseParticles(ParticleTypes.ELECTRIC_SPARK, 34, 0.55D, 0.06D);
