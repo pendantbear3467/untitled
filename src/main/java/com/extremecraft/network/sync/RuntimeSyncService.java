@@ -1,12 +1,15 @@
 package com.extremecraft.network.sync;
 
 import com.extremecraft.ability.AbilityCooldownManager;
+import com.extremecraft.ability.AbilityDefinition;
+import com.extremecraft.ability.AbilityRegistry;
 import com.extremecraft.machine.MachineBlockEntity;
 import com.extremecraft.magic.mana.ManaService;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.AbilitySyncPacket;
 import com.extremecraft.progression.StatCalculationEngine;
 import com.extremecraft.progression.capability.PlayerStatsApi;
+import com.extremecraft.progression.level.LevelService;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -41,8 +44,23 @@ public final class RuntimeSyncService {
 
     public static void syncAbilities(ServerPlayer player) {
         CompoundTag payload = AbilityCooldownManager.serializeFor(player);
+        CompoundTag slotAbilities = new CompoundTag();
+        CompoundTag slotManaCosts = new CompoundTag();
+
+        for (int slot = 0; slot < 4; slot++) {
+            String abilityId = LevelService.abilityInSlot(player, slot);
+            String key = "slot_" + (slot + 1);
+            slotAbilities.putString(key, abilityId);
+
+            AbilityDefinition definition = AbilityRegistry.get(abilityId);
+            int manaCost = definition == null ? 0 : Math.max(0, definition.manaCost());
+            slotManaCosts.putInt(key, manaCost);
+        }
+
+        payload.put("slots", slotAbilities);
+        payload.put("slot_mana", slotManaCosts);
+
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new AbilitySyncPacket(payload));
-        // Legacy packet retained for compatibility with existing client listeners.
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncAbilityStateS2CPacket(payload));
     }
 

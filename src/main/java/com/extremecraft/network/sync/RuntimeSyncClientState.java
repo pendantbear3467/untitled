@@ -8,6 +8,8 @@ import java.util.Map;
 public final class RuntimeSyncClientState {
     private static final Map<String, Double> PLAYER_STATS = new LinkedHashMap<>();
     private static final Map<String, Integer> ABILITY_COOLDOWNS = new LinkedHashMap<>();
+    private static final Map<Integer, String> ABILITY_SLOTS = new LinkedHashMap<>();
+    private static final Map<Integer, Integer> ABILITY_SLOT_MANA_COSTS = new LinkedHashMap<>();
     private static final java.util.Set<String> SKILL_UNLOCKS = new java.util.LinkedHashSet<>();
     private static CompoundTag MACHINE_STATES = new CompoundTag();
 
@@ -28,6 +30,20 @@ public final class RuntimeSyncClientState {
         CompoundTag cooldowns = tag.getCompound("cooldowns");
         for (String key : cooldowns.getAllKeys()) {
             ABILITY_COOLDOWNS.put(key, cooldowns.getInt(key));
+        }
+
+        ABILITY_SLOTS.clear();
+        CompoundTag slots = tag.getCompound("slots");
+        for (int slot = 1; slot <= 4; slot++) {
+            String key = "slot_" + slot;
+            ABILITY_SLOTS.put(slot, slots.getString(key));
+        }
+
+        ABILITY_SLOT_MANA_COSTS.clear();
+        CompoundTag slotMana = tag.getCompound("slot_mana");
+        for (int slot = 1; slot <= 4; slot++) {
+            String key = "slot_" + slot;
+            ABILITY_SLOT_MANA_COSTS.put(slot, slotMana.getInt(key));
         }
     }
 
@@ -51,6 +67,14 @@ public final class RuntimeSyncClientState {
         return Map.copyOf(ABILITY_COOLDOWNS);
     }
 
+    public static String abilityInSlot(int slotIndex) {
+        return ABILITY_SLOTS.getOrDefault(slotIndex + 1, "");
+    }
+
+    public static int manaCostForSlot(int slotIndex) {
+        return ABILITY_SLOT_MANA_COSTS.getOrDefault(slotIndex + 1, 0);
+    }
+
     public static java.util.Set<String> skillUnlocks() {
         return java.util.Set.copyOf(SKILL_UNLOCKS);
     }
@@ -59,4 +83,3 @@ public final class RuntimeSyncClientState {
         return MACHINE_STATES.copy();
     }
 }
-
