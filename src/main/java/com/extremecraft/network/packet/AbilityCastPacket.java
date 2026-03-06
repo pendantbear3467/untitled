@@ -1,6 +1,7 @@
 package com.extremecraft.network.packet;
 
 import com.extremecraft.ability.AbilityEngine;
+import com.extremecraft.network.security.ServerPacketLimiter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
@@ -33,6 +34,11 @@ public record AbilityCastPacket(String abilityId) {
             ServerPlayer sender = context.getSender();
             if (sender == null || sender.isSpectator()) {
                 LOGGER.debug("[Network] Dropped AbilityCastPacket due to missing sender or spectator state");
+                return;
+            }
+
+            if (!ServerPacketLimiter.allow(sender, "ability.cast", 1, 6, 20)) {
+                LOGGER.debug("[Network] Rate-limited AbilityCastPacket from {}", sender.getScoreboardName());
                 return;
             }
 

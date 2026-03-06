@@ -2,6 +2,7 @@ package com.extremecraft.network.packet;
 
 import com.extremecraft.ability.AbilityCastResult;
 import com.extremecraft.ability.AbilityEngine;
+import com.extremecraft.network.security.ServerPacketLimiter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
@@ -53,6 +54,11 @@ public record ActivateAbilityC2SPacket(UUID playerUuid, String abilityId, Vec3 t
                 return;
             }
 
+            if (!ServerPacketLimiter.allow(sender, "ability.cast", 1, 6, 20)) {
+                LOGGER.debug("[Network] Rate-limited ActivateAbilityC2SPacket from {}", sender.getScoreboardName());
+                return;
+            }
+
             String abilityId = packet.abilityId == null ? "" : packet.abilityId.trim();
             if (abilityId.isEmpty()) {
                 LOGGER.debug("[Network] Dropped ActivateAbilityC2SPacket with blank ability id from {}", sender.getScoreboardName());
@@ -71,11 +77,16 @@ public record ActivateAbilityC2SPacket(UUID playerUuid, String abilityId, Vec3 t
                 return;
             }
 
+            if (packet.targetPosition != null && sender.position().distanceToSqr(packet.targetPosition) > 4096.0D) {
+                LOGGER.warn("[Network] Rejected ActivateAbilityC2SPacket with out-of-range target from {}", sender.getScoreboardName());
+                return;
+            }
+
             AbilityCastResult result = AbilityEngine.cast(sender, abilityId, sender.getUUID(), packet.targetPosition);
             if (!result.succeeded()) {
                 sender.displayClientMessage(net.minecraft.network.chat.Component.literal("Ability failed: " + result.status().name().toLowerCase()), true);
                 LOGGER.debug("[Ability] Activation failed for {} ability={} status={} reason={}",
-                    sender.getScoreboardName(), abilityId, result.status(), result.message());
+                        sender.getScoreboardName(), abilityId, result.status(), result.reason());
             }
         });
         context.setPacketHandled(true);
