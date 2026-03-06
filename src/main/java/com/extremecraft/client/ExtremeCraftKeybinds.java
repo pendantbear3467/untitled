@@ -18,6 +18,7 @@ public final class ExtremeCraftKeybinds {
     public static KeyMapping ABILITY_SLOT_2;
     public static KeyMapping ABILITY_SLOT_3;
     public static KeyMapping ABILITY_SLOT_4;
+    public static KeyMapping DEV_DEBUG_OVERLAY;
 
     private ExtremeCraftKeybinds() {
     }
@@ -51,10 +52,18 @@ public final class ExtremeCraftKeybinds {
                 "key.categories." + ExtremeCraftMod.MODID
         );
 
+        DEV_DEBUG_OVERLAY = new KeyMapping(
+            "key." + ExtremeCraftMod.MODID + ".dev_debug_overlay",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_F10,
+            "key.categories." + ExtremeCraftMod.MODID
+        );
+
         event.register(ABILITY_SLOT_1);
         event.register(ABILITY_SLOT_2);
         event.register(ABILITY_SLOT_3);
         event.register(ABILITY_SLOT_4);
+        event.register(DEV_DEBUG_OVERLAY);
     }
 
     public static String resolveAbilityForSlot(LocalPlayer player, int slotIndex) {

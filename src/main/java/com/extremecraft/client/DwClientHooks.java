@@ -1,6 +1,7 @@
 package com.extremecraft.client;
 
 import com.extremecraft.client.ExtremeCraftKeybinds;
+import com.extremecraft.client.gui.debug.DeveloperOverlayState;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.net.DwNetwork;
 import com.extremecraft.net.OffhandActionC2S;
@@ -12,6 +13,7 @@ import com.extremecraft.network.packet.SpellCastPacket;
 import com.extremecraft.progression.classsystem.ability.ClassAbilityClientState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
@@ -120,6 +122,14 @@ public final class DwClientHooks {
 
         if (DwKeybinds.CAST_SPELL != null && DwKeybinds.CAST_SPELL.consumeClick()) {
             ModNetwork.CHANNEL.sendToServer(new SpellCastPacket());
+        }
+
+        if (ExtremeCraftKeybinds.DEV_DEBUG_OVERLAY != null && ExtremeCraftKeybinds.DEV_DEBUG_OVERLAY.consumeClick()) {
+            boolean enabled = DeveloperOverlayState.toggle();
+            mc.player.displayClientMessage(
+                    Component.literal("ExtremeCraft developer overlay: " + (enabled ? "ON" : "OFF")),
+                    true
+            );
         }
     }
 

@@ -54,9 +54,18 @@ public record RemoveModuleC2SPacket(String moduleId, String targetSlot) {
 
             ModuleInstallService.TargetSlot slot = ModuleInstallService.TargetSlot.byName(requestedSlot);
             ModuleInstallService.Result result = ModuleInstallService.remove(sender, slot, moduleId);
-            String message = ModuleInstallService.formatResultMessage(result, false, moduleId, slot);
-            ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> sender), new SyncModuleActionResultS2CPacket(ModuleInstallService.isSuccess(result), message));
+            dispatchResult(sender, result, moduleId, slot);
         });
         context.setPacketHandled(true);
     }
+
+    private static void dispatchResult(ServerPlayer sender,
+                                       ModuleInstallService.Result result,
+                                       String moduleId,
+                                       ModuleInstallService.TargetSlot slot) {
+        String message = ModuleInstallService.formatResultMessage(result, false, moduleId, slot);
+        ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> sender),
+                new SyncModuleActionResultS2CPacket(ModuleInstallService.isSuccess(result), message));
+    }
 }
+

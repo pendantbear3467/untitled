@@ -1,8 +1,14 @@
 package com.extremecraft.client.gui.player;
 
+import com.extremecraft.client.gui.debug.DeveloperOverlayState;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.magic.mana.ManaApi;
 import com.extremecraft.network.sync.RuntimeSyncClientState;
+import com.extremecraft.platform.data.registry.MachineDataRegistry;
+import com.extremecraft.platform.data.registry.RecipeDataRegistry;
+import com.extremecraft.platform.data.registry.SkillTreeDataRegistry;
+import com.extremecraft.platform.data.sync.client.PlatformDataClientState;
+import com.extremecraft.platform.data.validator.DataValidationService;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -35,6 +41,7 @@ public class AbilityBarOverlay {
     private static final int SLOT_SIZE = 22;
     private static final int ICON_SIZE = 16;
     private static final int SLOT_COUNT = 4;
+    private static final int DEV_PANEL_WIDTH = 196;
 
     @SubscribeEvent
     public void onRenderOverlay(RenderGuiOverlayEvent.Post event) {
@@ -55,6 +62,10 @@ public class AbilityBarOverlay {
         for (int slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++) {
             int x = startX + slotIndex * (SLOT_SIZE + 4);
             renderSlot(gui, player, slotIndex, x, y);
+        }
+
+        if (DeveloperOverlayState.isEnabled()) {
+            renderDeveloperOverlay(gui, screenWidth);
         }
     }
 
@@ -98,6 +109,17 @@ public class AbilityBarOverlay {
         int manaColor = currentMana >= manaCost ? 0x88A8E7FF : 0x88FF7A7A;
         gui.fill(x + 2, y + SLOT_SIZE - 4, x + SLOT_SIZE - 2, y + SLOT_SIZE - 2, 0x6611141A);
         gui.drawString(Minecraft.getInstance().font, Component.literal(String.valueOf(manaCost)), x + 4, y + SLOT_SIZE - 11, manaColor, false);
+
+        if (!abilityId.isBlank()) {
+            gui.drawString(
+                    Minecraft.getInstance().font,
+                    Component.literal(abilityId),
+                    x - 2,
+                    y - 9,
+                    0xAACFD8E3,
+                    false
+            );
+        }
     }
 
     private void drawCooldownRadial(GuiGraphics gui, int x, int y, int size, float ratio) {
@@ -136,6 +158,14 @@ public class AbilityBarOverlay {
                 return specificIcon;
             }
 
+            ResourceLocation spellIcon = ResourceLocation.fromNamespaceAndPath(
+                    ECConstants.MODID,
+                    "textures/gui/spells/" + id + ".png"
+            );
+            if (hasResource(minecraft.getResourceManager(), spellIcon)) {
+                return spellIcon;
+            }
+
             if (loggedMissingAbilityIcons.add(id)) {
                 LOGGER.warn("Missing ability icon for '{}', using fallback texture", id);
             }
@@ -154,6 +184,47 @@ public class AbilityBarOverlay {
 
     private static boolean hasResource(ResourceManager resourceManager, ResourceLocation location) {
         return resourceManager.getResource(location).isPresent();
+    }
+
+    private void renderDeveloperOverlay(GuiGraphics gui, int screenWidth) {
+        int x = screenWidth - DEV_PANEL_WIDTH - 8;
+        int y = 8;
+        int panelHeight = 82;
+
+        gui.fill(x, y, x + DEV_PANEL_WIDTH, y + panelHeight, 0xAA090D12);
+        gui.fill(x + 1, y + 1, x + DEV_PANEL_WIDTH - 1, y + panelHeight - 1, 0x880F1722);
+
+        int lineY = y + 6;
+        gui.drawString(Minecraft.getInstance().font, "ExtremeCraft Dev Overlay", x + 6, lineY, 0xFFE6F1FF, false);
+
+        lineY += 12;
+        gui.drawString(Minecraft.getInstance().font, "Loaded machines: " + PlatformDataClientState.machines().size(), x + 6, lineY, 0xFFBFD6E8, false);
+
+        lineY += 10;
+        gui.drawString(Minecraft.getInstance().font, "Loaded skill trees: " + PlatformDataClientState.skillTrees().size(), x + 6, lineY, 0xFFBFD6E8, false);
+
+        lineY += 10;
+        String datapackCounts = "Datapacks M/S/R: "
+                + MachineDataRegistry.registry().size()
+                + "/"
+                + SkillTreeDataRegistry.registry().size()
+                + "/"
+                + RecipeDataRegistry.registry().size();
+        gui.drawString(Minecraft.getInstance().font, datapackCounts, x + 6, lineY, 0xFFAFCCDF, false);
+
+        lineY += 10;
+        int runtimeMachines = RuntimeSyncClientState.machineStates().getAllKeys().size();
+        gui.drawString(Minecraft.getInstance().font, "Runtime machines synced: " + runtimeMachines, x + 6, lineY, 0xFFAFCCDF, false);
+
+        lineY += 10;
+        gui.drawString(
+                Minecraft.getInstance().font,
+                "Validation status: " + DataValidationService.lastValidationStatus(),
+                x + 6,
+                lineY,
+                0xFFE7C18A,
+                false
+        );
     }
 }
 

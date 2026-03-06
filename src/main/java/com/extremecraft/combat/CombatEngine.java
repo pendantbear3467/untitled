@@ -26,7 +26,7 @@ public final class CombatEngine {
      * Central combat pipeline for both vanilla and data-driven ability damage.
      * <p>
      * Damage requests from abilities/spells feed into {@link #applyDamage(DamageContext)}, while
-     * vanilla hurt events are reconciled by {@link #processLivingHurtEvent(LivingHurtEvent)} so all
+     * vanilla hurt events are reconciled by {@code processLivingHurtEvent} so all
      * combat modifiers, resistances, and status effects are resolved through one path.
      */
     private static final Logger LOGGER = LogManager.getLogger();
@@ -105,7 +105,7 @@ public final class CombatEngine {
         return result;
     }
 
-    public static void processLivingHurtEvent(LivingHurtEvent event) {
+    public static void processLivingHurtEvent(net.minecraftforge.event.entity.living.LivingHurtEvent event) {
         if (event == null || event.getEntity() == null || event.getSource() == null || event.getAmount() <= 0.0F) {
             return;
         }
@@ -129,7 +129,7 @@ public final class CombatEngine {
         event.setAmount(Math.max(0.0F, result.finalDamage()));
     }
 
-    public static DamageContext fromLivingHurtEvent(LivingHurtEvent event) {
+    public static DamageContext fromLivingHurtEvent(net.minecraftforge.event.entity.living.LivingHurtEvent event) {
         LivingEntity attacker = event.getSource().getEntity() instanceof LivingEntity living ? living : null;
         LivingEntity target = event.getEntity();
 
@@ -255,4 +255,7 @@ public final class CombatEngine {
         return REENTRANCY_DEPTH.get();
     }
 }
+
+
+
 
