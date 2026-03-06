@@ -5,6 +5,7 @@ import com.extremecraft.api.definition.MachineDefinition;
 import com.extremecraft.api.definition.MaterialDefinition;
 import com.extremecraft.api.definition.ModuleDefinition;
 import com.extremecraft.api.definition.QuestDefinition;
+import com.extremecraft.api.definition.RecipeDefinition;
 import com.extremecraft.api.definition.SkillTreeDefinition;
 import com.extremecraft.api.definition.TechTreeDefinition;
 import com.extremecraft.api.registration.ExtremeCraftApiProvider;
@@ -21,6 +22,7 @@ public final class ExtremeCraftApiProviderImpl implements ExtremeCraftApiProvide
     private final Map<String, ModuleDefinition> modules = new LinkedHashMap<>();
     private final Map<String, AbilityDefinition> abilities = new LinkedHashMap<>();
     private final Map<String, TechTreeDefinition> techTrees = new LinkedHashMap<>();
+    private final Map<String, RecipeDefinition> recipes = new LinkedHashMap<>();
 
     @Override
     public synchronized void registerMachine(MachineDefinition definition) {
@@ -58,6 +60,11 @@ public final class ExtremeCraftApiProviderImpl implements ExtremeCraftApiProvide
     }
 
     @Override
+    public synchronized void registerRecipe(RecipeDefinition definition) {
+        recipes.put(definition.id(), definition);
+    }
+
+    @Override
     public synchronized Collection<MachineDefinition> machines() {
         return java.util.List.copyOf(machines.values());
     }
@@ -90,5 +97,10 @@ public final class ExtremeCraftApiProviderImpl implements ExtremeCraftApiProvide
     @Override
     public synchronized Collection<TechTreeDefinition> techTrees() {
         return java.util.List.copyOf(techTrees.values());
+    }
+
+    @Override
+    public synchronized Collection<RecipeDefinition> recipes() {
+        return java.util.List.copyOf(recipes.values());
     }
 }

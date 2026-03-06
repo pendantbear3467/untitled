@@ -24,8 +24,8 @@ import com.extremecraft.net.DwNetwork;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.platform.CompatibilityGate;
 import com.extremecraft.platform.ExtremeCraftApiProviderImpl;
-import com.extremecraft.platform.data.loader.MachineDataLoader;
-import com.extremecraft.platform.data.loader.TechTreeDataLoader;
+import com.extremecraft.platform.data.loader.PlatformDataLoaderBootstrap;
+import com.extremecraft.platform.data.sync.PlatformDataSyncEvents;
 import com.extremecraft.platform.module.CoreGameplayModule;
 import com.extremecraft.platform.module.ExtremeCraftModuleLoader;
 import com.extremecraft.platform.module.ModuleRegistry;
@@ -134,8 +134,9 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new PlayerDualWieldEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerSkillTreeEvents());
             MinecraftForge.EVENT_BUS.register(new ModuleRuntimeEvents());
-            MinecraftForge.EVENT_BUS.register(new MachineDataLoader());
-            MinecraftForge.EVENT_BUS.register(new TechTreeDataLoader());
+
+            PlatformDataLoaderBootstrap.registerAll();
+            MinecraftForge.EVENT_BUS.register(new PlatformDataSyncEvents());
         });
     }
 

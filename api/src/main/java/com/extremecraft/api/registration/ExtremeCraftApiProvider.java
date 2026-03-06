@@ -5,6 +5,7 @@ import com.extremecraft.api.definition.MachineDefinition;
 import com.extremecraft.api.definition.MaterialDefinition;
 import com.extremecraft.api.definition.ModuleDefinition;
 import com.extremecraft.api.definition.QuestDefinition;
+import com.extremecraft.api.definition.RecipeDefinition;
 import com.extremecraft.api.definition.SkillTreeDefinition;
 import com.extremecraft.api.definition.TechTreeDefinition;
 
@@ -25,6 +26,8 @@ public interface ExtremeCraftApiProvider {
 
     void registerTechTree(TechTreeDefinition definition);
 
+    void registerRecipe(RecipeDefinition definition);
+
     Collection<MachineDefinition> machines();
 
     Collection<MaterialDefinition> materials();
@@ -38,4 +41,6 @@ public interface ExtremeCraftApiProvider {
     Collection<AbilityDefinition> abilities();
 
     Collection<TechTreeDefinition> techTrees();
+
+    Collection<RecipeDefinition> recipes();
 }

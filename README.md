@@ -24,24 +24,36 @@ It supports:
 ```bash
 python -m venv .venv
 .venv\\Scripts\\activate
-pip install pillow numpy pyqt6
+pip install -e .[all]
+```
+
+Minimal CLI install:
+
+```bash
+pip install -e .
+```
+
+Install with core procedural engine support:
+
+```bash
+pip install -e .[core]
 ```
 
 ### CLI
 
 ```bash
-python assetstudio.py generate tool mythril_pickaxe --material mythril --tier 4
-python assetstudio.py generate ore mythril --tier 4 --style metallic
-python assetstudio.py validate
-python assetstudio.py build datapack
-python assetstudio.py export resourcepack
-python assetstudio.py scan-registry --source src/main/java
+assetstudio generate tool mythril_pickaxe --material mythril --tier 4
+assetstudio generate ore mythril --tier 4 --style metallic
+assetstudio validate
+assetstudio build datapack
+assetstudio export resourcepack
+assetstudio scan-registry --source src/main/java
 ```
 
 ### GUI
 
 ```bash
-python assetstudio.py --gui
+assetstudio --gui
 ```
 
 ## Project Structure

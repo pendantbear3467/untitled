@@ -5,6 +5,7 @@ import com.extremecraft.api.definition.MachineDefinition;
 import com.extremecraft.api.definition.MaterialDefinition;
 import com.extremecraft.api.definition.ModuleDefinition;
 import com.extremecraft.api.definition.QuestDefinition;
+import com.extremecraft.api.definition.RecipeDefinition;
 import com.extremecraft.api.definition.SkillTreeDefinition;
 import com.extremecraft.api.definition.TechTreeDefinition;
 import com.extremecraft.api.registration.ExtremeCraftApiProvider;
@@ -53,6 +54,10 @@ public final class ExtremeCraftAPI {
         requireProvider().registerTechTree(definition);
     }
 
+    public static void registerRecipe(RecipeDefinition definition) {
+        requireProvider().registerRecipe(definition);
+    }
+
     public static Collection<MachineDefinition> machines() {
         return requireProvider().machines();
     }
@@ -79,6 +84,10 @@ public final class ExtremeCraftAPI {
 
     public static Collection<TechTreeDefinition> techTrees() {
         return requireProvider().techTrees();
+    }
+
+    public static Collection<RecipeDefinition> recipes() {
+        return requireProvider().recipes();
     }
 
     private static ExtremeCraftApiProvider requireProvider() {

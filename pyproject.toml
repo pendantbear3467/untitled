@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "extremecraft-asset-studio"
+version = "0.1.0"
+description = "EXTREMECRAFT ASSET STUDIO - modular Minecraft mod asset generator"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "ExtremeCraft Contributors" }
+]
+license = { text = "MIT" }
+keywords = ["minecraft", "forge", "neoforge", "fabric", "blockbench", "asset-generator"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Environment :: X11 Applications :: Qt",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+  "pillow>=10.0"
+]
+
+[project.optional-dependencies]
+core = [
+  "numpy>=1.24"
+]
+gui = [
+  "PyQt6>=6.6"
+]
+all = [
+  "numpy>=1.24",
+  "PyQt6>=6.6"
+]
+
+[project.scripts]
+assetstudio = "asset_studio.main:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["asset_studio*"]
+exclude = ["workspace*", "run*", "build*", "tools*", "src*", "api*", "client*", "core*", "gameplay*", "magic*", "tech*", "worldgen*"]

@@ -13,6 +13,7 @@ Core goals:
 
 - CLI + GUI dispatcher: `asset_studio/main.py`
 - Root launcher script: `assetstudio.py`
+- Installed console command (from `pyproject.toml`): `assetstudio`
 
 ## Architecture
 
@@ -52,4 +53,20 @@ Each workspace contains:
 ## Notes
 
 - Texture generation reuses the existing core under `tools/asset_generator` through `ProceduralTextureEngine`.
-- GUI preview is OpenGL-backed (`QOpenGLWidget`) with a lightweight rotating viewport scaffold.
+- GUI preview is OpenGL-backed (`QOpenGLWidget`) and supports interactive preview modes (`texture`, `item`, `block`, `animated`) with live texture loading after generation.
+
+## Packaging
+
+Install in editable mode:
+
+```bash
+pip install -e .
+```
+
+Install with optional extras:
+
+```bash
+pip install -e .[core]
+pip install -e .[gui]
+pip install -e .[all]
+```

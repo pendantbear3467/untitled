@@ -43,6 +43,7 @@ class AssetStudioWindow(QMainWindow):
         self.log.setReadOnly(True)
 
         self.preview = PreviewRenderer()
+        self._last_preview_texture: Path | None = None
         self.wizard = AssetWizardPanel()
         self.wizard.generate_tool_requested.connect(self._on_generate_tool)
 
@@ -83,8 +84,8 @@ class AssetStudioWindow(QMainWindow):
             "validate_assets": self._validate_assets,
             "export_resourcepack": lambda: self._export_target("resourcepack"),
             "export_datapack": lambda: self._export_target("datapack"),
-            "preview_models": lambda: self._write_log("Preview Models toggled"),
-            "texture_viewer": lambda: self._write_log("Texture Viewer opened"),
+            "preview_models": self._preview_models,
+            "texture_viewer": self._texture_viewer,
             "documentation": lambda: webbrowser.open("https://github.com/pendantbear3467/untitled/tree/main/docs"),
             "github": lambda: webbrowser.open("https://github.com/pendantbear3467/untitled"),
         }
@@ -115,6 +116,7 @@ class AssetStudioWindow(QMainWindow):
             return
         result = import_bbmodel(Path(selected), self.context)
         self._write_log(f"Imported Blockbench model: {result}")
+        self._set_preview_texture(self.context.workspace_root / "assets" / "textures" / "block" / f"{result}.png", "block")
 
     def _export_assets(self) -> None:
         export_pack_command(self.context, "resourcepack")
@@ -136,26 +138,73 @@ class AssetStudioWindow(QMainWindow):
             texture_style=payload.texture_style,
         )
         self._write_log(f"Generated tool bundle: {payload.tool_name}")
+        self._set_preview_texture(
+            self.context.workspace_root / "assets" / "textures" / "item" / f"{payload.tool_name}.png",
+            "item",
+        )
 
     def _generate_ore(self) -> None:
-        OreGenerator(self.context).generate(material="mythril", tier=4, texture_style="metallic")
+        material = "mythril"
+        OreGenerator(self.context).generate(material=material, tier=4, texture_style="metallic")
         self._write_log("Generated ore bundle: mythril")
+        self._set_preview_texture(
+            self.context.workspace_root / "assets" / "textures" / "block" / f"{material}_ore.png",
+            "block",
+        )
 
     def _generate_armor(self) -> None:
-        ArmorGenerator(self.context).generate(material="mythril", tier=4, texture_style="metallic")
+        material = "mythril"
+        ArmorGenerator(self.context).generate(material=material, tier=4, texture_style="metallic")
         self._write_log("Generated armor bundle: mythril")
+        self._set_preview_texture(
+            self.context.workspace_root / "assets" / "textures" / "item" / f"{material}_helmet.png",
+            "item",
+        )
 
     def _generate_machine(self) -> None:
-        MachineGenerator(self.context).generate(machine_name="mythril_crusher", material="mythril", texture_style="industrial")
+        machine_name = "mythril_crusher"
+        MachineGenerator(self.context).generate(machine_name=machine_name, material="mythril", texture_style="industrial")
         self._write_log("Generated machine asset: mythril_crusher")
+        self._set_preview_texture(
+            self.context.workspace_root / "assets" / "textures" / "block" / f"{machine_name}.png",
+            "block",
+        )
 
     def _generate_block(self) -> None:
-        BlockGenerator(self.context).generate(block_name="mythril_bricks", material="mythril", texture_style="ancient")
+        block_name = "mythril_bricks"
+        BlockGenerator(self.context).generate(block_name=block_name, material="mythril", texture_style="ancient")
         self._write_log("Generated block asset: mythril_bricks")
+        self._set_preview_texture(
+            self.context.workspace_root / "assets" / "textures" / "block" / f"{block_name}.png",
+            "block",
+        )
 
     def _export_target(self, target: str) -> None:
         export_pack_command(self.context, target)
         self._write_log(f"Exported {target}")
+
+    def _preview_models(self) -> None:
+        self.preview.set_mode("block")
+        if self._last_preview_texture:
+            self.preview.load_texture(self._last_preview_texture)
+        self._write_log("Preview mode: model")
+
+    def _texture_viewer(self) -> None:
+        selected, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open texture",
+            str(self.context.workspace_root / "assets" / "textures"),
+            "PNG (*.png)",
+        )
+        if not selected:
+            return
+        self._set_preview_texture(Path(selected), "texture")
+        self._write_log(f"Texture loaded: {selected}")
+
+    def _set_preview_texture(self, texture_path: Path, mode: str) -> None:
+        self._last_preview_texture = texture_path
+        self.preview.set_mode(mode)
+        self.preview.load_texture(texture_path)
 
 
 def launch_gui(workspace_root: Path) -> int:

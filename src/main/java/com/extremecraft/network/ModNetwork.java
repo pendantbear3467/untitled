@@ -3,14 +3,18 @@ package com.extremecraft.network;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
 import com.extremecraft.network.packet.InstallModuleC2SPacket;
+import com.extremecraft.network.packet.OpenExtremeCraftDebugScreenS2CPacket;
 import com.extremecraft.network.packet.PlayerStatsPacket;
 import com.extremecraft.network.packet.RemoveModuleC2SPacket;
 import com.extremecraft.network.packet.RequestPlayerStatsPacket;
 import com.extremecraft.network.packet.SyncClassAbilityStateS2CPacket;
+import com.extremecraft.network.packet.SyncMachinesPacket;
+import com.extremecraft.network.packet.SyncMaterialsPacket;
 import com.extremecraft.network.packet.SyncModuleAbilityStateS2CPacket;
 import com.extremecraft.network.packet.SyncModuleActionResultS2CPacket;
 import com.extremecraft.network.packet.SyncModuleCatalogS2CPacket;
 import com.extremecraft.network.packet.SyncProgressPacket;
+import com.extremecraft.network.packet.SyncSkillTreesPacket;
 import com.extremecraft.network.packet.UpgradeStatPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkRegistry;
@@ -96,6 +100,30 @@ public final class ModNetwork {
                 .encoder(RemoveModuleC2SPacket::encode)
                 .decoder(RemoveModuleC2SPacket::decode)
                 .consumerMainThread(RemoveModuleC2SPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncMachinesPacket.class, nextId())
+                .encoder(SyncMachinesPacket::encode)
+                .decoder(SyncMachinesPacket::decode)
+                .consumerMainThread(SyncMachinesPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncSkillTreesPacket.class, nextId())
+                .encoder(SyncSkillTreesPacket::encode)
+                .decoder(SyncSkillTreesPacket::decode)
+                .consumerMainThread(SyncSkillTreesPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncMaterialsPacket.class, nextId())
+                .encoder(SyncMaterialsPacket::encode)
+                .decoder(SyncMaterialsPacket::decode)
+                .consumerMainThread(SyncMaterialsPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(OpenExtremeCraftDebugScreenS2CPacket.class, nextId())
+                .encoder(OpenExtremeCraftDebugScreenS2CPacket::encode)
+                .decoder(OpenExtremeCraftDebugScreenS2CPacket::decode)
+                .consumerMainThread(OpenExtremeCraftDebugScreenS2CPacket::handle)
                 .add();
     }
 
