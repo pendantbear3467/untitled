@@ -9,6 +9,7 @@ import org.lwjgl.glfw.GLFW;
 public final class DwKeybinds {
     public static KeyMapping OFFHAND_OVERRIDE;
     public static KeyMapping CLASS_ABILITY;
+    public static KeyMapping CAST_SPELL;
 
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent e) {
         OFFHAND_OVERRIDE = new KeyMapping(
@@ -19,13 +20,21 @@ public final class DwKeybinds {
         );
 
         CLASS_ABILITY = new KeyMapping(
-            "key." + ExtremeCraftMod.MODID + ".class_ability",
-            InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_R,
-            "key.categories." + ExtremeCraftMod.MODID
+                "key." + ExtremeCraftMod.MODID + ".class_ability",
+                InputConstants.Type.KEYSYM,
+                GLFW.GLFW_KEY_R,
+                "key.categories." + ExtremeCraftMod.MODID
+        );
+
+        CAST_SPELL = new KeyMapping(
+                "key." + ExtremeCraftMod.MODID + ".cast_spell",
+                InputConstants.Type.KEYSYM,
+                GLFW.GLFW_KEY_G,
+                "key.categories." + ExtremeCraftMod.MODID
         );
 
         e.register(OFFHAND_OVERRIDE);
         e.register(CLASS_ABILITY);
+        e.register(CAST_SPELL);
     }
 }
