@@ -9,7 +9,7 @@ from asset_studio.cli.cli_commands import register_subcommands, run_cli
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="assetstudio",
-        description="EXTREMECRAFT ASSET STUDIO - Minecraft asset generation toolkit",
+        description="EXTREMECRAFT PLATFORM STUDIO - SDK, compiler, and ecosystem tooling",
     )
     parser.add_argument(
         "--workspace",

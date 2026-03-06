@@ -36,13 +36,16 @@ class ReleaseManager:
         artifact = release_root / f"{name}.jar"
 
         with zipfile.ZipFile(artifact, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-            for rel in ["src/main/resources", "workspace/assets", "workspace/data"]:
-                path = self.context.repo_root / rel
-                if not path.exists():
+            for source, target_root in [
+                (self.context.repo_root / "src/main/resources", Path("src/main/resources")),
+                (self.context.workspace_root / "assets", Path("workspace/assets")),
+                (self.context.workspace_root / "data", Path("workspace/data")),
+            ]:
+                if not source.exists():
                     continue
-                for file in path.rglob("*"):
+                for file in source.rglob("*"):
                     if file.is_file():
-                        archive.write(file, Path(rel) / file.relative_to(path))
+                        archive.write(file, target_root / file.relative_to(source))
 
         changelog_path = self.changelog.build_changelog(name)
         return ReleaseBuildResult(release_name=name, artifact=artifact, changelog=changelog_path)

@@ -36,14 +36,13 @@ class ModpackBuilder:
         archive_path = self.context.workspace_root / "build" / "modpacks" / f"{modpack_name}.zip"
         with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             archive.write(manifest_path, Path("modpack") / manifest_path.name)
-            self._pack_optional_override(archive, "workspace/assets")
-            self._pack_optional_override(archive, "workspace/data")
-            self._pack_optional_override(archive, "config")
+            self._pack_optional_override(archive, self.context.workspace_root / "assets", "workspace/assets")
+            self._pack_optional_override(archive, self.context.workspace_root / "data", "workspace/data")
+            self._pack_optional_override(archive, self.context.repo_root / "config", "config")
 
         return ModpackBuildResult(name=modpack_name, manifest_path=manifest_path, archive_path=archive_path)
 
-    def _pack_optional_override(self, archive: zipfile.ZipFile, rel_path: str) -> None:
-        source = self.context.repo_root / rel_path
+    def _pack_optional_override(self, archive: zipfile.ZipFile, source: Path, rel_path: str) -> None:
         if not source.exists():
             return
         for file in source.rglob("*"):

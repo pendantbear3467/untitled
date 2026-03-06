@@ -1,91 +1,102 @@
-# EXTREMECRAFT ASSET STUDIO
+# EXTREMECRAFT PLATFORM + ASSET STUDIO
 
-EXTREMECRAFT ASSET STUDIO is a modular, open-source developer application for generating Minecraft mod assets.
+ExtremeCraft now includes a full ecosystem toolchain for large Minecraft mega-mod development:
 
-It supports:
-- Forge
-- NeoForge
-- Fabric
-- Blockbench import/export workflows
-- DataPack and ResourcePack structures
+- `extremecraft_sdk/` for addon/content-pack authoring
+- `compiler/` for module compilation to distributable JAR artifacts
+- Expanded Asset Studio CLI + GUI for generation, validation, repair, release, and modpack assembly
 
-## Features
-- CLI and desktop GUI (PyQt6)
-- Asset wizard for rapid generation
-- Procedural texture engine (16x/32x/64x/128x)
-- Blockbench `.bbmodel` import and export
-- Registry scanner for Java `DeferredRegister` discovery
-- Asset validator (JSON, textures, model parents, recipes)
-- Workspace-based projects with persistent asset database
-- Plugin loader for community extension points
+## Platform Capabilities
 
-## Quick Start
+- SDK definitions in JSON or Python (`material`, `machine`, `weapon`, `tool`, `armor`, `skill_tree`, `quest`, `worldgen`)
+- Batch generation for complete material sets
+- Automatic validation and auto-repair for missing textures/models/recipes
+- Registry scan, history, and diff tooling (removed/renamed/conflict detection)
+- Animated preview pipeline (renderer + timeline control)
+- Visual editors (materials, machines, weapons, worldgen, quests, skill trees)
+- Addon module compiler with dependency/conflict resolution
+- Release pipeline (artifact + changelog + GitHub/CurseForge publish workflow)
+- Modpack builder pipeline (manifest + distributable zip)
+- Plugin ecosystem with generator/validator/repair/editor/datapack hooks
+
+## Install
 
 ```bash
 python -m venv .venv
-.venv\\Scripts\\activate
+.venv\Scripts\activate
 pip install -e .[all]
 ```
 
-Minimal CLI install:
+## Core Commands
 
 ```bash
-pip install -e .
+# SDK scaffold + validation
+assetstudio sdk init-addon mythril_expansion
+assetstudio sdk validate mythril_expansion
+
+# Compile addon to module artifact
+assetstudio compile expansion mythril_expansion
+
+# Batch content generation
+assetstudio generate material_set mythril --tier 5 --style metallic
+
+# Auto repair missing assets
+assetstudio repair run
+
+# Registry tools
+assetstudio registry scan --source src/main/java --save-history snapshot_a
+assetstudio registry diff snapshot_a snapshot_b
+assetstudio registry history list
+
+# Release automation
+assetstudio release build --name extremecraft-v0.2.0
+assetstudio release publish --name extremecraft-v0.2.0
+
+# Modpack build
+assetstudio modpack build extreme_adventure_pack
 ```
 
-Install with core procedural engine support:
+## SDK Structure
 
-```bash
-pip install -e .[core]
+```text
+extremecraft_sdk/
+  api/
+  definitions/
+  generators/
+  validators/
+  plugins/
+  templates/
 ```
 
-### CLI
+Templates are available in `extremecraft_sdk/templates/*.json`.
 
-```bash
-assetstudio generate tool mythril_pickaxe --material mythril --tier 4
-assetstudio generate ore mythril --tier 4 --style metallic
-assetstudio validate
-assetstudio build datapack
-assetstudio export resourcepack
-assetstudio scan-registry --source src/main/java
+## Compiler Structure
+
+```text
+compiler/
+  module_builder.py
+  code_generator.py
+  datapack_builder.py
+  asset_builder.py
+  dependency_resolver.py
 ```
 
-### GUI
+## Plugin API Extensions
+
+Plugins auto-load from repository `plugins/` and optional workspace `workspace/plugins/`.
+
+Supported hook registration:
+
+- `register_generator(name, handler)`
+- `register_validator(name, handler)`
+- `register_asset_repair(name, handler)`
+- `register_gui_editor(name, handler)`
+- `register_datapack_rule(name, handler)`
+
+## GUI
 
 ```bash
 assetstudio --gui
 ```
 
-## Project Structure
-
-Main app source:
-- `asset_studio/main.py`
-- `asset_studio/cli/`
-- `asset_studio/gui/`
-- `asset_studio/generators/`
-- `asset_studio/blockbench/`
-- `asset_studio/textures/`
-- `asset_studio/minecraft/`
-- `asset_studio/project/`
-- `asset_studio/plugins/`
-
-Repository support folders:
-- `docs/`
-- `examples/`
-- `plugins/`
-- `templates/`
-
-## Plugin API
-
-Drop plugin files into the repository-level `plugins/` folder and expose:
-
-```python
-def register(registry):
-    registry.generators["my_generator"] = MyGeneratorClass
-```
-
-See `plugins/sample_create_compat.py`.
-
-## License and Contribution
-
-This project is intended to be community-driven. See `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`.
+The GUI includes the asset wizard, visual definition editors, project browser, console, and animated preview controls.

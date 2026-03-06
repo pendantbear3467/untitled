@@ -76,7 +76,8 @@ class ModuleBuilder:
     def _package_module(self, module_root: Path, addon_name: str) -> Path:
         jar_dir = self.context.workspace_root / "build" / "modules" / "artifacts"
         jar_dir.mkdir(parents=True, exist_ok=True)
-        jar_path = jar_dir / f"extremecraft-{addon_name}.jar"
+        artifact_id = addon_name.replace("_", "-")
+        jar_path = jar_dir / f"extremecraft-{artifact_id}.jar"
 
         with zipfile.ZipFile(jar_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             for file in module_root.rglob("*"):
