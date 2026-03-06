@@ -2,7 +2,7 @@ package com.extremecraft.client;
 
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.network.ModNetwork;
-import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
+import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;`r`nimport com.extremecraft.network.packet.SpellCastPacket;
 import com.extremecraft.net.DwNetwork;
 import com.extremecraft.net.OffhandActionC2S;
 import com.extremecraft.net.OffhandActionC2S.Action;
@@ -156,3 +156,4 @@ public final class DwClientHooks {
         return false;
     }
 }
+
