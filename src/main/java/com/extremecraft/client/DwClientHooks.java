@@ -1,20 +1,21 @@
 package com.extremecraft.client;
 
 import com.extremecraft.config.DwConfig;
-import com.extremecraft.network.ModNetwork;
-import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;`r`nimport com.extremecraft.network.packet.SpellCastPacket;
 import com.extremecraft.net.DwNetwork;
 import com.extremecraft.net.OffhandActionC2S;
 import com.extremecraft.net.OffhandActionC2S.Action;
+import com.extremecraft.network.ModNetwork;
+import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
+import com.extremecraft.network.packet.SpellCastPacket;
 import com.extremecraft.progression.classsystem.ability.ClassAbilityClientState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.DiggerItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TridentItem;
-import net.minecraft.world.item.DiggerItem;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -108,6 +109,10 @@ public final class DwClientHooks {
         if (DwKeybinds.CLASS_ABILITY != null && DwKeybinds.CLASS_ABILITY.consumeClick()) {
             ModNetwork.CHANNEL.sendToServer(new ActivateClassAbilityC2SPacket(""));
         }
+
+        if (DwKeybinds.CAST_SPELL != null && DwKeybinds.CAST_SPELL.consumeClick()) {
+            ModNetwork.CHANNEL.sendToServer(new SpellCastPacket());
+        }
     }
 
     @SubscribeEvent
@@ -156,4 +161,3 @@ public final class DwClientHooks {
         return false;
     }
 }
-
