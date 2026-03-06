@@ -53,6 +53,10 @@ public final class ECDevCommands {
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        dispatcher.register(Commands.literal("ecvalidate")
+            .requires(src -> src.hasPermission(2))
+            .executes(ctx -> ECValidationService.run(ctx.getSource())));
+
         dispatcher.register(Commands.literal("ec")
                 .then(Commands.literal("debug")
                         .executes(ctx -> {
@@ -73,7 +77,10 @@ public final class ECDevCommands {
                             int warnings = PlatformValidationRunner.validateAll();
                             ctx.getSource().sendSuccess(() -> Component.literal("Validation completed. warnings=" + warnings), true);
                             return warnings == 0 ? 1 : 0;
-                        }))
+                    }))
+                .then(Commands.literal("validate_runtime")
+                    .requires(src -> src.hasPermission(2))
+                    .executes(ctx -> ECValidationService.run(ctx.getSource())))
                 .then(Commands.literal("dump_registry")
                         .requires(src -> src.hasPermission(2))
                         .executes(ctx -> {

@@ -1,5 +1,6 @@
 package com.extremecraft.progression.skilltree;
 
+import com.extremecraft.network.security.ServerPacketLimiter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
@@ -32,6 +33,11 @@ public record UnlockSkillNodeC2S(String treeId, String nodeId) {
         context.enqueueWork(() -> {
             ServerPlayer sender = context.getSender();
             if (sender == null || sender.isSpectator()) {
+                return;
+            }
+
+            if (!ServerPacketLimiter.allow(sender, "skilltree.unlock", 1, 8, 20)) {
+                LOGGER.debug("[Network] Rate-limited UnlockSkillNodeC2S from {}", sender.getScoreboardName());
                 return;
             }
 
