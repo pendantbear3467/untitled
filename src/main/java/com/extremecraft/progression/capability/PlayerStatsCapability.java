@@ -54,6 +54,7 @@ public class PlayerStatsCapability {
     private float luckBonus = 0.0F;
     private float maxManaBonus = 0.0F;
     private float maxHealthBonus = 0.0F;
+    private float cooldownReductionBonus = 0.0F;
 
     // Future expansion scaffolding.
     private int ascensionLevel = 0;
@@ -135,6 +136,10 @@ public class PlayerStatsCapability {
         return spellPowerBonus;
     }
 
+    public float cooldownReduction() {
+        return Math.min(0.80F, Math.max(0.0F, cooldownReductionBonus));
+    }
+
     public float miningSpeedBonus() {
         return miningSpeedBonus;
     }
@@ -187,6 +192,13 @@ public class PlayerStatsCapability {
         statPoints--;
         recalculateDerivedStats();
         return true;
+    }
+
+    public void setLevel(int level) {
+        this.level = Math.max(1, level);
+        this.experience = 0;
+        this.experienceToNextLevel = xpForLevel(this.level);
+        recalculateDerivedStats();
     }
 
     public boolean unlockSkillNode(String nodeId, int skillPointCost) {
@@ -276,6 +288,7 @@ public class PlayerStatsCapability {
         luckBonus = 0.0F;
         maxManaBonus = 0.0F;
         maxHealthBonus = 0.0F;
+        cooldownReductionBonus = 0.0F;
 
         // Apply unlocked skill node modifiers.
         for (String unlockedNode : unlockedSkillNodes) {
@@ -302,7 +315,9 @@ public class PlayerStatsCapability {
                 case "block_break_speed" -> blockBreakSpeedBonus += entry.getValue();
                 case "movement_speed" -> movementSpeedBonus += entry.getValue();
                 case "movement_speed_bonus" -> movementSpeed += entry.getValue();
-                case "spell_power_bonus" -> spellPowerBonus += entry.getValue();
+                case "spell_power_bonus", "spell_damage" -> spellPowerBonus += entry.getValue();
+                case "cooldown_reduction" -> cooldownReductionBonus += entry.getValue();
+                case "mana" -> maxManaBonus += entry.getValue();
                 case "damage_multiplier" -> damageMultiplier *= Math.max(0.1F, entry.getValue());
                 case "stamina_cost_reduction" -> staminaCostReductionBonus += entry.getValue();
                 case "mana_regeneration" -> manaRegenBonus += entry.getValue();
@@ -371,7 +386,9 @@ public class PlayerStatsCapability {
             case "block_break_speed" -> blockBreakSpeedBonus = applyValue(blockBreakSpeedBonus, value, modifier.operation());
             case "stamina_cost_reduction" -> staminaCostReductionBonus = applyValue(staminaCostReductionBonus, value, modifier.operation());
             case "loot_rarity_bonus" -> lootRarityBonusSkill = applyValue(lootRarityBonusSkill, value, modifier.operation());
-            case "spell_power_bonus" -> spellPowerBonus = applyValue(spellPowerBonus, value, modifier.operation());
+            case "spell_power_bonus", "spell_damage" -> spellPowerBonus = applyValue(spellPowerBonus, value, modifier.operation());
+            case "cooldown_reduction" -> cooldownReductionBonus = applyValue(cooldownReductionBonus, value, modifier.operation());
+            case "mana" -> maxManaBonus = applyValue(maxManaBonus, value, modifier.operation());
             default -> {
             }
         }
@@ -502,7 +519,10 @@ public class PlayerStatsCapability {
     }
 
     public static int xpForLevel(int level) {
-        return 100 + (Math.max(1, level) * 25);
+        int clamped = Math.max(1, level);
+        return clamped * clamped * 10;
     }
 }
+
+
 

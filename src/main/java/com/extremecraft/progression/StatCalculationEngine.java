@@ -34,6 +34,10 @@ public final class StatCalculationEngine {
         values.put("luck", (double) stats.luck());
         values.put("spell_power", (double) stats.magicPower());
         values.put("attack_speed", (double) stats.attackSpeed());
+        values.put("movement_speed", (double) stats.movementSpeed());
+        values.put("mana", (double) stats.maxMana());
+        values.put("cooldown_reduction", (double) stats.cooldownReduction());
+        values.put("spell_damage", (double) stats.spellPowerBonus());
 
         AttributeModifiers modifiers = new AttributeModifiers();
 
@@ -61,3 +65,4 @@ public final class StatCalculationEngine {
         return new PlayerStatSnapshot(Map.copyOf(calculated));
     }
 }
+

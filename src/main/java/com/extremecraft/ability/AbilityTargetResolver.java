@@ -63,13 +63,14 @@ public final class AbilityTargetResolver {
 
     private static TargetBundle resolveAreaTarget(AbilityContext context) {
         double radius = Math.max(1.0D, context.definition().radius());
+        Vec3 center = context.position() == null ? context.player().position() : context.position();
         List<LivingEntity> entities = context.player().level().getEntitiesOfClass(
                 LivingEntity.class,
-                new AABB(context.player().blockPosition()).inflate(radius),
+                new AABB(center, center).inflate(radius),
                 entity -> entity.isAlive() && entity != context.player()
         );
 
-        return new TargetBundle(List.copyOf(entities), context.player().position());
+        return new TargetBundle(List.copyOf(entities), center);
     }
 
     private static TargetBundle resolveProjectileTarget(AbilityContext context) {

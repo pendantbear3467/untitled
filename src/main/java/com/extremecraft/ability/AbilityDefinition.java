@@ -104,7 +104,12 @@ public final class AbilityDefinition {
             cooldownTicks = Math.max(0, GsonHelper.getAsInt(root, "cooldown", 0)) * 20;
         }
 
-        TargetType targetType = TargetType.byName(GsonHelper.getAsString(root, "target", "self"));
+        String targetRaw = GsonHelper.getAsString(root, "target", "");
+        if (targetRaw.isBlank()) {
+            targetRaw = GsonHelper.getAsString(root, "target_type", "self");
+        }
+        TargetType targetType = TargetType.byName(targetRaw);
+
         double radius = Math.max(0.0D, GsonHelper.getAsDouble(root, "radius", 0.0D));
         double range = Math.max(1.0D, GsonHelper.getAsDouble(root, "range", 16.0D));
         String requiredClass = GsonHelper.getAsString(root, "required_class", "");
@@ -115,6 +120,10 @@ public final class AbilityDefinition {
             if (element.isJsonObject()) {
                 effects.add(AbilityEffect.fromJson(element.getAsJsonObject()));
             }
+        }
+
+        if (effects.isEmpty() && root.has("damage")) {
+            effects.add(new AbilityEffect("damage", GsonHelper.getAsDouble(root, "damage", 0.0D), 0, 0, "", java.util.Map.of()));
         }
 
         return new AbilityDefinition(id, manaCost, cooldownTicks, targetType, radius, range, requiredClass, effects);
