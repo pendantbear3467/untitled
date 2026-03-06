@@ -1,6 +1,7 @@
 package com.extremecraft.command;
 
-import com.extremecraft.ability.AbilityExecutor;
+import com.extremecraft.ability.AbilityCastResult;
+import com.extremecraft.ability.AbilityEngine;
 import com.extremecraft.ability.AbilityRegistry;
 import com.extremecraft.api.ExtremeCraftAPI;
 import com.extremecraft.classsystem.ClassRegistry;
@@ -31,6 +32,7 @@ import com.extremecraft.platform.data.validator.PlatformValidationRunner;
 import com.extremecraft.platform.module.ModuleRegistry;
 import com.extremecraft.progression.ProgressionService;
 import com.extremecraft.progression.level.LevelService;
+import com.extremecraft.progression.level.PlayerLevelApi;
 import com.extremecraft.progression.skilltree.SkillTreeManager;
 import com.extremecraft.progression.skilltree.SkillTreeService;
 import com.mojang.brigadier.CommandDispatcher;
@@ -38,8 +40,11 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.PacketDistributor;
 
 import java.util.stream.Collectors;
@@ -103,16 +108,16 @@ public final class ECDevCommands {
                             ctx.getSource().sendSuccess(() -> Component.literal("Modules: " + finalModules), false);
                             return 1;
                         }))
-                 .then(Commands.literal("ability")
+                .then(Commands.literal("ability")
                         .then(Commands.literal("test")
                                 .then(Commands.argument("ability", StringArgumentType.word())
                                         .executes(ctx -> {
                                             ServerPlayer player = ctx.getSource().getPlayerOrException();
                                             String abilityId = StringArgumentType.getString(ctx, "ability");
-                                            boolean success = AbilityExecutor.tryActivate(player, abilityId);
+                                            AbilityCastResult result = AbilityEngine.cast(player, abilityId, player.getUUID(), player.position());
                                             RuntimeSyncService.syncAbilities(player);
-                                            if (!success) {
-                                                ctx.getSource().sendFailure(Component.literal("Ability failed: " + abilityId));
+                                            if (!result.succeeded()) {
+                                                ctx.getSource().sendFailure(Component.literal("Ability failed: " + result.status()));
                                                 return 0;
                                             }
                                             ctx.getSource().sendSuccess(() -> Component.literal("Ability executed: " + abilityId), false);
@@ -127,9 +132,9 @@ public final class ECDevCommands {
                                                 ctx.getSource().sendFailure(Component.literal("Unknown ability: " + abilityId));
                                                 return 0;
                                             }
-                                            LevelService.grantAbility(player, abilityId);
-                                            RuntimeSyncService.syncAbilities(player);
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Ability granted: " + abilityId), false);
+
+                                            addDevAbility(player, abilityId);
+                                            ctx.getSource().sendSuccess(() -> Component.literal("Granted dev ability: " + abilityId), false);
                                             return 1;
                                         }))))
                 .then(Commands.literal("xp")
@@ -138,18 +143,8 @@ public final class ECDevCommands {
                                         .executes(ctx -> {
                                             ServerPlayer player = ctx.getSource().getPlayerOrException();
                                             int amount = IntegerArgumentType.getInteger(ctx, "amount");
-                                            LevelService.grantXp(player, amount);
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Gave XP: " + amount), false);
-                                            return 1;
-                                        }))))
-                .then(Commands.literal("level")
-                        .then(Commands.literal("set")
-                                .then(Commands.argument("level", IntegerArgumentType.integer(1, 500))
-                                        .executes(ctx -> {
-                                            ServerPlayer player = ctx.getSource().getPlayerOrException();
-                                            int level = IntegerArgumentType.getInteger(ctx, "level");
-                                            LevelService.setLevel(player, level);
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Level set to " + level), false);
+                                            int levelUps = LevelService.grantXp(player, amount);
+                                            ctx.getSource().sendSuccess(() -> Component.literal("Granted " + amount + " XP (level ups: " + levelUps + ")"), false);
                                             return 1;
                                         }))))
                 .then(Commands.literal("skill")
@@ -157,20 +152,37 @@ public final class ECDevCommands {
                                 .then(Commands.argument("node", StringArgumentType.word())
                                         .executes(ctx -> {
                                             ServerPlayer player = ctx.getSource().getPlayerOrException();
-                                            String nodeId = StringArgumentType.getString(ctx, "node").trim().toLowerCase();
-                                            String treeId = SkillTreeManager.treeIds().stream()
-                                                    .filter(id -> SkillTreeManager.nodesForTree(id).stream().anyMatch(n -> n.id().equals(nodeId)))
+                                            String node = StringArgumentType.getString(ctx, "node").trim().toLowerCase();
+
+                                            String tree = SkillTreeManager.treeIds().stream()
+                                                    .filter(treeId -> SkillTreeManager.nodesForTree(treeId).stream().anyMatch(n -> n.id().equals(node)))
                                                     .findFirst()
                                                     .orElse("");
-                                            if (treeId.isBlank()) {
-                                                ctx.getSource().sendFailure(Component.literal("Unknown skill node: " + nodeId));
+
+                                            if (tree.isBlank()) {
+                                                ctx.getSource().sendFailure(Component.literal("Unknown skill node: " + node));
                                                 return 0;
                                             }
-                                            if (!SkillTreeService.tryUnlock(player, treeId, nodeId)) {
-                                                ctx.getSource().sendFailure(Component.literal("Unlock failed for: " + nodeId));
+
+                                            boolean success = SkillTreeService.tryUnlock(player, tree, node);
+                                            if (!success) {
+                                                ctx.getSource().sendFailure(Component.literal("Cannot unlock node: " + node));
                                                 return 0;
                                             }
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Unlocked node: " + nodeId), false);
+
+                                            ctx.getSource().sendSuccess(() -> Component.literal("Unlocked skill node: " + node), false);
+                                            return 1;
+                                        }))))
+                .then(Commands.literal("level")
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("level", IntegerArgumentType.integer(1, 1000))
+                                        .executes(ctx -> {
+                                            ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                            int level = IntegerArgumentType.getInteger(ctx, "level");
+                                            LevelService.setLevel(player, level);
+                                            PlayerLevelApi.get(player).ifPresent(levelData ->
+                                                    ctx.getSource().sendSuccess(() -> Component.literal("Level set to " + levelData.level()), false)
+                                            );
                                             return 1;
                                         }))))
                 .then(Commands.literal("spell")
@@ -238,8 +250,25 @@ public final class ECDevCommands {
                             ServerPlayer player = ctx.getSource().getPlayerOrException();
                             ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new OpenExtremeCraftDebugScreenS2CPacket());
                             return 1;
-                    }))
+                        }))
         );
+    }
+
+    private static void addDevAbility(ServerPlayer player, String abilityId) {
+        var root = player.getPersistentData();
+        var dev = root.getCompound("ec_dev");
+        ListTag abilities = dev.getList("abilities", net.minecraft.nbt.Tag.TAG_STRING);
+
+        for (net.minecraft.nbt.Tag tag : abilities) {
+            if (abilityId.equalsIgnoreCase(tag.getAsString())) {
+                root.put("ec_dev", dev);
+                return;
+            }
+        }
+
+        abilities.add(StringTag.valueOf(abilityId));
+        dev.put("abilities", abilities);
+        root.put("ec_dev", dev);
     }
 
     private static int reloadData(CommandSourceStack source) {
@@ -256,4 +285,3 @@ public final class ECDevCommands {
         return 1;
     }
 }
-

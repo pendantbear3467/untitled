@@ -6,6 +6,7 @@ import com.extremecraft.net.DwNetwork;
 import com.extremecraft.progression.capability.ProgressApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
@@ -39,6 +40,7 @@ public class SkillTreeScreen extends BaseExtremeScreen {
     private boolean dragging;
     private double dragLastX;
     private double dragLastY;
+    private Button unlockButton;
 
     public SkillTreeScreen() {
         super(Component.literal("Skill Tree"));
@@ -56,6 +58,12 @@ public class SkillTreeScreen extends BaseExtremeScreen {
                 activeTreeId = first.id();
             }
         }
+
+        unlockButton = addRenderableWidget(Button.builder(Component.literal("Unlock Node"), button -> {
+            if (hoveredNode != null) {
+                DwNetwork.sendToServer(new UnlockSkillNodeC2S(activeTreeId, hoveredNode.id()));
+            }
+        }).bounds(panelLeft + panelWidth - 110, panelTop + 24, 94, 18).build());
     }
 
     @Override
@@ -64,6 +72,9 @@ public class SkillTreeScreen extends BaseExtremeScreen {
         SkillTree tree = SkillTreeRegistry.get(activeTreeId);
         if (tree == null) {
             guiGraphics.drawString(this.font, Component.literal("No skill tree JSON loaded."), panelLeft + 14, panelTop + 14, 0xEADFC8, false);
+            if (unlockButton != null) {
+                unlockButton.active = false;
+            }
             return;
         }
 
@@ -71,6 +82,10 @@ public class SkillTreeScreen extends BaseExtremeScreen {
         drawTreeBounds(guiGraphics);
         drawConnections(guiGraphics, tree);
         drawNodes(guiGraphics, tree, mouseX, mouseY, partialTick);
+
+        if (unlockButton != null) {
+            unlockButton.active = hoveredNode != null && canUnlockNode(hoveredNode);
+        }
     }
 
     @Override
@@ -94,7 +109,7 @@ public class SkillTreeScreen extends BaseExtremeScreen {
         int skillPoints = Minecraft.getInstance().player == null ? 0 : ProgressApi.get(Minecraft.getInstance().player).map(data -> data.playerSkillPoints()).orElse(0);
         guiGraphics.drawString(this.font, Component.literal("Skill Tree: " + activeTreeId.toUpperCase(Locale.ROOT)), panelLeft + 16, panelTop + 14, 0xF2D28C, false);
         guiGraphics.drawString(this.font, Component.literal("Points: " + skillPoints), panelLeft + 16, panelTop + 28, 0xD8DEE8, false);
-        guiGraphics.drawString(this.font, Component.literal("Drag=Pan  Scroll=Zoom  Click=Unlock"), panelLeft + 132, panelTop + 14, 0xA6B0C0, false);
+        guiGraphics.drawString(this.font, Component.literal("Drag=Pan  Scroll=Zoom"), panelLeft + 132, panelTop + 14, 0xA6B0C0, false);
     }
 
     private void drawTreeBounds(GuiGraphics guiGraphics) {
@@ -268,6 +283,18 @@ public class SkillTreeScreen extends BaseExtremeScreen {
     }
 
     private ResourceLocation iconForNode(SkillNode node) {
+        String iconPath = node.resolvedIconPath();
+        if (!iconPath.isBlank()) {
+            if (iconPath.contains(":")) {
+                ResourceLocation parsed = ResourceLocation.tryParse(iconPath);
+                if (parsed != null) {
+                    return parsed;
+                }
+            } else {
+                return new ResourceLocation(ECConstants.MODID, iconPath);
+            }
+        }
+
         String key = (node.id() + " " + node.bonusText()).toLowerCase(Locale.ROOT);
         if (key.contains("mine") || key.contains("ore") || key.contains("dig")) {
             return ICON_MINING;
@@ -279,21 +306,6 @@ public class SkillTreeScreen extends BaseExtremeScreen {
             return ICON_DEFENSE;
         }
         return ICON_ATTACK;
-    }
-
-    private String prettyName(String id) {
-        String[] parts = id.split("[_-]");
-        StringBuilder builder = new StringBuilder();
-        for (String part : parts) {
-            if (part.isBlank()) {
-                continue;
-            }
-            if (!builder.isEmpty()) {
-                builder.append(' ');
-            }
-            builder.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1));
-        }
-        return builder.toString();
     }
 
     private int treeLeft() {

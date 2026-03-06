@@ -6,11 +6,11 @@ import com.extremecraft.api.ExtremeCraftAPI;
 import com.extremecraft.classsystem.ClassRegistry;
 import com.extremecraft.client.DwClientHooks;
 import com.extremecraft.client.DwKeybinds;
-import com.extremecraft.client.gui.hud.AbilityBarOverlay;
+import com.extremecraft.client.gui.player.AbilityBarOverlay;
 import com.extremecraft.client.gui.machine.TechMachineScreen;
 import com.extremecraft.client.gui.player.InventoryButtonInjector;
 import com.extremecraft.client.gui.player.InventoryXpOverlay;
-import com.extremecraft.client.input.ExtremeCraftKeybinds;
+import com.extremecraft.client.ExtremeCraftKeybinds;
 import com.extremecraft.combat.CombatEventHandler;
 import com.extremecraft.combat.dualwield.PlayerDualWieldEvents;
 import com.extremecraft.command.ECDevCommands;
@@ -49,7 +49,6 @@ import com.extremecraft.progression.capability.ProgressCapabilityEvents;
 import com.extremecraft.progression.classsystem.data.ClassAbilityLoader;
 import com.extremecraft.progression.classsystem.data.ClassDefinitionLoader;
 import com.extremecraft.progression.level.PlayerLevelCapabilityEvents;
-import com.extremecraft.progression.level.PlayerLevelGameplayEvents;
 import com.extremecraft.progression.skilltree.PlayerSkillTreeEvents;
 import com.extremecraft.progression.skilltree.SkillTreeDataLoader;
 import com.extremecraft.progression.stage.StageCapabilityEvents;
@@ -129,7 +128,6 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new PlayerStatsCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerStatsGameplayEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerLevelCapabilityEvents());
-            MinecraftForge.EVENT_BUS.register(new PlayerLevelGameplayEvents());
             MinecraftForge.EVENT_BUS.register(new ManaCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new StageCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new SkillsCapabilityEvents());
@@ -188,3 +186,7 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
+
+
+

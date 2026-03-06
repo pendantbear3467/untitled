@@ -1,6 +1,6 @@
 package com.extremecraft.client;
 
-import com.extremecraft.client.input.ExtremeCraftKeybinds;
+import com.extremecraft.client.ExtremeCraftKeybinds;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.net.DwNetwork;
 import com.extremecraft.net.OffhandActionC2S;
@@ -195,4 +195,5 @@ public final class DwClientHooks {
         return false;
     }
 }
+
 

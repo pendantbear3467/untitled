@@ -1,5 +1,5 @@
 version:3465
-autoJump:false
+autoJump:true
 operatorItemsTab:false
 autoSuggestions:true
 chatColors:true
@@ -118,9 +118,13 @@ key_key.hotbar.6:key.keyboard.6
 key_key.hotbar.7:key.keyboard.7
 key_key.hotbar.8:key.keyboard.8
 key_key.hotbar.9:key.keyboard.9
-key_key.extremecraft.offhand_action:key.mouse.right
+key_key.extremecraft.offhand_action:key.mouse.4
 key_key.extremecraft.class_ability:key.keyboard.r
 key_key.extremecraft.cast_spell:key.keyboard.g
+key_key.extremecraft.ability_slot_1:key.keyboard.q
+key_key.extremecraft.ability_slot_2:key.keyboard.e
+key_key.extremecraft.ability_slot_3:key.keyboard.r
+key_key.extremecraft.ability_slot_4:key.keyboard.f
 soundCategory_master:1.0
 soundCategory_music:1.0
 soundCategory_record:1.0

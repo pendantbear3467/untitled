@@ -195,6 +195,10 @@ public final class AbilityEngine {
             return true;
         }
 
+        if (hasDevGrantedAbility(player, abilityId)) {
+            return true;
+        }
+
         if (ability == null || !definition.requiredClass().isBlank()) {
             return ClassAbilityBindings.canUseAbility(player, abilityId, definition.requiredClass());
         }
@@ -240,6 +244,21 @@ public final class AbilityEngine {
         };
     }
 
+    private static boolean hasDevGrantedAbility(ServerPlayer player, String abilityId) {
+        if (abilityId == null || abilityId.isBlank()) {
+            return false;
+        }
+
+        net.minecraft.nbt.CompoundTag dev = player.getPersistentData().getCompound("ec_dev");
+        net.minecraft.nbt.ListTag granted = dev.getList("abilities", net.minecraft.nbt.Tag.TAG_STRING);
+        for (net.minecraft.nbt.Tag entry : granted) {
+            if (abilityId.equalsIgnoreCase(entry.getAsString())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static String normalize(String abilityId) {
         return abilityId == null ? "" : abilityId.trim().toLowerCase();
     }
@@ -273,4 +292,3 @@ public final class AbilityEngine {
         }
     }
 }
-
