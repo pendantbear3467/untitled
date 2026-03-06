@@ -1,6 +1,7 @@
 package com.extremecraft.command;
 
-import com.extremecraft.ability.AbilityCastResult;`r`nimport com.extremecraft.ability.AbilityEngine;
+import com.extremecraft.ability.AbilityCastResult;
+import com.extremecraft.ability.AbilityEngine;
 import com.extremecraft.api.ExtremeCraftAPI;
 import com.extremecraft.combat.CombatEngine;
 import com.extremecraft.combat.DamageContext;
@@ -246,4 +247,5 @@ public final class ECDevCommands {
         return Math.max(0, Math.round(value));
     }
 }
+
 

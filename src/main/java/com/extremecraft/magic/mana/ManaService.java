@@ -1,7 +1,7 @@
 package com.extremecraft.magic.mana;
 
 import com.extremecraft.network.ModNetwork;
-import com.extremecraft.network.sync.SyncManaStateS2CPacket;
+import com.extremecraft.network.packet.ManaSyncPacket;
 import com.extremecraft.progression.capability.PlayerStatsApi;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
 import net.minecraft.server.level.ServerPlayer;
@@ -63,6 +63,7 @@ public final class ManaService {
     }
 
     public static void sync(ServerPlayer player, ManaCapability mana) {
-        ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncManaStateS2CPacket(mana.serializeNBT()));
+        ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new ManaSyncPacket(mana.serializeNBT()));
     }
 }
+

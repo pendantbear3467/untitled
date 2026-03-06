@@ -9,7 +9,7 @@ import com.extremecraft.network.packet.OpenExtremeCraftDebugScreenS2CPacket;
 import com.extremecraft.network.packet.PlayerStatsPacket;
 import com.extremecraft.network.packet.RemoveModuleC2SPacket;
 import com.extremecraft.network.packet.RequestPlayerStatsPacket;
-import com.extremecraft.network.packet.SyncClassAbilityStateS2CPacket;
+import com.extremecraft.network.packet.SpellCastPacket;`r`nimport com.extremecraft.network.packet.SyncClassAbilityStateS2CPacket;
 import com.extremecraft.network.packet.SyncMachinesPacket;
 import com.extremecraft.network.packet.SyncMaterialsPacket;
 import com.extremecraft.network.packet.SyncModuleAbilityStateS2CPacket;
@@ -20,7 +20,7 @@ import com.extremecraft.network.packet.SyncSkillTreesPacket;
 import com.extremecraft.network.packet.UpgradeStatPacket;
 import com.extremecraft.network.sync.SyncAbilityStateS2CPacket;
 import com.extremecraft.network.sync.SyncMachineStateS2CPacket;
-import com.extremecraft.network.sync.SyncManaStateS2CPacket;
+import com.extremecraft.network.packet.ManaSyncPacket;
 import com.extremecraft.network.sync.SyncRuntimeStatsS2CPacket;
 import com.extremecraft.network.sync.SyncSkillUnlocksS2CPacket;
 import net.minecraft.resources.ResourceLocation;
@@ -139,11 +139,7 @@ public final class ModNetwork {
                 .consumerMainThread(OpenExtremeCraftDebugScreenS2CPacket::handle)
                 .add();
 
-        CHANNEL.messageBuilder(SyncManaStateS2CPacket.class, nextId())
-                .encoder(SyncManaStateS2CPacket::encode)
-                .decoder(SyncManaStateS2CPacket::decode)
-                .consumerMainThread(SyncManaStateS2CPacket::handle)
-                .add();
+        CHANNEL.messageBuilder(ManaSyncPacket.class, nextId())`r`n                .encoder(ManaSyncPacket::encode)`r`n                .decoder(ManaSyncPacket::decode)`r`n                .consumerMainThread(ManaSyncPacket::handle)`r`n                .add();
 
         CHANNEL.messageBuilder(SyncRuntimeStatsS2CPacket.class, nextId())
                 .encoder(SyncRuntimeStatsS2CPacket::encode)
@@ -180,3 +176,4 @@ public final class ModNetwork {
         return index++;
     }
 }
+

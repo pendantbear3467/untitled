@@ -1,5 +1,8 @@
 package com.extremecraft.ability;
 
+import com.extremecraft.combat.CombatEngine;
+import com.extremecraft.combat.DamageContext;
+import com.extremecraft.combat.DamageType;
 import com.extremecraft.classsystem.ClassAbilityBindings;
 import com.extremecraft.magic.mana.ManaService;
 import com.extremecraft.network.sync.RuntimeSyncService;
@@ -12,9 +15,11 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
+import java.util.Map;
 
 public final class AbilityExecutor {
     private AbilityExecutor() {
@@ -62,6 +67,71 @@ public final class AbilityExecutor {
         return true;
     }
 
+    public static boolean executeDefinition(AbilityContext context) {
+        if (context == null || context.player() == null || context.definition() == null) {
+            return false;
+        }
+
+        AbilityTargetResolver.TargetBundle targets = AbilityTargetResolver.resolve(context);
+        AbilityContext resolved = context.withTarget(targets.entities().isEmpty() ? null : targets.entities().get(0), targets.center());
+        applyEffects(resolved, targets.entities(), targets.center());
+        return true;
+    }
+
+    public static void executeProjectile(AbilityContext context, AbilityEffect effect) {
+        if (context == null || effect == null) {
+            return;
+        }
+        applyProjectile(context, effect);
+    }
+
+    public static void executeProjectile(AbilityContext context) {
+        executeProjectile(context, new AbilityEffect("projectile", 2.0D, 0, 0, "", Map.of()));
+    }
+
+    public static void executeAreaEffect(AbilityContext context, double radius, List<AbilityEffect> effects) {
+        if (context == null || context.player() == null || effects == null || effects.isEmpty()) {
+            return;
+        }
+
+        List<LivingEntity> targets = context.player().level().getEntitiesOfClass(
+                LivingEntity.class,
+                new AABB(context.player().blockPosition()).inflate(Math.max(1.0D, radius)),
+                entity -> entity.isAlive() && entity != context.player()
+        );
+
+        applyEffects(context, targets, context.player().position(), effects);
+    }
+
+    public static void executeMovement(AbilityContext context, double distance) {
+        if (context == null || context.player() == null || context.player().level().isClientSide()) {
+            return;
+        }
+
+        double travel = Math.max(0.25D, distance);
+        Vec3 look = context.player().getLookAngle().normalize();
+        double x = context.player().getX() + (look.x * travel);
+        double z = context.player().getZ() + (look.z * travel);
+
+        context.player().teleportTo(x, context.player().getY(), z);
+        context.player().fallDistance = 0.0F;
+        context.player().swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
+    }
+
+    public static void executeHeal(AbilityContext context, List<? extends LivingEntity> targets, AbilityEffect effect) {
+        if (effect == null) {
+            return;
+        }
+        applyHeal((List<LivingEntity>) (targets == null ? List.of() : targets), effect);
+    }
+
+    public static void executeBuff(AbilityContext context, List<? extends LivingEntity> targets, AbilityEffect effect, boolean harmful) {
+        if (effect == null) {
+            return;
+        }
+        applyBuff((List<LivingEntity>) (targets == null ? List.of() : targets), effect, harmful);
+    }
+
     private static void applyEffects(AbilityContext context, List<LivingEntity> targets, Vec3 center) {
         for (AbilityEffect effect : context.definition().effects()) {
             switch (effect.type()) {
@@ -85,8 +155,27 @@ public final class AbilityExecutor {
         }
 
         float damage = (float) Math.max(0.0D, effect.value());
+        DamageType damageType = switch ((effect.id() == null ? "" : effect.id()).trim().toLowerCase()) {
+            case "fire", "ignite", "burn" -> DamageType.FIRE;
+            case "ice", "frost", "freeze" -> DamageType.ICE;
+            case "lightning", "shock" -> DamageType.LIGHTNING;
+            case "poison", "toxin" -> DamageType.POISON;
+            case "void" -> DamageType.VOID;
+            case "holy", "radiant" -> DamageType.HOLY;
+            case "bleed", "bleeding" -> DamageType.BLEED;
+            default -> DamageType.MAGIC;
+        };
+
         for (LivingEntity target : targets) {
-            target.hurt(context.caster().damageSources().playerAttack(context.caster()), damage);
+            CombatEngine.applyDamage(DamageContext.builder()
+                    .attacker(context.caster())
+                    .target(target)
+                    .damageAmount(damage)
+                    .damageType(damageType)
+                    .abilitySource(context.definition().id())
+                    .weaponSource(context.caster().getMainHandItem())
+                    .armorValue(target.getArmorValue())
+                    .build());
         }
     }
 
