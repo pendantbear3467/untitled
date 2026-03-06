@@ -1,5 +1,8 @@
 package com.extremecraft.entity.system;
 
+import com.extremecraft.combat.CombatEngine;
+import com.extremecraft.combat.DamageContext;
+import com.extremecraft.combat.DamageType;
 import com.extremecraft.config.Config;
 import com.extremecraft.machine.core.TechMachineBlockEntity;
 import net.minecraft.core.BlockPos;
@@ -52,7 +55,15 @@ public final class GameplayMechanicsEvents {
             if (!hasProtection(player)) {
                 float damage = (float) Math.max(0.0D, Config.COMMON.mobs.machineHazardDamage.get());
                 if (damage > 0.0F) {
-                    player.hurt(player.damageSources().magic(), damage);
+                    CombatEngine.applyDamage(DamageContext.builder()
+                            .attacker(null)
+                            .target(player)
+                            .damageAmount(damage)
+                            .damageType(DamageType.MAGIC)
+                            .abilitySource("environment:machine_hazard")
+                            .weaponSource(ItemStack.EMPTY)
+                            .armorValue(player.getArmorValue())
+                            .build());
                 }
             } else {
                 player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 120, 0));
