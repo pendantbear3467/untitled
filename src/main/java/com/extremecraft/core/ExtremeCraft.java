@@ -69,7 +69,8 @@ import com.extremecraft.registry.ModRecipeSerializers;
 import com.extremecraft.registry.ModSounds;
 import com.extremecraft.research.ResearchCapabilityEvents;
 import com.extremecraft.research.ResearchManager;
-import com.extremecraft.server.DwServerTicker;`r`nimport com.extremecraft.server.PlayerRuntimeCleanupEvents;
+import com.extremecraft.server.DwServerTicker;
+import com.extremecraft.server.PlayerRuntimeCleanupEvents;
 import com.extremecraft.skills.SkillRegistry;
 import com.extremecraft.skills.SkillsCapabilityEvents;
 import com.extremecraft.worldgen.DimensionHooks;
@@ -161,7 +162,8 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new ResearchManager());
             MinecraftForge.EVENT_BUS.register(new WorldgenConsistencyValidator());
             MinecraftForge.EVENT_BUS.register(new DimensionHooks());
-            MinecraftForge.EVENT_BUS.register(new DwServerTicker());`r`n            MinecraftForge.EVENT_BUS.register(new PlayerRuntimeCleanupEvents());
+            MinecraftForge.EVENT_BUS.register(new DwServerTicker());
+            MinecraftForge.EVENT_BUS.register(new PlayerRuntimeCleanupEvents());
             MinecraftForge.EVENT_BUS.register(new ArmorBonusHandler());
             MinecraftForge.EVENT_BUS.register(new CombatEventHandler());
             MinecraftForge.EVENT_BUS.register(new PlayerDualWieldEvents());
@@ -218,6 +220,7 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
 
 
 

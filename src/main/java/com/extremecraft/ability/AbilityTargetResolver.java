@@ -6,7 +6,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public final class AbilityTargetResolver {
@@ -77,7 +76,6 @@ public final class AbilityTargetResolver {
         Vec3 start = context.player().getEyePosition();
         Vec3 end = start.add(context.player().getLookAngle().scale(context.definition().range()));
 
-        List<LivingEntity> entities = new ArrayList<>();
         EntityHitResult hit = ProjectileUtil.getEntityHitResult(
                 context.player().level(),
                 context.player(),
@@ -88,8 +86,7 @@ public final class AbilityTargetResolver {
         );
 
         if (hit != null && hit.getEntity() instanceof LivingEntity living) {
-            entities.add(living);
-            return new TargetBundle(List.copyOf(entities), living.position());
+            return new TargetBundle(List.of(living), living.position());
         }
 
         return new TargetBundle(List.of(), end);

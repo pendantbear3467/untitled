@@ -43,6 +43,18 @@ public final class AbilityRegistry {
         CACHED_RUNTIME = List.copyOf(RUNTIME_ABILITIES.values());
     }
 
+    /**
+     * Extension hook for other modules/mods to add data-driven ability definitions at runtime.
+     */
+    public static synchronized void registerDefinition(AbilityDefinition definition) {
+        if (definition == null || normalize(definition.id()).isBlank()) {
+            return;
+        }
+
+        DEFINITIONS.put(normalize(definition.id()), definition);
+        CACHED_LIST = List.copyOf(DEFINITIONS.values());
+    }
+
     public static synchronized Ability runtime(String id) {
         String key = normalize(id);
         return key.isBlank() ? null : RUNTIME_ABILITIES.get(key);
