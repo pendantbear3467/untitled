@@ -7,6 +7,13 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
 
 public final class LevelService {
+    private static final String[] DEFAULT_ABILITY_SLOT_IDS = {
+            "firebolt",
+            "blink",
+            "arcane_shield",
+            "meteor"
+    };
+
     private LevelService() {
     }
 
@@ -50,5 +57,25 @@ public final class LevelService {
 
     public static int xpRequiredForLevel(int level) {
         return PlayerLevelCapability.xpRequired(level);
+    }
+
+    public static void grantAbility(ServerPlayer player, String abilityId) {
+        // Ability unlock persistence is not yet backed by PlayerLevelCapability.
+        // Keep this as a no-op compatibility hook for dev commands.
+    }
+
+    public static String abilityInSlot(ServerPlayer player, int slotIndex) {
+        return defaultAbilityForSlot(slotIndex);
+    }
+
+    public static int skillPoints(ServerPlayer player) {
+        return PlayerLevelApi.get(player).map(PlayerLevelCapability::skillPoints).orElse(0);
+    }
+
+    public static String defaultAbilityForSlot(int slotIndex) {
+        if (slotIndex < 0 || slotIndex >= DEFAULT_ABILITY_SLOT_IDS.length) {
+            return "";
+        }
+        return DEFAULT_ABILITY_SLOT_IDS[slotIndex];
     }
 }
