@@ -1,0 +1,10 @@
+{
+  "entity": "arcane_wraith",
+  "geometry": "cube_biped",
+  "texture": "extremecraft:textures/entity/arcane_wraith.png",
+  "animations": [
+    "idle",
+    "walk",
+    "attack"
+  ]
+}

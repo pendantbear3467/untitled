@@ -1,0 +1,10 @@
+{
+  "entity": "overcharged_machine_god",
+  "geometry": "cube_biped",
+  "texture": "extremecraft:textures/entity/overcharged_machine_god.png",
+  "animations": [
+    "idle",
+    "walk",
+    "attack"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "entity": "ancient_core_guardian",
+  "geometry": "cube_biped",
+  "texture": "extremecraft:textures/entity/ancient_core_guardian.png",
+  "animations": [
+    "idle",
+    "walk",
+    "attack"
+  ]
+}

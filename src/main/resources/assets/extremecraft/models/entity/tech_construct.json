@@ -1,0 +1,10 @@
+{
+  "entity": "tech_construct",
+  "geometry": "cube_biped",
+  "texture": "extremecraft:textures/entity/tech_construct.png",
+  "animations": [
+    "idle",
+    "walk",
+    "attack"
+  ]
+}

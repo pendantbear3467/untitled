@@ -1,0 +1,10 @@
+{
+  "entity": "void_stalker",
+  "geometry": "cube_biped",
+  "texture": "extremecraft:textures/entity/void_stalker.png",
+  "animations": [
+    "idle",
+    "walk",
+    "attack"
+  ]
+}

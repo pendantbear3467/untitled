@@ -1,0 +1,10 @@
+{
+  "entity": "ancient_sentinel",
+  "geometry": "cube_biped",
+  "texture": "extremecraft:textures/entity/ancient_sentinel.png",
+  "animations": [
+    "idle",
+    "walk",
+    "attack"
+  ]
+}

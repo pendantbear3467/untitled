@@ -1,0 +1,10 @@
+{
+  "entity": "runic_golem",
+  "geometry": "cube_biped",
+  "texture": "extremecraft:textures/entity/runic_golem.png",
+  "animations": [
+    "idle",
+    "walk",
+    "attack"
+  ]
+}

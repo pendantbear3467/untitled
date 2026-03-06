@@ -1,0 +1,10 @@
+{
+  "entity": "void_titan",
+  "geometry": "cube_biped",
+  "texture": "extremecraft:textures/entity/void_titan.png",
+  "animations": [
+    "idle",
+    "walk",
+    "attack"
+  ]
+}

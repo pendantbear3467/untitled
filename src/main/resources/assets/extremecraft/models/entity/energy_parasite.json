@@ -1,0 +1,10 @@
+{
+  "entity": "energy_parasite",
+  "geometry": "cube_biped",
+  "texture": "extremecraft:textures/entity/energy_parasite.png",
+  "animations": [
+    "idle",
+    "walk",
+    "attack"
+  ]
+}
