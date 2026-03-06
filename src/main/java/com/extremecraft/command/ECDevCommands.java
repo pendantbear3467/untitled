@@ -1,8 +1,14 @@
 package com.extremecraft.command;
 
+import com.extremecraft.ability.AbilityExecutor;
 import com.extremecraft.api.ExtremeCraftAPI;
+import com.extremecraft.classsystem.ClassRegistry;
+import com.extremecraft.magic.SpellCastingSystem;
+import com.extremecraft.magic.mana.ManaService;
+import com.extremecraft.machine.MachineRegistry;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.OpenExtremeCraftDebugScreenS2CPacket;
+import com.extremecraft.network.sync.RuntimeSyncService;
 import com.extremecraft.platform.data.registry.AbilityDataRegistry;
 import com.extremecraft.platform.data.registry.ClassDataRegistry;
 import com.extremecraft.platform.data.registry.DimensionDataRegistry;
@@ -22,7 +28,10 @@ import com.extremecraft.platform.data.registry.UpgradeDataRegistry;
 import com.extremecraft.platform.data.registry.WorldGenerationDataRegistry;
 import com.extremecraft.platform.data.validator.PlatformValidationRunner;
 import com.extremecraft.platform.module.ModuleRegistry;
+import com.extremecraft.progression.ProgressionService;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -44,6 +53,8 @@ public final class ECDevCommands {
                             ctx.getSource().sendSuccess(() -> Component.literal("API machines: " + ExtremeCraftAPI.machines().size()), false);
                             ctx.getSource().sendSuccess(() -> Component.literal("API skills: " + ExtremeCraftAPI.skillTrees().size()), false);
                             ctx.getSource().sendSuccess(() -> Component.literal("API quests: " + ExtremeCraftAPI.quests().size()), false);
+                            ctx.getSource().sendSuccess(() -> Component.literal("API spells: " + ExtremeCraftAPI.spells().size()), false);
+                            ctx.getSource().sendSuccess(() -> Component.literal("API classes: " + ExtremeCraftAPI.classes().size()), false);
                             ctx.getSource().sendSuccess(() -> Component.literal("Datapack machines: " + MachineDataRegistry.registry().size()), false);
                             ctx.getSource().sendSuccess(() -> Component.literal("Datapack tech trees: " + TechTreeDataRegistry.registry().size()), false);
                             return 1;
@@ -88,6 +99,75 @@ public final class ECDevCommands {
                             ctx.getSource().sendSuccess(() -> Component.literal("Modules: " + finalModules), false);
                             return 1;
                         }))
+                .then(Commands.literal("ability")
+                        .then(Commands.literal("test")
+                                .then(Commands.argument("ability", StringArgumentType.word())
+                                        .executes(ctx -> {
+                                            ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                            String abilityId = StringArgumentType.getString(ctx, "ability");
+                                            boolean success = AbilityExecutor.tryActivate(player, abilityId);
+                                            RuntimeSyncService.syncAbilities(player);
+                                            if (!success) {
+                                                ctx.getSource().sendFailure(Component.literal("Ability failed: " + abilityId));
+                                                return 0;
+                                            }
+                                            ctx.getSource().sendSuccess(() -> Component.literal("Ability executed: " + abilityId), false);
+                                            return 1;
+                                        }))))
+                .then(Commands.literal("spell")
+                        .then(Commands.literal("cast")
+                                .then(Commands.argument("spell", StringArgumentType.word())
+                                        .executes(ctx -> {
+                                            ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                            String spellId = StringArgumentType.getString(ctx, "spell");
+                                            boolean success = SpellCastingSystem.tryCast(player, spellId);
+                                            RuntimeSyncService.syncAbilities(player);
+                                            if (!success) {
+                                                ctx.getSource().sendFailure(Component.literal("Spell failed: " + spellId));
+                                                return 0;
+                                            }
+                                            ctx.getSource().sendSuccess(() -> Component.literal("Spell cast: " + spellId), false);
+                                            return 1;
+                                        }))))
+                .then(Commands.literal("mana")
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("value", IntegerArgumentType.integer(0, 100000))
+                                        .executes(ctx -> {
+                                            ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                            int value = IntegerArgumentType.getInteger(ctx, "value");
+                                            ManaService.setMana(player, value);
+                                            ctx.getSource().sendSuccess(() -> Component.literal("Mana set to " + value), false);
+                                            return 1;
+                                        }))))
+                .then(Commands.literal("class")
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("class", StringArgumentType.word())
+                                        .executes(ctx -> {
+                                            ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                            String classId = StringArgumentType.getString(ctx, "class").trim().toLowerCase();
+                                            if (ClassRegistry.get(classId) == null) {
+                                                ctx.getSource().sendFailure(Component.literal("Unknown class: " + classId));
+                                                return 0;
+                                            }
+
+                                            if (!ProgressionService.switchClass(player, classId)) {
+                                                ctx.getSource().sendFailure(Component.literal("Class not unlocked: " + classId));
+                                                return 0;
+                                            }
+
+                                            RuntimeSyncService.syncAll(player);
+                                            ctx.getSource().sendSuccess(() -> Component.literal("Class set to " + classId), false);
+                                            return 1;
+                                        }))))
+                .then(Commands.literal("machine")
+                        .then(Commands.literal("debug")
+                                .executes(ctx -> {
+                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                    RuntimeSyncService.syncMachineStates(player);
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Runtime machines=" + MachineRegistry.machines().size() +
+                                            ", runtime recipes=" + MachineRegistry.recipes().size()), false);
+                                    return 1;
+                                })))
                 .then(Commands.literal("reload")
                         .requires(src -> src.hasPermission(2))
                         .executes(ctx -> reloadData(ctx.getSource())))
