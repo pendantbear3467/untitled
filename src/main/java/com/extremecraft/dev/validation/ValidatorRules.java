@@ -21,7 +21,7 @@ public final class ValidatorRules {
     public static final Pattern NETWORK_SEND = Pattern.compile("\\bsendToServer\\s*\\(|\\bPacketDistributor\\b|\\.send\\s*\\(");
     public static final Pattern NETWORK_GUARD = Pattern.compile("getReceptionSide|enqueueWork|isClientSide|PacketFlow|context\\.");
 
-    public static final Pattern STATIC_COLLECTION = Pattern.compile("static\\s+(?:final\\s+)?(?:List|Set|Map|Queue|Deque|Collection)<([^>]+)>\\s+(\\w+)");
+    public static final Pattern STATIC_COLLECTION = Pattern.compile("static\\s+(?:final\\s+)?(?:List|Set|Map|Queue|Deque|Collection)<([^>]+)>\\s+(\\w+)\\s*(?:=|;)");
     public static final Pattern CLEANUP_HINT = Pattern.compile("\\.clear\\s*\\(|\\.remove\\s*\\(|cleanup\\s*\\(|invalidate\\s*\\(|onPlayerLoggedOut|onLogout|reset\\s*\\(");
 
     public static final Pattern REGISTRY_REGISTER = Pattern.compile("register\\(\"([a-z0-9_./-]+)\"");

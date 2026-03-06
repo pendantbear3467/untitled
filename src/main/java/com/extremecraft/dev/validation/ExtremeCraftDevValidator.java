@@ -328,7 +328,6 @@ public final class ExtremeCraftDevValidator {
             Path root,
             List<Path> javaFiles,
             List<Path> jsonFiles,
-            Path resourcesRoot,
             KnownResources known,
             List<Finding> findings,
             Set<String> dedupe
@@ -836,6 +835,8 @@ public final class ExtremeCraftDevValidator {
     ) {
     }
 }
+
+
 
 
 
