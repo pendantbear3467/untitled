@@ -50,7 +50,6 @@ class AssetStudioWindow(QMainWindow):
         tabs = QTabWidget()
         tabs.addTab(self.wizard, "Asset Wizard")
         tabs.addTab(self.log, "Build Log")
-        tabs.addTab(self.preview, "Preview")
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(tabs)

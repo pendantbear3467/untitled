@@ -1,1 +1,9 @@
 .\.venv\Scripts\python tools/generate_assets.py --materials --export-blockbench --preview
+
+
+
+----- Pip stuff ----
+pip install -e .
+pip install -e .[core]
+pip install -e .[gui]
+pip install -e .[all]
