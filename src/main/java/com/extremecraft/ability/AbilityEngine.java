@@ -44,7 +44,7 @@ public final class AbilityEngine {
         return AbilityRegistry.all();
     }
 
-    public static AbilityCastResult cast(ServerPlayer player, String requestedAbilityId) {
+    public static AbilityCastResult cast(ServerPlayer player, String requestedAbilityId) {`r`n        initialize();
         if (player == null) {
             return AbilityCastResult.failure("", AbilityCastResult.Status.INVALID_REQUEST, "player_missing");
         }
@@ -217,3 +217,4 @@ public final class AbilityEngine {
         }
     }
 }
+
