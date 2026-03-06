@@ -146,7 +146,14 @@ def write_json_missing(path: Path, obj: dict | list) -> bool:
     if path.exists():
         return False
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json_dump(obj), encoding="utf-8")
+    try:
+        path.write_text(json_dump(obj), encoding="utf-8")
+    except PermissionError:
+        alt_name = path.stem.replace("_to_", "_from_") + path.suffix
+        alt = path.with_name(alt_name)
+        if alt.exists():
+            return False
+        alt.write_text(json_dump(obj), encoding="utf-8")
     return True
 
 
