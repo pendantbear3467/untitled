@@ -2,6 +2,7 @@ package com.extremecraft.network.packet;
 
 import com.extremecraft.modules.service.ModuleInstallService;
 import com.extremecraft.network.ModNetwork;
+import com.extremecraft.network.security.ServerPacketLimiter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
@@ -36,6 +37,11 @@ public record InstallModuleC2SPacket(String moduleId, String targetSlot) {
             ServerPlayer sender = context.getSender();
             if (sender == null || sender.isSpectator()) {
                 LOGGER.debug("[Network] Dropped InstallModuleC2SPacket due to missing sender or spectator state");
+                return;
+            }
+
+            if (!ServerPacketLimiter.allow(sender, "module.install", 1, 4, 20)) {
+                LOGGER.debug("[Network] Rate-limited InstallModuleC2SPacket from {}", sender.getScoreboardName());
                 return;
             }
 

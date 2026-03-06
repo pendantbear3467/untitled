@@ -1,5 +1,6 @@
 package com.extremecraft.network.packet;
 
+import com.extremecraft.network.security.ServerPacketLimiter;
 import com.extremecraft.progression.classsystem.ability.ClassAbilityService;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -36,6 +37,11 @@ public record ActivateClassAbilityC2SPacket(String abilityId) {
             ServerPlayer sender = context.getSender();
             if (sender == null || sender.isSpectator()) {
                 LOGGER.debug("[Network] Dropped ActivateClassAbilityC2SPacket due to missing sender or spectator state");
+                return;
+            }
+
+            if (!ServerPacketLimiter.allow(sender, "ability.class", 1, 4, 20)) {
+                LOGGER.debug("[Network] Rate-limited ActivateClassAbilityC2SPacket from {}", sender.getScoreboardName());
                 return;
             }
 

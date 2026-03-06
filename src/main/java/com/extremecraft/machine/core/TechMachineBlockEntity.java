@@ -29,11 +29,16 @@ import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.items.ItemStackHandler;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.Optional;
 
 public class TechMachineBlockEntity extends AbstractMachineBlockEntity implements MenuProvider {
+    private static final Logger LOGGER = LogManager.getLogger();
+    private static final long DEBUG_LOG_INTERVAL_TICKS = 200L;
+
     public static final int INPUT_SLOT = 0;
     public static final int FUEL_SLOT = 1;
     public static final int OUTPUT_SLOT = 2;
@@ -45,6 +50,7 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
 
     private String cachedRecipeId = "";
     private long nextRecipeLookupTick;
+    private long nextDebugLogTick;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -186,6 +192,12 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
         produced.setCount(produced.getCount() * Math.max(1, definition.outputMultiplier()));
 
         if (energyStorage.getEnergyStored() < energyPerTick || !canOutput(produced)) {
+            if (energyStorage.getEnergyStored() < energyPerTick) {
+                debugLog("[Machine] {} waiting for energy {}/{}", definition.id(), energyStorage.getEnergyStored(), energyPerTick);
+            } else {
+                debugLog("[Machine] {} output blocked for stack {}", definition.id(), produced.getItem());
+            }
+
             if (!canOutput(produced) && progress != 0) {
                 progress = 0;
                 changed = true;
@@ -204,6 +216,7 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
         if (progress >= maxProgress) {
             progress = 0;
             craft(produced);
+            debugLog("[Machine] {} crafted {}x{}", definition.id(), produced.getCount(), produced.getItem());
         }
 
         return changed;
@@ -391,6 +404,20 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
 
     public ContainerData getContainerData() {
         return data;
+    }
+
+    private void debugLog(String format, Object... args) {
+        if (level == null || !LOGGER.isDebugEnabled()) {
+            return;
+        }
+
+        long now = level.getGameTime();
+        if (now < nextDebugLogTick) {
+            return;
+        }
+
+        nextDebugLogTick = now + DEBUG_LOG_INTERVAL_TICKS;
+        LOGGER.debug(format, args);
     }
 
     @Override

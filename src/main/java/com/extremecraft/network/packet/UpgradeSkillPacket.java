@@ -1,5 +1,6 @@
 package com.extremecraft.network.packet;
 
+import com.extremecraft.network.security.ServerPacketLimiter;
 import com.extremecraft.progression.PlayerStatsService;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -32,6 +33,11 @@ public record UpgradeSkillPacket(String statId) {
         context.enqueueWork(() -> {
             ServerPlayer sender = context.getSender();
             if (sender == null || sender.isSpectator()) {
+                return;
+            }
+
+            if (!ServerPacketLimiter.allow(sender, "progression.upgrade", 1, 8, 20)) {
+                LOGGER.debug("[Network] Rate-limited UpgradeSkillPacket from {}", sender.getScoreboardName());
                 return;
             }
 
