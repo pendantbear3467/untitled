@@ -19,6 +19,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.client.event.InputEvent;
+import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -34,7 +35,7 @@ public final class DwClientHooks {
 
     @SubscribeEvent
     public void onInteractKey(InputEvent.InteractionKeyMappingTriggered event) {
-        if (!DwConfig.CLIENT.enableDualWield.get()) {
+        if (!safeConfigFlag(DwConfig.CLIENT.enableDualWield, true)) {
             return;
         }
 
@@ -66,7 +67,7 @@ public final class DwClientHooks {
         event.setCanceled(true);
 
         if (hit instanceof BlockHitResult bhr) {
-            if (player.isShiftKeyDown() && DwConfig.CLIENT.allowOffhandBlockBreaking.get()) {
+            if (player.isShiftKeyDown() && safeConfigFlag(DwConfig.CLIENT.allowOffhandBlockBreaking, true)) {
                 DwNetwork.sendToServer(new OffhandActionC2S(Action.HOLD_START_BREAK, 0, bhr.getBlockPos(), bhr.getDirection()));
                 isMining = true;
                 return;
@@ -81,7 +82,7 @@ public final class DwClientHooks {
 
     @SubscribeEvent
     public void onKeyRelease(InputEvent.Key event) {
-        if (!DwConfig.CLIENT.enableDualWield.get()) {
+        if (!safeConfigFlag(DwConfig.CLIENT.enableDualWield, true)) {
             return;
         }
 
@@ -125,7 +126,7 @@ public final class DwClientHooks {
         List<? extends String> configured;
         try {
             configured = DwConfig.CLIENT.blacklistedItems.get();
-        } catch (Exception e) {
+        } catch (IllegalStateException e) {
             configured = List.of();
         }
 
@@ -135,6 +136,14 @@ public final class DwClientHooks {
                 .map(ResourceLocation::tryParse)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
+    }
+
+    private static boolean safeConfigFlag(ForgeConfigSpec.BooleanValue value, boolean fallback) {
+        try {
+            return value.get();
+        } catch (IllegalStateException e) {
+            return fallback;
+        }
     }
 
     private static boolean isOffhandWeapon(ItemStack stack) {
