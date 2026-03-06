@@ -33,4 +33,11 @@ def run_validation_pipeline(context: AssetStudioContext) -> ValidationReport:
     issues.extend(validate_models(context))
     issues.extend(validate_textures(context))
     issues.extend(validate_datapack(context))
+
+    for validator in context.plugins.validators.values():
+        if callable(validator):
+            plugin_issues = validator(context)
+            if isinstance(plugin_issues, list):
+                issues.extend(issue for issue in plugin_issues if isinstance(issue, ValidationIssue))
+
     return ValidationReport(issues=issues)

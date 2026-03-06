@@ -1,0 +1,19 @@
+{
+  "tree_name": "demo_tree",
+  "owner": "default",
+  "class_id": "adventurer",
+  "nodes": [
+    {
+      "id": "starter",
+      "displayName": "Starter",
+      "category": "combat",
+      "x": 0,
+      "y": 0,
+      "cost": 1,
+      "requires": [],
+      "requiredLevel": 1,
+      "requiredClass": "",
+      "modifiers": []
+    }
+  ]
+}

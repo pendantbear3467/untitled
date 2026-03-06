@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": ["MMM", " S ", " S "],
+  "key": {
+    "M": { "item": "extremecraft:material_ingot" },
+    "S": { "item": "minecraft:stick" }
+  },
+  "result": { "item": "extremecraft:material_pickaxe", "count": 1 }
+}

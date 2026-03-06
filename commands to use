@@ -12,6 +12,12 @@ python assetstudio.py scan-registry
 python assetstudio.py validate
 python assetstudio.py project init --name extremecraft-assets
 python assetstudio.py project build --target datapack
+python assetstudio.py skilltree new demo_tree
+python assetstudio.py skilltree list
+python assetstudio.py skilltree validate demo_tree
+python assetstudio.py skilltree export demo_tree --out workspace\\exports\\demo_tree.json
+python assetstudio.py skilltree import workspace\\exports\\demo_tree.json
+python assetstudio.py --gui
 
 
 

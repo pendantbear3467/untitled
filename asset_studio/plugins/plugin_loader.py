@@ -6,12 +6,15 @@ from types import ModuleType
 
 from asset_studio.plugins.plugin_api import PluginAPI
 
+
 def load_plugins(plugins_dir: Path) -> PluginAPI:
     registry = PluginAPI()
     if not plugins_dir.exists():
         return registry
 
-    for plugin_file in plugins_dir.glob("*.py"):
+    for plugin_file in sorted(plugins_dir.glob("*.py")):
+        if plugin_file.name.startswith("_"):
+            continue
         module = _load_module(plugin_file)
         register_fn = getattr(module, "register", None)
         if callable(register_fn):
