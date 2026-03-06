@@ -126,6 +126,10 @@ def parse_modblock_ids() -> set[str]:
 def humanize_id(raw_id: str) -> str:
     return " ".join(p.capitalize() for p in raw_id.replace("/", "_").split("_") if p)
 
+def normalize_ore_id(material_id: str) -> str:
+    return material_id if material_id.endswith("_ore") else f"{material_id}_ore"
+
+
 
 def recipe_path(name: str) -> Path:
     return RECIPES / "generated" / f"{name}.json"
@@ -287,11 +291,11 @@ def build_runtime_graph() -> dict:
                 f"{mat.id}_ingot",
                 f"{mat.id}_dust",
                 f"{mat.id}_nugget",
-                f"{mat.id}_ore",
+                normalize_ore_id(mat.id),
                 f"{mat.id}_block",
             }
         )
-        runtime_blocks.update({f"{mat.id}_ore", f"{mat.id}_block"})
+        runtime_blocks.update({normalize_ore_id(mat.id), f"{mat.id}_block"})
         if mat.has_tools:
             runtime_items.update(
                 {
@@ -397,7 +401,7 @@ def generate_content() -> dict[str, int]:
     created["graph"] += 1
 
     for mat in materials:
-        ore = f"{mat.id}_ore"
+        ore = normalize_ore_id(mat.id)
         raw = f"raw_{mat.id}"
         dust = f"{mat.id}_dust"
         ingot = f"{mat.id}_ingot"
@@ -645,8 +649,8 @@ def generate_content() -> dict[str, int]:
             created["tag_updates"] += 1
 
     for mat in materials:
-        feature_id = mat.id if mat.id.endswith("_ore") else f"{mat.id}_ore"
-        ore_block = f"{mat.id}_ore"
+        feature_id = mat.id if mat.id.endswith("_ore") else normalize_ore_id(mat.id)
+        ore_block = normalize_ore_id(mat.id)
         cfg_file = WORLDGEN_CFG / f"{feature_id}.json"
         placed_file = WORLDGEN_PLACED / f"{feature_id}.json"
         biome_file = BIOME_MOD / f"add_{feature_id}.json"

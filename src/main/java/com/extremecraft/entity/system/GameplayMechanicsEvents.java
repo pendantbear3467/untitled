@@ -4,7 +4,6 @@ import com.extremecraft.machine.core.TechMachineBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.ItemStack;
@@ -63,3 +62,4 @@ public final class GameplayMechanicsEvents {
         return !chest.isEmpty() && chest.getDescriptionId().contains("pioneer_chestplate");
     }
 }
+

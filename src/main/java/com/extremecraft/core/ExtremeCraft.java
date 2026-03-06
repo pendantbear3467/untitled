@@ -19,15 +19,6 @@ import com.extremecraft.config.DwConfig;
 import com.extremecraft.entity.ModEntities;
 import com.extremecraft.entity.MobAttributes;
 import com.extremecraft.entity.MobSpawns;
-import com.extremecraft.entity.boss.AncientCoreGuardianEntity;
-import com.extremecraft.entity.boss.OverchargedMachineGodEntity;
-import com.extremecraft.entity.boss.VoidTitanEntity;
-import com.extremecraft.entity.mob.AncientSentinelEntity;
-import com.extremecraft.entity.mob.ArcaneWraithEntity;
-import com.extremecraft.entity.mob.EnergyParasiteEntity;
-import com.extremecraft.entity.mob.RunicGolemEntity;
-import com.extremecraft.entity.mob.TechConstructEntity;
-import com.extremecraft.entity.mob.VoidStalkerEntity;
 import com.extremecraft.entity.system.BossArenaManager;
 import com.extremecraft.entity.system.GameplayMechanicsEvents;
 import com.extremecraft.future.registry.TechBlockEntities;
@@ -225,6 +216,7 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
 
 
 
