@@ -1,7 +1,7 @@
 package com.extremecraft.network;
 
 import com.extremecraft.core.ECConstants;
-import com.extremecraft.network.packet.AbilityCastPacket;`r`nimport com.extremecraft.network.packet.ActivateAbilityC2SPacket;
+import com.extremecraft.network.packet.AbilityCastPacket;
 import com.extremecraft.network.packet.AbilitySyncPacket;
 import com.extremecraft.network.packet.ActivateAbilityC2SPacket;
 import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
@@ -194,5 +194,3 @@ public final class ModNetwork {
         return index++;
     }
 }
-
-
