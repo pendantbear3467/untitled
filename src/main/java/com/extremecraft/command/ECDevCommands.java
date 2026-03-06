@@ -1,12 +1,7 @@
 package com.extremecraft.command;
 
-import com.extremecraft.ability.AbilityCastResult;
-import com.extremecraft.ability.AbilityEngine;
+import com.extremecraft.ability.AbilityExecutor;
 import com.extremecraft.api.ExtremeCraftAPI;
-import com.extremecraft.combat.CombatEngine;
-import com.extremecraft.combat.DamageContext;
-import com.extremecraft.combat.DamageResult;
-import com.extremecraft.combat.DamageType;
 import com.extremecraft.classsystem.ClassRegistry;
 import com.extremecraft.magic.SpellCastingSystem;
 import com.extremecraft.magic.mana.ManaService;
@@ -41,7 +36,6 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraftforge.network.PacketDistributor;
 
 import java.util.stream.Collectors;
@@ -111,10 +105,10 @@ public final class ECDevCommands {
                                         .executes(ctx -> {
                                             ServerPlayer player = ctx.getSource().getPlayerOrException();
                                             String abilityId = StringArgumentType.getString(ctx, "ability");
-                                            AbilityCastResult result = AbilityEngine.cast(player, abilityId);
+                                            boolean success = AbilityExecutor.tryActivate(player, abilityId);
                                             RuntimeSyncService.syncAbilities(player);
-                                            if (!result.succeeded()) {
-                                                ctx.getSource().sendFailure(Component.literal("Ability failed: " + abilityId + " (" + result.status().name().toLowerCase() + ")"));
+                                            if (!success) {
+                                                ctx.getSource().sendFailure(Component.literal("Ability failed: " + abilityId));
                                                 return 0;
                                             }
                                             ctx.getSource().sendSuccess(() -> Component.literal("Ability executed: " + abilityId), false);
@@ -135,41 +129,6 @@ public final class ECDevCommands {
                                             ctx.getSource().sendSuccess(() -> Component.literal("Spell cast: " + spellId), false);
                                             return 1;
                                         }))))
-                                .then(Commands.literal("combat")
-                                    .then(Commands.literal("test")
-                                        .executes(ctx -> {
-                                            ServerPlayer player = ctx.getSource().getPlayerOrException();
-                                            LivingEntity target = player.level().getEntitiesOfClass(
-                                                LivingEntity.class,
-                                                player.getBoundingBox().inflate(6.0D),
-                                                entity -> entity.isAlive() && entity != player
-                                            ).stream().findFirst().orElse(player);
-
-                                            DamageContext damageContext = DamageContext.builder()
-                                                .attacker(player)
-                                                .target(target)
-                                                .damageAmount(20.0F)
-                                                .damageType(DamageType.PHYSICAL)
-                                                .abilitySource("ec:combat_test")
-                                                .weaponSource(player.getMainHandItem())
-                                                .armorValue(target.getArmorValue())
-                                                .criticalChance(0.25F)
-                                                .criticalMultiplier(1.5F)
-                                                .build();
-
-                                            DamageResult result = CombatEngine.previewDamage(damageContext);
-                                            float weaponBonus = result.afterWeapon() - result.afterSkill();
-                                            float armorReduction = result.afterCritical() - result.afterArmor();
-                                            float resistanceReduction = result.afterArmor() - result.afterResistance();
-
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Base Damage: " + asInt(result.baseDamage())), false);
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Weapon Bonus: " + signed(weaponBonus)), false);
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Critical Hit: x" + String.format("%.2f", result.criticalMultiplier())), false);
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Armor Reduction: -" + asInt(armorReduction)), false);
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Resistance: -" + asInt(resistanceReduction)), false);
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Final Damage: " + asInt(result.finalDamage())), false);
-                                            return 1;
-                                        })))
                 .then(Commands.literal("mana")
                         .then(Commands.literal("set")
                                 .then(Commands.argument("value", IntegerArgumentType.integer(0, 100000))
@@ -237,15 +196,4 @@ public final class ECDevCommands {
         source.sendSuccess(() -> Component.literal("Reload started..."), false);
         return 1;
     }
-
-    private static String signed(float value) {
-        int rounded = Math.round(value);
-        return (rounded >= 0 ? "+" : "") + rounded;
-    }
-
-    private static int asInt(float value) {
-        return Math.max(0, Math.round(value));
-    }
 }
-
-

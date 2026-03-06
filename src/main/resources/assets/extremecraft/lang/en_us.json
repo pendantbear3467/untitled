@@ -54,5 +54,8 @@
   "key.extremecraft.open_skill_tree": "Open Skill Tree",
   "key.extremecraft.open_magic": "Open Magic Screen",
   "key.extremecraft.open_dual_wield": "Open Dual Wield Screen",
-  "key.extremecraft.open_progression": "Open Progression Screen"
+  "key.extremecraft.open_progression": "Open Progression Screen",
+  "key.extremecraft.class_ability": "Class Ability",
+  "key.extremecraft.cast_spell": "Cast Spell",
+  "item.extremecraft.spell_book": "Spell Book"
 }

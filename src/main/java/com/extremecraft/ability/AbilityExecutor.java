@@ -3,9 +3,6 @@ package com.extremecraft.ability;
 import com.extremecraft.combat.CombatEngine;
 import com.extremecraft.combat.DamageContext;
 import com.extremecraft.combat.DamageType;
-import com.extremecraft.classsystem.ClassAbilityBindings;
-import com.extremecraft.magic.mana.ManaService;
-import com.extremecraft.network.sync.RuntimeSyncService;
 import com.extremecraft.progression.BuffStackingSystem;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -15,6 +12,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -26,34 +24,7 @@ public final class AbilityExecutor {
     }
 
     public static boolean tryActivate(ServerPlayer player, String requestedAbilityId) {
-        if (player == null || requestedAbilityId == null || requestedAbilityId.isBlank()) {
-            return false;
-        }
-
-        AbilityDefinition definition = AbilityRegistry.get(requestedAbilityId);
-        if (definition == null) {
-            return false;
-        }
-
-        if (!ClassAbilityBindings.canUseAbility(player, definition.id(), definition.requiredClass())) {
-            return false;
-        }
-
-        if (!AbilityCooldownManager.isReady(player, definition.id())) {
-            return false;
-        }
-
-        if (!ManaService.tryConsume(player, definition.manaCost())) {
-            return false;
-        }
-
-        AbilityContext context = AbilityContext.of(player, definition);
-        AbilityTargetResolver.TargetBundle targets = AbilityTargetResolver.resolve(context);
-
-        applyEffects(context, targets.entities(), targets.center());
-        AbilityCooldownManager.startCooldown(player, definition.id(), definition.cooldownTicks());
-        RuntimeSyncService.syncAbilities(player);
-        return true;
+        return AbilityEngine.cast(player, requestedAbilityId).succeeded();
     }
 
     public static boolean executeSpellAbility(ServerPlayer player, AbilityDefinition definition) {
@@ -69,6 +40,10 @@ public final class AbilityExecutor {
 
     public static boolean executeDefinition(AbilityContext context) {
         if (context == null || context.player() == null || context.definition() == null) {
+            return false;
+        }
+
+        if (context.definition().effects().isEmpty()) {
             return false;
         }
 
@@ -119,21 +94,61 @@ public final class AbilityExecutor {
     }
 
     public static void executeHeal(AbilityContext context, List<? extends LivingEntity> targets, AbilityEffect effect) {
-        if (effect == null) {
+        if (context == null || effect == null) {
             return;
         }
-        applyHeal((List<LivingEntity>) (targets == null ? List.of() : targets), effect);
+
+        @SuppressWarnings("unchecked")
+        List<LivingEntity> castTargets = (List<LivingEntity>) (targets == null ? List.of(context.player()) : targets);
+        applyHeal(castTargets, effect);
     }
 
     public static void executeBuff(AbilityContext context, List<? extends LivingEntity> targets, AbilityEffect effect, boolean harmful) {
-        if (effect == null) {
+        if (context == null || effect == null) {
             return;
         }
-        applyBuff((List<LivingEntity>) (targets == null ? List.of() : targets), effect, harmful);
+
+        @SuppressWarnings("unchecked")
+        List<LivingEntity> castTargets = (List<LivingEntity>) (targets == null ? List.of(context.player()) : targets);
+        applyBuff(castTargets, effect, harmful);
+    }
+
+    public static void executeChannel(AbilityContext context, AbilityEffect effect) {
+        if (context == null || context.player() == null || effect == null) {
+            return;
+        }
+
+        int channelTicks = Math.max(20, effect.duration() <= 0 ? 60 : effect.duration() * 20);
+        int pulseTicks = Math.max(2, effect.scalars().getOrDefault("pulse_ticks", 10.0D).intValue());
+        double radius = effect.scalars().getOrDefault("radius",
+                context.definition() == null ? 4.0D : Math.max(1.0D, context.definition().radius()));
+
+        AbilityEffect pulseEffect = new AbilityEffect(
+                resolveChannelPulseType(effect),
+                effect.value(),
+                Math.max(0, effect.duration()),
+                Math.max(0, effect.amplifier()),
+                effect.id(),
+                effect.scalars()
+        );
+
+        AbilityEngine.beginChannel(context, channelTicks, pulseTicks, radius, pulseEffect);
+    }
+
+    private static String resolveChannelPulseType(AbilityEffect effect) {
+        String id = effect.id();
+        if ("heal".equals(id) || "ignite".equals(id) || "buff".equals(id) || "debuff".equals(id) || "projectile".equals(id)) {
+            return id;
+        }
+        return "damage";
     }
 
     private static void applyEffects(AbilityContext context, List<LivingEntity> targets, Vec3 center) {
-        for (AbilityEffect effect : context.definition().effects()) {
+        applyEffects(context, targets, center, context.definition() == null ? List.of() : context.definition().effects());
+    }
+
+    private static void applyEffects(AbilityContext context, List<LivingEntity> targets, Vec3 center, List<AbilityEffect> effects) {
+        for (AbilityEffect effect : effects) {
             switch (effect.type()) {
                 case "damage" -> applyDamage(context, targets, effect);
                 case "ignite" -> applyIgnite(targets, effect);
@@ -143,6 +158,8 @@ public final class AbilityExecutor {
                 case "summon" -> applySummon(context, center, effect);
                 case "projectile" -> applyProjectile(context, effect);
                 case "teleport" -> applyTeleport(context, effect);
+                case "move", "movement", "dash" -> executeMovement(context, effect.value());
+                case "channel" -> executeChannel(context, effect);
                 default -> {
                 }
             }
@@ -172,7 +189,7 @@ public final class AbilityExecutor {
                     .target(target)
                     .damageAmount(damage)
                     .damageType(damageType)
-                    .abilitySource(context.definition().id())
+                    .abilitySource(context.definition() == null ? "runtime" : context.definition().id())
                     .weaponSource(context.caster().getMainHandItem())
                     .armorValue(target.getArmorValue())
                     .build());
@@ -234,14 +251,18 @@ public final class AbilityExecutor {
             return;
         }
 
-        var arrow = EntityType.ARROW.create(context.caster().level());
+        AbstractArrow arrow = (AbstractArrow) EntityType.ARROW.create(context.caster().level());
         if (arrow == null) {
             return;
         }
 
+        arrow.setOwner(context.caster());
         arrow.setPos(context.caster().getX(), context.caster().getEyeY() - 0.1D, context.caster().getZ());
         arrow.shootFromRotation(context.caster(), context.caster().getXRot(), context.caster().getYRot(), 0.0F,
                 (float) Math.max(0.1D, effect.scalars().getOrDefault("speed", 2.0D)), 0.0F);
+        if (effect.value() > 0.0D) {
+            arrow.setBaseDamage(effect.value());
+        }
         context.caster().level().addFreshEntity(arrow);
     }
 
