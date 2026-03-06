@@ -22,16 +22,16 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class SpellExecutor {
     public static final String SPELL_TAG = "ec_spell_id";
 
-    private static final Map<UUID, ActiveChannel> ACTIVE_CHANNELS = new LinkedHashMap<>();
+    private static final Map<UUID, ActiveChannel> ACTIVE_CHANNELS = new ConcurrentHashMap<>();
 
     private SpellExecutor() {
     }
@@ -135,6 +135,18 @@ public final class SpellExecutor {
 
         ACTIVE_CHANNELS.put(player.getUUID(), new ActiveChannel(active.spellId(), active.endTick(), now + 10L, active.source()));
         RuntimeSyncService.syncAbilities(player);
+    }
+
+    public static void clearPlayer(ServerPlayer player) {
+        if (player != null) {
+            clearPlayer(player.getUUID());
+        }
+    }
+
+    public static void clearPlayer(UUID playerId) {
+        if (playerId != null) {
+            ACTIVE_CHANNELS.remove(playerId);
+        }
     }
 
     public static String resolveSpellId(ItemStack stack) {
@@ -364,6 +376,9 @@ public final class SpellExecutor {
     private record ActiveChannel(String spellId, long endTick, long nextPulseTick, CastSource source) {
     }
 }
+
+
+
 
 
 

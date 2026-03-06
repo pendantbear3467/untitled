@@ -78,13 +78,13 @@ public final class ECValidationService {
     }
 
     private static void validateRegistryEntries(ValidationReporter reporter) {
-        for (Map.Entry<ResourceLocation, Block> entry : ForgeRegistries.BLOCKS.getEntries()) {
-            ResourceLocation id = entry.getKey();
+        for (ResourceLocation id : ForgeRegistries.BLOCKS.getKeys()) {
             if (!ECConstants.MODID.equals(id.getNamespace())) {
                 continue;
             }
 
-            if (entry.getValue() == null) {
+            Block block = ForgeRegistries.BLOCKS.getValue(id);
+            if (block == null) {
                 reporter.warn("Block registry entry resolves to null: " + id);
             }
             if (id.getPath().isBlank()) {
@@ -92,13 +92,13 @@ public final class ECValidationService {
             }
         }
 
-        for (Map.Entry<ResourceLocation, Item> entry : ForgeRegistries.ITEMS.getEntries()) {
-            ResourceLocation id = entry.getKey();
+        for (ResourceLocation id : ForgeRegistries.ITEMS.getKeys()) {
             if (!ECConstants.MODID.equals(id.getNamespace())) {
                 continue;
             }
 
-            if (entry.getValue() == null) {
+            Item item = ForgeRegistries.ITEMS.getValue(id);
+            if (item == null) {
                 reporter.warn("Item registry entry resolves to null: " + id);
             }
             if (id.getPath().isBlank()) {

@@ -23,10 +23,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class ModuleRuntimeService {
-    private static final Map<UUID, Map<String, Long>> ABILITY_COOLDOWNS = new LinkedHashMap<>();
-    private static final Map<UUID, Map<String, Float>> APPLIED_STAT_MODIFIERS = new LinkedHashMap<>();
+    private static final Map<UUID, Map<String, Long>> ABILITY_COOLDOWNS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Map<String, Float>> APPLIED_STAT_MODIFIERS = new ConcurrentHashMap<>();
 
     private ModuleRuntimeService() {
     }
@@ -163,11 +164,28 @@ public final class ModuleRuntimeService {
         long now = player.level().getGameTime();
         for (Map.Entry<String, Long> entry : cooldownsFor(player).entrySet()) {
             int remaining = (int) Math.max(0, entry.getValue() - now);
-            cooldownTag.putInt(entry.getKey(), remaining);
+            if (remaining > 0) {
+                cooldownTag.putInt(entry.getKey(), remaining);
+            }
         }
 
         root.put("cooldowns", cooldownTag);
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncModuleAbilityStateS2CPacket(root));
+    }
+
+    public static void clearPlayer(ServerPlayer player) {
+        if (player != null) {
+            clearPlayer(player.getUUID());
+        }
+    }
+
+    public static void clearPlayer(UUID playerId) {
+        if (playerId == null) {
+            return;
+        }
+
+        ABILITY_COOLDOWNS.remove(playerId);
+        APPLIED_STAT_MODIFIERS.remove(playerId);
     }
 
     private static void collectItemModifiers(PlayerStatsCapability stats, ItemStack stack, Map<String, Float> next) {
@@ -189,7 +207,7 @@ public final class ModuleRuntimeService {
     }
 
     private static void mergeEquipmentModifiers(ServerPlayer player, PlayerStatsCapability stats, Map<String, Float> next) {
-        Map<String, Float> previous = APPLIED_STAT_MODIFIERS.computeIfAbsent(player.getUUID(), id -> new LinkedHashMap<>());
+        Map<String, Float> previous = APPLIED_STAT_MODIFIERS.computeIfAbsent(player.getUUID(), id -> new ConcurrentHashMap<>());
         boolean changed = false;
 
         for (String prevKey : java.util.Set.copyOf(previous.keySet())) {
@@ -239,6 +257,6 @@ public final class ModuleRuntimeService {
     }
 
     private static Map<String, Long> cooldownsFor(ServerPlayer player) {
-        return ABILITY_COOLDOWNS.computeIfAbsent(player.getUUID(), id -> new LinkedHashMap<>());
+        return ABILITY_COOLDOWNS.computeIfAbsent(player.getUUID(), id -> new ConcurrentHashMap<>());
     }
 }

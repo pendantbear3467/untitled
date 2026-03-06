@@ -86,7 +86,7 @@ public record ActivateAbilityC2SPacket(UUID playerUuid, String abilityId, Vec3 t
             if (!result.succeeded()) {
                 sender.displayClientMessage(net.minecraft.network.chat.Component.literal("Ability failed: " + result.status().name().toLowerCase()), true);
                 LOGGER.debug("[Ability] Activation failed for {} ability={} status={} reason={}",
-                        sender.getScoreboardName(), abilityId, result.status(), result.reason());
+                    sender.getScoreboardName(), abilityId, result.status(), result.message());
             }
         });
         context.setPacketHandled(true);

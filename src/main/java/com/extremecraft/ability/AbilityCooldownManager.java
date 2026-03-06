@@ -7,13 +7,13 @@ import com.extremecraft.progression.capability.ProgressApi;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class AbilityCooldownManager {
-    private static final Map<UUID, Map<String, Long>> COOLDOWNS = new LinkedHashMap<>();
+    private static final Map<UUID, Map<String, Long>> COOLDOWNS = new ConcurrentHashMap<>();
 
     private AbilityCooldownManager() {
     }
@@ -32,7 +32,14 @@ public final class AbilityCooldownManager {
         }
 
         long now = player.level().getGameTime();
-        long readyAt = cooldowns(player).getOrDefault(normalize(abilityId), 0L);
+        Map<String, Long> perPlayer = cooldowns(player);
+        String key = normalize(abilityId);
+        long readyAt = perPlayer.getOrDefault(key, 0L);
+        if (readyAt <= now) {
+            perPlayer.remove(key);
+            return 0;
+        }
+
         return (int) Math.max(0L, readyAt - now);
     }
 
@@ -55,6 +62,18 @@ public final class AbilityCooldownManager {
         }
     }
 
+    public static void clearPlayer(ServerPlayer player) {
+        if (player != null) {
+            COOLDOWNS.remove(player.getUUID());
+        }
+    }
+
+    public static void clearPlayer(UUID playerId) {
+        if (playerId != null) {
+            COOLDOWNS.remove(playerId);
+        }
+    }
+
     public static CompoundTag serializeFor(ServerPlayer player) {
         CompoundTag root = new CompoundTag();
         CompoundTag cooldownTag = new CompoundTag();
@@ -69,7 +88,8 @@ public final class AbilityCooldownManager {
         }
 
         long now = player.level().getGameTime();
-        for (Map.Entry<String, Long> entry : cooldowns(player).entrySet()) {
+        Map<String, Long> perPlayerCooldowns = cooldowns(player);
+        for (Map.Entry<String, Long> entry : perPlayerCooldowns.entrySet()) {
             int remaining = (int) Math.max(0L, entry.getValue() - now);
             if (remaining > 0) {
                 cooldownTag.putInt(entry.getKey(), remaining);
@@ -95,7 +115,7 @@ public final class AbilityCooldownManager {
     }
 
     private static Map<String, Long> cooldowns(ServerPlayer player) {
-        return COOLDOWNS.computeIfAbsent(player.getUUID(), id -> new LinkedHashMap<>());
+        return COOLDOWNS.computeIfAbsent(player.getUUID(), id -> new ConcurrentHashMap<>());
     }
 
     private static String normalize(String abilityId) {

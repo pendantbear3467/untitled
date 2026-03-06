@@ -9,10 +9,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class AbilityEngine {
     /**
@@ -23,7 +24,12 @@ public final class AbilityEngine {
      */
     private static final Logger LOGGER = LogManager.getLogger();
 
-    private static final Map<UUID, ActiveChannel> ACTIVE_CHANNELS = new LinkedHashMap<>();
+    private static final int CAST_MIN_INTERVAL_TICKS = 1;
+    private static final double MAX_NETWORK_TARGET_DISTANCE = 64.0D;
+
+    private static final Map<UUID, ActiveChannel> ACTIVE_CHANNELS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> LAST_CAST_TICK = new ConcurrentHashMap<>();
+    private static final Set<UUID> CAST_IN_PROGRESS = ConcurrentHashMap.newKeySet();
     private static final Map<String, Integer> BUILTIN_MANA_COSTS = Map.of(
             "fireball", 18,
             "dash", 8,
@@ -62,81 +68,104 @@ public final class AbilityEngine {
 
     public static AbilityCastResult cast(ServerPlayer player, String requestedAbilityId, UUID requestPlayerUuid, Vec3 requestedTargetPosition) {
         initialize();
-        if (player == null) {
+        if (player == null || player.isSpectator()) {
             return AbilityCastResult.failure("", AbilityCastResult.Status.EXECUTION_FAILED, "player_missing");
         }
 
-        if (requestPlayerUuid != null && !player.getUUID().equals(requestPlayerUuid)) {
+        UUID playerId = player.getUUID();
+        if (requestPlayerUuid != null && !playerId.equals(requestPlayerUuid)) {
             return AbilityCastResult.failure("", AbilityCastResult.Status.EXECUTION_FAILED, "uuid_mismatch");
         }
 
-        String abilityId = normalize(requestedAbilityId);
-        if (abilityId.isBlank()) {
-            return AbilityCastResult.failure("", AbilityCastResult.Status.EXECUTION_FAILED, "ability_id_missing");
+        long now = player.level().getGameTime();
+        if (isCastRateLimited(playerId, now)) {
+            return AbilityCastResult.failure("", AbilityCastResult.Status.EXECUTION_FAILED, "rate_limited");
         }
 
-        Ability ability = AbilityRegistry.runtime(abilityId);
-        AbilityDefinition definition = AbilityRegistry.get(abilityId);
-        if (ability == null && definition == null) {
-            return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.UNKNOWN_ABILITY, "ability_not_registered");
+        if (!CAST_IN_PROGRESS.add(playerId)) {
+            return AbilityCastResult.failure("", AbilityCastResult.Status.EXECUTION_FAILED, "recursive_cast");
         }
 
-        if (!validateRequirements(player, abilityId, ability, definition)) {
-            return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.EXECUTION_FAILED, "requirements_failed");
-        }
-
-        int remaining = AbilityCooldownManager.remainingTicks(player, abilityId);
-        if (remaining > 0) {
-            AbilityCooldownManager.sync(player);
-            return AbilityCastResult.cooldown(abilityId, remaining);
-        }
-
-        int manaCost = resolveManaCost(abilityId, definition);
-        if (manaCost > 0 && !hasEnoughMana(player, manaCost)) {
-            ManaService.sync(player);
-            return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.INSUFFICIENT_MANA, "insufficient_mana");
-        }
-
-        AbilityContext baseContext = AbilityContext.of(player, definition).withManaCost(manaCost);
-        if (requestedTargetPosition != null) {
-            baseContext = baseContext.withTarget(null, requestedTargetPosition);
-        }
-
-        AbilityTargetResolver.TargetBundle targets = AbilityTargetResolver.resolve(baseContext);
-        if (definition != null && !isTargetValid(definition.targetType(), targets)) {
-            return AbilityCastResult.invalidTarget(abilityId, "invalid_target");
-        }
-
-        AbilityContext resolvedContext = baseContext.withTarget(
-                targets.entities().isEmpty() ? null : targets.entities().get(0),
-                targets.center()
-        );
-
-        if (manaCost > 0 && !ManaService.tryConsume(player, manaCost)) {
-            return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.INSUFFICIENT_MANA, "insufficient_mana");
-        }
-
-        boolean executed;
+        LAST_CAST_TICK.put(playerId, now);
         try {
-            if (ability != null) {
-                ability.execute(resolvedContext);
-                executed = true;
-            } else {
-                executed = AbilityExecutor.executeDefinition(resolvedContext);
+            String abilityId = normalize(requestedAbilityId);
+            if (abilityId.isBlank()) {
+                return AbilityCastResult.failure("", AbilityCastResult.Status.EXECUTION_FAILED, "ability_id_missing");
             }
-        } catch (Exception ex) {
-            LOGGER.error("[AbilityEngine] Failed to execute ability {}", abilityId, ex);
-            return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.EXECUTION_FAILED, "execution_error");
-        }
 
-        if (!executed) {
-            return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.EXECUTION_FAILED, "execution_failed");
-        }
+            Ability ability = AbilityRegistry.runtime(abilityId);
+            AbilityDefinition definition = AbilityRegistry.get(abilityId);
+            if (ability == null && definition == null) {
+                return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.UNKNOWN_ABILITY, "ability_not_registered");
+            }
 
-        int cooldownTicks = resolveCooldown(player, ability, definition);
-        AbilityCooldownManager.startCooldown(player, abilityId, cooldownTicks);
-        AbilityCooldownManager.sync(player);
-        return AbilityCastResult.success(abilityId);
+            if (!validateRequirements(player, abilityId, ability, definition)) {
+                return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.EXECUTION_FAILED, "requirements_failed");
+            }
+
+            int remaining = AbilityCooldownManager.remainingTicks(player, abilityId);
+            if (remaining > 0) {
+                AbilityCooldownManager.sync(player);
+                return AbilityCastResult.cooldown(abilityId, remaining);
+            }
+
+            int manaCost = resolveManaCost(abilityId, definition);
+            if (manaCost > 0 && !hasEnoughMana(player, manaCost)) {
+                ManaService.sync(player);
+                return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.INSUFFICIENT_MANA, "insufficient_mana");
+            }
+
+            AbilityContext baseContext = AbilityContext.of(player, definition).withManaCost(manaCost);
+            if (requestedTargetPosition != null) {
+                if (!isFinite(requestedTargetPosition)) {
+                    return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.INVALID_TARGET, "invalid_target");
+                }
+
+                if (player.position().distanceToSqr(requestedTargetPosition) > (MAX_NETWORK_TARGET_DISTANCE * MAX_NETWORK_TARGET_DISTANCE)) {
+                    return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.INVALID_TARGET, "target_out_of_range");
+                }
+
+                baseContext = baseContext.withTarget(null, requestedTargetPosition);
+            }
+
+            AbilityTargetResolver.TargetBundle targets = AbilityTargetResolver.resolve(baseContext);
+            if (definition != null && !isTargetValid(definition.targetType(), targets)) {
+                return AbilityCastResult.invalidTarget(abilityId, "invalid_target");
+            }
+
+            AbilityContext resolvedContext = baseContext.withTarget(
+                    targets.entities().isEmpty() ? null : targets.entities().get(0),
+                    targets.center()
+            );
+
+            if (manaCost > 0 && !ManaService.tryConsume(player, manaCost)) {
+                return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.INSUFFICIENT_MANA, "insufficient_mana");
+            }
+
+            boolean executed;
+            try {
+                if (ability != null) {
+                    ability.execute(resolvedContext);
+                    executed = true;
+                } else {
+                    executed = AbilityExecutor.executeDefinition(resolvedContext);
+                }
+            } catch (Exception ex) {
+                LOGGER.error("[AbilityEngine] Failed to execute ability {}", abilityId, ex);
+                return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.EXECUTION_FAILED, "execution_error");
+            }
+
+            if (!executed) {
+                return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.EXECUTION_FAILED, "execution_failed");
+            }
+
+            int cooldownTicks = resolveCooldown(player, ability, definition);
+            AbilityCooldownManager.startCooldown(player, abilityId, cooldownTicks);
+            AbilityCooldownManager.sync(player);
+            return AbilityCastResult.success(abilityId);
+        } finally {
+            CAST_IN_PROGRESS.remove(playerId);
+        }
     }
 
     public static void beginChannel(AbilityContext context, int channelTicks, int pulseIntervalTicks, double radius, AbilityEffect pulseEffect) {
@@ -194,6 +223,27 @@ public final class AbilityEngine {
         }
 
         active.nextPulseTick = now + active.pulseIntervalTicks;
+    }
+
+    public static void clearPlayer(ServerPlayer player) {
+        if (player != null) {
+            clearPlayer(player.getUUID());
+        }
+    }
+
+    public static void clearPlayer(UUID playerId) {
+        if (playerId == null) {
+            return;
+        }
+
+        ACTIVE_CHANNELS.remove(playerId);
+        LAST_CAST_TICK.remove(playerId);
+        CAST_IN_PROGRESS.remove(playerId);
+    }
+
+    private static boolean isCastRateLimited(UUID playerId, long now) {
+        long lastCast = LAST_CAST_TICK.getOrDefault(playerId, Long.MIN_VALUE / 2L);
+        return (now - lastCast) < CAST_MIN_INTERVAL_TICKS;
     }
 
     private static boolean validateRequirements(ServerPlayer player, String abilityId, Ability ability, AbilityDefinition definition) {
@@ -265,6 +315,10 @@ public final class AbilityEngine {
         return false;
     }
 
+    private static boolean isFinite(Vec3 target) {
+        return Double.isFinite(target.x) && Double.isFinite(target.y) && Double.isFinite(target.z);
+    }
+
     private static String normalize(String abilityId) {
         return abilityId == null ? "" : abilityId.trim().toLowerCase();
     }
@@ -298,4 +352,3 @@ public final class AbilityEngine {
         }
     }
 }
-

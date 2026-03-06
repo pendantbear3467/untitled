@@ -17,16 +17,16 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.network.PacketDistributor;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Server-authoritative class ability activation and cooldown management.
  */
 public final class ClassAbilityService {
-    private static final Map<UUID, Map<String, Long>> COOLDOWNS = new LinkedHashMap<>();
+    private static final Map<UUID, Map<String, Long>> COOLDOWNS = new ConcurrentHashMap<>();
 
     private ClassAbilityService() {
     }
@@ -83,11 +83,25 @@ public final class ClassAbilityService {
         long now = player.level().getGameTime();
         for (Map.Entry<String, Long> entry : cooldownsFor(player).entrySet()) {
             int remaining = (int) Math.max(0, entry.getValue() - now);
-            cooldownsTag.putInt(entry.getKey(), remaining);
+            if (remaining > 0) {
+                cooldownsTag.putInt(entry.getKey(), remaining);
+            }
         }
 
         root.put("cooldowns", cooldownsTag);
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncClassAbilityStateS2CPacket(root));
+    }
+
+    public static void clearPlayer(ServerPlayer player) {
+        if (player != null) {
+            clearPlayer(player.getUUID());
+        }
+    }
+
+    public static void clearPlayer(UUID playerId) {
+        if (playerId != null) {
+            COOLDOWNS.remove(playerId);
+        }
     }
 
     private static String resolveAbilityId(ServerPlayer player, String requestedAbilityId) {
@@ -105,8 +119,13 @@ public final class ClassAbilityService {
     }
 
     private static boolean isOffCooldown(ServerPlayer player, String abilityId, long now) {
-        long readyAt = cooldownsFor(player).getOrDefault(abilityId, 0L);
-        return now >= readyAt;
+        Map<String, Long> perPlayer = cooldownsFor(player);
+        long readyAt = perPlayer.getOrDefault(abilityId, 0L);
+        if (readyAt <= now) {
+            perPlayer.remove(abilityId);
+            return true;
+        }
+        return false;
     }
 
     private static boolean consumeManaCost(ServerPlayer player, int manaCost) {
@@ -161,6 +180,6 @@ public final class ClassAbilityService {
     }
 
     private static Map<String, Long> cooldownsFor(ServerPlayer player) {
-        return COOLDOWNS.computeIfAbsent(player.getUUID(), id -> new LinkedHashMap<>());
+        return COOLDOWNS.computeIfAbsent(player.getUUID(), id -> new ConcurrentHashMap<>());
     }
 }
