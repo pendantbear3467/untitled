@@ -24,16 +24,23 @@ from asset_studio.cli.validate_commands import run_validate_command
 from asset_studio.cli.pack_commands import export_pack_command
 from asset_studio.generators.armor_generator import ArmorGenerator
 from asset_studio.generators.block_generator import BlockGenerator
+from asset_studio.generators.content_set_generator import ContentSetGenerator
 from asset_studio.generators.machine_generator import MachineGenerator
 from asset_studio.generators.ore_generator import OreGenerator
 from asset_studio.generators.tool_generator import ToolGenerator
 from asset_studio.gui.asset_wizard import AssetWizardPanel, ToolWizardInput
 from asset_studio.gui.console_panel import ConsolePanel
+from asset_studio.gui.editors import MachineEditor, MaterialEditor, QuestEditor, SkillTreeEditor, WeaponEditor, WorldgenEditor
 from asset_studio.gui.menu_bar import build_menu_bar
 from asset_studio.gui.preview_renderer import PreviewRenderer
 from asset_studio.gui.project_browser import ProjectBrowser
-from asset_studio.gui.skilltree_designer import SkillTreeDesigner
+from asset_studio.gui.timeline_widget import TimelineWidget
+from asset_studio.modpack.modpack_builder import ModpackBuilder
+from asset_studio.release.release_manager import ReleaseManager
+from asset_studio.repair.repair_engine import RepairEngine
 from asset_studio.workspace.workspace_manager import WorkspaceManager
+from compiler.module_builder import ModuleBuilder
+from extremecraft_sdk.api.sdk import ExtremeCraftSDK
 
 
 class AssetStudioWindow(QMainWindow):
@@ -43,7 +50,7 @@ class AssetStudioWindow(QMainWindow):
         self.context = self.workspace_manager.load_context()
 
         self.setWindowTitle("EXTREMECRAFT ASSET STUDIO")
-        self.resize(1320, 840)
+        self.resize(1420, 900)
         self.setStatusBar(QStatusBar(self))
 
         self.log = ConsolePanel()
@@ -54,8 +61,8 @@ class AssetStudioWindow(QMainWindow):
         self._last_preview_texture: Path | None = None
         self.wizard = AssetWizardPanel()
         self.wizard.generate_tool_requested.connect(self._on_generate_tool)
-        self.skilltree_designer = SkillTreeDesigner(self.context)
-        self.skilltree_designer.log_requested.connect(self._write_log)
+
+        self.editor_tabs = self._build_editor_tabs()
 
         preview_controls = self._build_preview_controls()
         preview_stack = QWidget()
@@ -65,14 +72,14 @@ class AssetStudioWindow(QMainWindow):
 
         tabs = QTabWidget()
         tabs.addTab(self.wizard, "Asset Wizard")
-        tabs.addTab(self.skilltree_designer, "Skill Tree Designer")
+        tabs.addTab(self.editor_tabs, "Content Editors")
         tabs.addTab(self.browser, "Project Browser")
         tabs.addTab(self.log, "Console")
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(tabs)
         splitter.addWidget(preview_stack)
-        splitter.setSizes([860, 460])
+        splitter.setSizes([920, 500])
         self.setCentralWidget(splitter)
 
         build_menu_bar(self, self._callbacks())
@@ -93,15 +100,21 @@ class AssetStudioWindow(QMainWindow):
             "generate_armor": self._generate_armor,
             "generate_machine": self._generate_machine,
             "generate_block": self._generate_block,
+            "generate_material_set": self._generate_material_set,
             "texture_generator": lambda: self._write_log("Texture Generator opened"),
             "blockbench_converter": lambda: self._write_log("Blockbench Converter opened"),
             "recipe_builder": lambda: self._write_log("Recipe Builder opened"),
             "datapack_builder": lambda: self._write_log("Datapack Builder opened"),
+            "repair_assets": self._repair_assets,
             "compile_assets": lambda: self._write_log("Compile Assets completed"),
+            "compile_expansion": self._compile_expansion,
             "validate_assets": self._validate_assets,
             "export_resourcepack": lambda: self._export_target("resourcepack"),
             "export_datapack": lambda: self._export_target("datapack"),
+            "release_build": self._release_build,
+            "modpack_build": self._modpack_build,
             "preview_models": self._preview_models,
+            "preview_animations": self._preview_animations,
             "texture_viewer": self._texture_viewer,
             "documentation": lambda: webbrowser.open("https://github.com/pendantbear3467/untitled/tree/main/docs"),
             "github": lambda: webbrowser.open("https://github.com/pendantbear3467/untitled"),
@@ -114,7 +127,6 @@ class AssetStudioWindow(QMainWindow):
     def _new_project(self) -> None:
         self.context = self.workspace_manager.initialize_workspace()
         self.browser.load_workspace(self.context.workspace_root)
-        self.skilltree_designer.set_context(self.context)
         self._write_log("New project initialized")
 
     def _open_project(self) -> None:
@@ -124,7 +136,7 @@ class AssetStudioWindow(QMainWindow):
         self.workspace_manager = WorkspaceManager(workspace_root=Path(selected), repo_root=Path.cwd())
         self.context = self.workspace_manager.load_context()
         self.browser.load_workspace(self.context.workspace_root)
-        self.skilltree_designer.set_context(self.context)
+        self.editor_tabs = self._build_editor_tabs()
         self._write_log(f"Opened workspace: {selected}")
 
     def _save_workspace(self) -> None:
@@ -148,6 +160,38 @@ class AssetStudioWindow(QMainWindow):
         args = type("ValidateArgs", (), {"strict": False})()
         code = run_validate_command(args, self.context)
         self._write_log("Validation completed" if code == 0 else "Validation completed with issues")
+
+    def _repair_assets(self) -> None:
+        report = RepairEngine(self.context).repair()
+        self._write_log(f"Auto-repair completed with {report.total} actions")
+
+    def _compile_expansion(self) -> None:
+        addons = sorted((self.context.workspace_root / "addons").glob("*"))
+        if not addons:
+            self._write_log("No addons found. Create one via: assetstudio sdk init-addon <name>")
+            return
+        addon_name = addons[0].name
+
+        sdk = ExtremeCraftSDK(
+            addons_root=self.context.workspace_root / "addons",
+            context=self.context,
+            plugin_api=self.context.plugins,
+        )
+        try:
+            result = ModuleBuilder(context=self.context, sdk=sdk).build_expansion(addon_name)
+        except Exception as exc:  # noqa: BLE001
+            self._write_log(f"Compile failed: {exc}")
+            return
+
+        self._write_log(f"Compiled expansion '{addon_name}' -> {result.jar_path}")
+
+    def _release_build(self) -> None:
+        result = ReleaseManager(self.context).build()
+        self._write_log(f"Release built: {result.artifact.name}")
+
+    def _modpack_build(self) -> None:
+        result = ModpackBuilder(self.context).build("extreme_adventure_pack")
+        self._write_log(f"Modpack archive: {result.archive_path}")
 
     def _on_generate_tool(self, payload: ToolWizardInput) -> None:
         ToolGenerator(self.context).generate(
@@ -201,6 +245,10 @@ class AssetStudioWindow(QMainWindow):
             "block",
         )
 
+    def _generate_material_set(self) -> None:
+        generated = ContentSetGenerator(self.context).generate_material_set("mythril", tier=4, style="metallic")
+        self._write_log(f"Generated material set (count={len(generated)})")
+
     def _export_target(self, target: str) -> None:
         export_pack_command(self.context, target)
         self._write_log(f"Exported {target}")
@@ -210,6 +258,12 @@ class AssetStudioWindow(QMainWindow):
         if self._last_preview_texture:
             self.preview.load_texture(self._last_preview_texture)
         self._write_log("Preview mode: model")
+
+    def _preview_animations(self) -> None:
+        self.preview.set_mode("animated")
+        if self._last_preview_texture:
+            self.preview.load_texture(self._last_preview_texture)
+        self._write_log("Preview mode: animated")
 
     def _texture_viewer(self) -> None:
         selected, _ = QFileDialog.getOpenFileName(
@@ -250,11 +304,33 @@ class AssetStudioWindow(QMainWindow):
         prev_texture = QPushButton("Prev Texture")
         prev_texture.clicked.connect(lambda: self.preview.switch_texture(-1))
 
+        timeline = TimelineWidget()
+        timeline.progress_changed.connect(self.preview.set_animation_progress)
+
         row.addWidget(prev_texture)
         row.addWidget(next_texture)
         row.addWidget(zoom)
         row.addWidget(lighting)
+        row.addWidget(timeline)
         return holder
+
+    def _build_editor_tabs(self) -> QTabWidget:
+        tabs = QTabWidget()
+        tabs.addTab(MaterialEditor(self.context), "Materials")
+        tabs.addTab(MachineEditor(self.context), "Machines")
+        tabs.addTab(WeaponEditor(self.context), "Weapons")
+        tabs.addTab(WorldgenEditor(self.context), "Worldgen")
+        tabs.addTab(QuestEditor(self.context), "Quests")
+        tabs.addTab(SkillTreeEditor(self.context), "Skill Trees")
+
+        for editor_name, editor_factory in self.context.plugins.gui_editors.items():
+            if callable(editor_factory):
+                try:
+                    widget = editor_factory(self.context)
+                    tabs.addTab(widget, editor_name)
+                except Exception as exc:  # noqa: BLE001
+                    self._write_log(f"Plugin editor '{editor_name}' failed: {exc}")
+        return tabs
 
 
 def launch_gui(workspace_root: Path) -> int:

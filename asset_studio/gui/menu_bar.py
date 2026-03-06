@@ -25,21 +25,27 @@ def build_menu_bar(window, callbacks: dict[str, Callable[[], None]]) -> None:
     _action(assets_menu, "Generate Armor", callbacks["generate_armor"])
     _action(assets_menu, "Generate Machine", callbacks["generate_machine"])
     _action(assets_menu, "Generate Block", callbacks["generate_block"])
+    _action(assets_menu, "Generate Material Set", callbacks["generate_material_set"])
 
     tools_menu = menu_bar.addMenu("Tools")
     _action(tools_menu, "Texture Generator", callbacks["texture_generator"])
     _action(tools_menu, "Blockbench Converter", callbacks["blockbench_converter"])
     _action(tools_menu, "Recipe Builder", callbacks["recipe_builder"])
     _action(tools_menu, "Datapack Builder", callbacks["datapack_builder"])
+    _action(tools_menu, "Auto Repair Assets", callbacks["repair_assets"])
 
     build_menu = menu_bar.addMenu("Build")
     _action(build_menu, "Compile Assets", callbacks["compile_assets"])
+    _action(build_menu, "Compile Expansion", callbacks["compile_expansion"])
     _action(build_menu, "Validate Assets", callbacks["validate_assets"])
     _action(build_menu, "Export ResourcePack", callbacks["export_resourcepack"])
     _action(build_menu, "Export Datapack", callbacks["export_datapack"])
+    _action(build_menu, "Build Release", callbacks["release_build"])
+    _action(build_menu, "Build Modpack", callbacks["modpack_build"])
 
     view_menu = menu_bar.addMenu("View")
     _action(view_menu, "Preview Models", callbacks["preview_models"])
+    _action(view_menu, "Preview Animations", callbacks["preview_animations"])
     _action(view_menu, "Texture Viewer", callbacks["texture_viewer"])
 
     help_menu = menu_bar.addMenu("Help")

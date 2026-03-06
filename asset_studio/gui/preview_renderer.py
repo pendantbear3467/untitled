@@ -6,6 +6,8 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QColor, QImage, QPainter, QPen, QPixmap
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 
+from asset_studio.preview.animation_player import AnimationPlayer
+from asset_studio.preview.animation_renderer import AnimationRenderer
 from asset_studio.preview.block_renderer import BlockRenderer
 from asset_studio.preview.model_renderer import ModelRenderer
 from asset_studio.preview.texture_renderer import TextureRenderer
@@ -29,6 +31,8 @@ class PreviewRenderer(QOpenGLWidget):
         self._texture_renderer = TextureRenderer()
         self._model_renderer = ModelRenderer()
         self._block_renderer = BlockRenderer()
+        self._animation_renderer = AnimationRenderer()
+        self._animation_player = AnimationPlayer()
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
@@ -65,6 +69,11 @@ class PreviewRenderer(QOpenGLWidget):
     def set_rotation_speed(self, speed: int) -> None:
         self._rotation_speed = max(0, min(20, speed))
 
+    def set_animation_progress(self, progress: float) -> None:
+        duration = max(1, self._animation_player.clip.duration_ms)
+        self._animation_player.current_ms = int(max(0.0, min(1.0, progress)) * duration)
+        self.update()
+
     def set_texture_candidates(self, paths: list[Path]) -> None:
         self._texture_pool = [path for path in paths if path.exists()]
         self._texture_index = 0 if self._texture_pool else -1
@@ -79,6 +88,7 @@ class PreviewRenderer(QOpenGLWidget):
 
     def _tick(self) -> None:
         self._angle = (self._angle + self._rotation_speed) % 360
+        self._animation_player.tick(33)
         self.update()
 
     def wheelEvent(self, event) -> None:  # noqa: N802
@@ -95,8 +105,17 @@ class PreviewRenderer(QOpenGLWidget):
         self._draw_grid(painter)
         self._draw_model_card(painter)
         self._draw_texture_layer(painter)
-        self._draw_hud(painter)
 
+        if self._mode == "animated":
+            self._animation_renderer.draw(
+                painter,
+                self.width(),
+                self.height(),
+                self._animation_player.progress,
+                self._animation_player.clip.name,
+            )
+
+        self._draw_hud(painter)
         painter.end()
 
     def _draw_grid(self, painter: QPainter) -> None:
@@ -111,15 +130,10 @@ class PreviewRenderer(QOpenGLWidget):
         painter.restore()
 
     def _draw_model_card(self, painter: QPainter) -> None:
-        base = int(min(self.width(), self.height()) // 3 * self._zoom)
-        wobble = 8 if self._mode == "animated" else 3
-        scale = 0.88 + (wobble / 100.0)
-        _ = scale
-
         if self._mode == "block":
-            self._model_renderer.draw(painter, self.width(), self.height(), self._angle)
-        else:
             self._block_renderer.draw(painter, self.width(), self.height(), self._angle)
+        else:
+            self._model_renderer.draw(painter, self.width(), self.height(), self._angle)
 
     def _draw_texture_layer(self, painter: QPainter) -> None:
         if self._pixmap is None:
@@ -144,7 +158,11 @@ class PreviewRenderer(QOpenGLWidget):
         painter.drawText(12, 24, "Preview Renderer")
         painter.drawText(12, 44, f"mode: {self._mode}")
         painter.drawText(12, 64, f"rotation: {self._angle:03d} deg")
-        painter.drawText(12, 84, f"zoom: {self._zoom:.2f}  light: {self._lighting:.2f}")
+        painter.drawText(
+            12,
+            84,
+            f"zoom: {self._zoom:.2f}  light: {self._lighting:.2f}  anim: {self._animation_player.progress:.2f}",
+        )
         label = str(self._texture_path) if self._texture_path else "no texture loaded"
         if len(label) > 72:
             label = "..." + label[-69:]
