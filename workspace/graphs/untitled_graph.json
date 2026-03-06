@@ -1,0 +1,32 @@
+{
+  "name": "untitled_graph",
+  "graph_version": 2,
+  "metadata": {
+    "last_bundle": "workspace\\generated\\untitled_graph\\content_bundle.json"
+  },
+  "nodes": [
+    {
+      "node_id": "materialnode_1",
+      "node_type": "MaterialNode",
+      "title": "MaterialNode",
+      "x": 100.0,
+      "y": 100.0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "output_material",
+          "port_type": "material",
+          "direction": "output"
+        }
+      ],
+      "parameters": {
+        "material": "mythril",
+        "tier": 4,
+        "style": "metallic"
+      },
+      "execution_state": "success",
+      "last_error": null
+    }
+  ],
+  "links": []
+}

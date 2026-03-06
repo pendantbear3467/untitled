@@ -8,32 +8,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingDropsEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
 public class PlayerStatsGameplayEvents {
-    @SubscribeEvent
-    public void onLivingHurt(LivingHurtEvent event) {
-        if (!(event.getSource().getEntity() instanceof ServerPlayer player)) {
-            return;
-        }
-
-        PlayerStatsApi.get(player).ifPresent(stats -> {
-            float damage = event.getAmount();
-            damage += stats.meleeDamageBonus();
-            damage *= stats.damageMultiplier();
-
-            if (player.getRandom().nextFloat() < stats.critChance()) {
-                damage *= stats.critDamage();
-            }
-
-            event.setAmount(Math.max(0.0F, damage));
-        });
-    }
-
     @SubscribeEvent
     public void onMobKill(LivingDeathEvent event) {
         if (!(event.getSource().getEntity() instanceof ServerPlayer player)) {

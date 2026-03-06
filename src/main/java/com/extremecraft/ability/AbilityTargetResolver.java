@@ -17,28 +17,41 @@ public final class AbilityTargetResolver {
     }
 
     public static TargetBundle resolve(AbilityContext context) {
+        if (context == null || context.player() == null) {
+            return new TargetBundle(List.of(), Vec3.ZERO);
+        }
+
         AbilityDefinition definition = context.definition();
+        if (definition == null) {
+            if (context.target() != null) {
+                return new TargetBundle(List.of(context.target()), context.target().position());
+            }
+            return new TargetBundle(List.of(), context.position());
+        }
+
         return switch (definition.targetType()) {
-            case SELF -> new TargetBundle(List.of(context.caster()), context.caster().position());
+            case SELF -> new TargetBundle(List.of(context.player()), context.player().position());
             case ENTITY -> resolveEntityTarget(context);
             case AREA -> resolveAreaTarget(context);
             case PROJECTILE -> resolveProjectileTarget(context);
-            case NONE -> new TargetBundle(List.of(), context.caster().position());
+            case NONE -> new TargetBundle(List.of(), context.player().position());
         };
     }
 
     private static TargetBundle resolveEntityTarget(AbilityContext context) {
-        Vec3 start = context.caster().getEyePosition();
-        Vec3 end = start.add(context.caster().getLookAngle().scale(context.definition().range()));
-        AABB bounds = context.caster().getBoundingBox().expandTowards(context.caster().getLookAngle().scale(context.definition().range())).inflate(1.0D);
+        Vec3 start = context.player().getEyePosition();
+        Vec3 end = start.add(context.player().getLookAngle().scale(context.definition().range()));
+        AABB bounds = context.player().getBoundingBox()
+                .expandTowards(context.player().getLookAngle().scale(context.definition().range()))
+                .inflate(1.0D);
 
         EntityHitResult hit = ProjectileUtil.getEntityHitResult(
-                context.caster().level(),
-                context.caster(),
+                context.player().level(),
+                context.player(),
                 start,
                 end,
                 bounds,
-                entity -> entity instanceof LivingEntity && entity.isAlive() && entity != context.caster()
+                entity -> entity instanceof LivingEntity && entity.isAlive() && entity != context.player()
         );
 
         if (hit != null && hit.getEntity() instanceof LivingEntity living) {
@@ -50,27 +63,27 @@ public final class AbilityTargetResolver {
 
     private static TargetBundle resolveAreaTarget(AbilityContext context) {
         double radius = Math.max(1.0D, context.definition().radius());
-        List<LivingEntity> entities = context.caster().level().getEntitiesOfClass(
+        List<LivingEntity> entities = context.player().level().getEntitiesOfClass(
                 LivingEntity.class,
-                new AABB(context.caster().blockPosition()).inflate(radius),
-                entity -> entity.isAlive() && entity != context.caster()
+                new AABB(context.player().blockPosition()).inflate(radius),
+                entity -> entity.isAlive() && entity != context.player()
         );
 
-        return new TargetBundle(List.copyOf(entities), context.caster().position());
+        return new TargetBundle(List.copyOf(entities), context.player().position());
     }
 
     private static TargetBundle resolveProjectileTarget(AbilityContext context) {
-        Vec3 start = context.caster().getEyePosition();
-        Vec3 end = start.add(context.caster().getLookAngle().scale(context.definition().range()));
+        Vec3 start = context.player().getEyePosition();
+        Vec3 end = start.add(context.player().getLookAngle().scale(context.definition().range()));
 
         List<LivingEntity> entities = new ArrayList<>();
         EntityHitResult hit = ProjectileUtil.getEntityHitResult(
-                context.caster().level(),
-                context.caster(),
+                context.player().level(),
+                context.player(),
                 start,
                 end,
-                context.caster().getBoundingBox().expandTowards(context.caster().getLookAngle().scale(context.definition().range())).inflate(1.0D),
-                entity -> entity instanceof LivingEntity && entity.isAlive() && entity != context.caster()
+                context.player().getBoundingBox().expandTowards(context.player().getLookAngle().scale(context.definition().range())).inflate(1.0D),
+                entity -> entity instanceof LivingEntity && entity.isAlive() && entity != context.player()
         );
 
         if (hit != null && hit.getEntity() instanceof LivingEntity living) {

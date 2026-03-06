@@ -1,18 +1,17 @@
-package com.extremecraft.modules.item;
+package com.extremecraft.magic;
 
-import com.extremecraft.item.tool.ECToolTier;
 import com.extremecraft.magic.SpellCastContext.CastSource;
-import com.extremecraft.magic.SpellExecutor;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
-public class ArcaneStaffItem extends AbstractModularToolItem {
-    public ArcaneStaffItem(Properties properties) {
-        super(ECToolTier.ENDGAME, 1, -2.2F, 3, properties);
+public class SpellBookItem extends Item {
+    public SpellBookItem(Properties properties) {
+        super(properties);
     }
 
     @Override
@@ -27,7 +26,7 @@ public class ArcaneStaffItem extends AbstractModularToolItem {
             return InteractionResultHolder.fail(stack);
         }
 
-        boolean cast = SpellExecutor.tryCastFromStack(serverPlayer, stack, CastSource.STAFF);
+        boolean cast = SpellExecutor.tryCastFromStack(serverPlayer, stack, CastSource.SPELL_BOOK);
         return cast ? InteractionResultHolder.success(stack) : InteractionResultHolder.fail(stack);
     }
 }

@@ -9,9 +9,9 @@
   "items": {
     "mythril_pickaxe": {
       "material": "mythril",
-      "durability": 1800,
+      "durability": 1500,
       "attack_damage": 7.0,
-      "mining_speed": 9.0,
+      "mining_speed": 8.0,
       "tier": 4,
       "texture_style": "metallic",
       "type": "tool"
@@ -51,10 +51,23 @@
       "tier": 4,
       "texture_style": "metallic",
       "type": "tool"
+    },
+    "steel_pickaxe": {
+      "material": "mythril",
+      "durability": 800,
+      "attack_damage": 5,
+      "mining_speed": 6,
+      "tier": 4,
+      "texture_style": "ancient",
+      "type": "tool"
     }
   },
   "machines": {
     "mythril_assembler": {
+      "material": "mythril",
+      "texture_style": "industrial"
+    },
+    "mythril_crusher": {
       "material": "mythril",
       "texture_style": "industrial"
     }

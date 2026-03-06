@@ -8,6 +8,7 @@ import com.extremecraft.client.DwKeybinds;
 import com.extremecraft.client.gui.machine.TechMachineScreen;
 import com.extremecraft.client.gui.player.InventoryButtonInjector;
 import com.extremecraft.client.gui.player.InventoryXpOverlay;
+import com.extremecraft.combat.CombatEventHandler;
 import com.extremecraft.combat.dualwield.PlayerDualWieldEvents;
 import com.extremecraft.command.ECDevCommands;
 import com.extremecraft.config.DwConfig;
@@ -141,6 +142,7 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new DimensionHooks());
             MinecraftForge.EVENT_BUS.register(new DwServerTicker());
             MinecraftForge.EVENT_BUS.register(new ArmorBonusHandler());
+            MinecraftForge.EVENT_BUS.register(new CombatEventHandler());
             MinecraftForge.EVENT_BUS.register(new PlayerDualWieldEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerSkillTreeEvents());
             MinecraftForge.EVENT_BUS.register(new ModuleRuntimeEvents());

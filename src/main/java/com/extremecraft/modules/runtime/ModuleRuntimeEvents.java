@@ -1,5 +1,6 @@
 package com.extremecraft.modules.runtime;
 
+import com.extremecraft.combat.event.DamagePreCalculateEvent;
 import com.extremecraft.modules.data.ModuleTrigger;
 import com.extremecraft.modules.service.ModuleCatalogSyncService;
 import net.minecraft.server.level.ServerPlayer;
@@ -7,7 +8,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingEquipmentChangeEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -60,8 +60,8 @@ public class ModuleRuntimeEvents {
     }
 
     @SubscribeEvent
-    public void onLivingAttack(LivingHurtEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
+    public void onDamagePreCalculate(DamagePreCalculateEvent event) {
+        if (!(event.context().target() instanceof ServerPlayer player)) {
             return;
         }
 
@@ -70,8 +70,7 @@ public class ModuleRuntimeEvents {
             return;
         }
 
-        float adjusted = event.getAmount() * (1.0F - reduction);
-        event.setAmount(Math.max(0.0F, adjusted));
+        event.context().modifiers().multiplyStatus(1.0F - reduction);
         ModuleRuntimeService.consumeShieldCooldown(player);
     }
 

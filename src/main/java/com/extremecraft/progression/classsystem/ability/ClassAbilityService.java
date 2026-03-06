@@ -1,5 +1,8 @@
 package com.extremecraft.progression.classsystem.ability;
 
+import com.extremecraft.combat.CombatEngine;
+import com.extremecraft.combat.DamageContext;
+import com.extremecraft.combat.DamageType;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.SyncClassAbilityStateS2CPacket;
 import com.extremecraft.progression.capability.PlayerStatsApi;
@@ -142,7 +145,15 @@ public final class ClassAbilityService {
         }
 
         for (LivingEntity target : targets) {
-            target.hurt(player.damageSources().playerAttack(player), damage);
+            CombatEngine.applyDamage(DamageContext.builder()
+                    .attacker(player)
+                    .target(target)
+                    .damageAmount(damage)
+                    .damageType(DamageType.PHYSICAL)
+                    .abilitySource("class:" + ability.id())
+                    .weaponSource(player.getMainHandItem())
+                    .armorValue(target.getArmorValue())
+                    .build());
         }
 
         player.swing(player.getUsedItemHand(), true);

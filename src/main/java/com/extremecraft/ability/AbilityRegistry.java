@@ -21,13 +21,40 @@ public final class AbilityRegistry {
     private static final Map<String, AbilityDefinition> DEFINITIONS = new LinkedHashMap<>();
     private static List<AbilityDefinition> CACHED_LIST = List.of();
 
+    private static final Map<String, Ability> RUNTIME_ABILITIES = new LinkedHashMap<>();
+    private static List<Ability> CACHED_RUNTIME = List.of();
+
     @SubscribeEvent
     public void onAddReloadListener(AddReloadListenerEvent event) {
         event.addListener(new Loader());
     }
 
+    public static synchronized void register(String id, Ability ability) {
+        if (ability == null) {
+            return;
+        }
+
+        String key = normalize(id == null || id.isBlank() ? ability.getId() : id);
+        if (key.isBlank()) {
+            return;
+        }
+
+        RUNTIME_ABILITIES.put(key, ability);
+        CACHED_RUNTIME = List.copyOf(RUNTIME_ABILITIES.values());
+    }
+
+    public static synchronized Ability runtime(String id) {
+        String key = normalize(id);
+        return key.isBlank() ? null : RUNTIME_ABILITIES.get(key);
+    }
+
+    public static synchronized Collection<Ability> runtimeAbilities() {
+        return CACHED_RUNTIME;
+    }
+
     public static synchronized AbilityDefinition get(String id) {
-        return id == null ? null : DEFINITIONS.get(id.trim().toLowerCase());
+        String key = normalize(id);
+        return key.isBlank() ? null : DEFINITIONS.get(key);
     }
 
     public static synchronized Collection<AbilityDefinition> all() {
@@ -42,6 +69,10 @@ public final class AbilityRegistry {
         DEFINITIONS.clear();
         DEFINITIONS.putAll(loaded);
         CACHED_LIST = List.copyOf(DEFINITIONS.values());
+    }
+
+    private static String normalize(String id) {
+        return id == null ? "" : id.trim().toLowerCase();
     }
 
     private static final class Loader extends SimpleJsonResourceReloadListener {

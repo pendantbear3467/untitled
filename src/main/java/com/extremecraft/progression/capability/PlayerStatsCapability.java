@@ -96,6 +96,13 @@ public class PlayerStatsCapability {
         return 20 + (vitality * 2) + Math.round(maxHealthBonus);
     }
 
+    public float equipmentModifier(String id) {
+        if (id == null || id.isBlank()) {
+            return 0.0F;
+        }
+        return equipmentAdditiveModifiers.getOrDefault(id.trim().toLowerCase(), 0.0F);
+    }
+
     public int meleeDamageBonus() {
         return Math.round(strength + damageBonus);
     }
