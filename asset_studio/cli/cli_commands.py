@@ -9,6 +9,7 @@ from asset_studio.cli.build_commands import build_command
 from asset_studio.cli.compile_commands import register_compile_commands, run_compile_command
 from asset_studio.cli.generate_commands import register_generate_commands, run_generate_command
 from asset_studio.cli.modpack_commands import register_modpack_commands, run_modpack_command
+from asset_studio.cli.pack_commands import export_pack_command
 from asset_studio.cli.project_commands import register_project_commands, run_project_command
 from asset_studio.cli.registry_commands import register_registry_commands, run_registry_command, run_registry_scan_command
 from asset_studio.cli.release_commands import register_release_commands, run_release_command
@@ -56,9 +57,13 @@ def register_subcommands(subparsers: argparse._SubParsersAction[argparse.Argumen
 
     export_cmd = subparsers.add_parser("export", help="Export operations")
     export_sub = export_cmd.add_subparsers(dest="export_target", required=True)
+
     bb_export = export_sub.add_parser("blockbench", help="Export model as .bbmodel")
     bb_export.add_argument("model_id")
     bb_export.add_argument("--kind", default="block", choices=["block", "item"])
+
+    pack_export = export_sub.add_parser("pack", help="Export resourcepack/datapack bundles")
+    pack_export.add_argument("target", choices=["resourcepack", "datapack", "forge", "fabric"])
 
     import_cmd = subparsers.add_parser("import", help="Import operations")
     import_sub = import_cmd.add_subparsers(dest="import_target", required=True)
@@ -107,6 +112,9 @@ def run_cli(args: argparse.Namespace, workspace_path: Path) -> int:
         path = export_bbmodel(args.model_id, context=context, kind=args.kind)
         print(f"Exported Blockbench model: {path}")
         return 0
+
+    if args.command == "export" and args.export_target == "pack":
+        return export_pack_command(context, args.target)
 
     if args.command == "import" and args.import_target == "blockbench":
         model_id = import_bbmodel(Path(args.bbmodel_path), context=context)

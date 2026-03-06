@@ -47,5 +47,5 @@ assetstudio = "asset_studio.main:main"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["asset_studio*"]
+include = ["asset_studio*", "extremecraft_sdk*", "compiler*"]
 exclude = ["workspace*", "run*", "build*", "tools*", "src*", "api*", "client*", "core*", "gameplay*", "magic*", "tech*", "worldgen*"]
