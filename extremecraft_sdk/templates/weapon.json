@@ -1,0 +1,9 @@
+{
+  "type": "weapon",
+  "id": "mythril_blade",
+  "material": "mythril",
+  "attack_damage": 12,
+  "durability": 1600,
+  "tier": 5,
+  "texture_style": "metallic"
+}

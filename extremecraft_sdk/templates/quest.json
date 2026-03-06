@@ -1,0 +1,9 @@
+{
+  "type": "quest",
+  "id": "forge_mythril_tools",
+  "title": "Forge Mythril Tools",
+  "requirements": [
+    "extremecraft:mythril_pickaxe"
+  ],
+  "rewards": []
+}

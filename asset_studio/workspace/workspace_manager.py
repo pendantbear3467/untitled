@@ -6,6 +6,7 @@ from pathlib import Path
 
 from PIL import Image
 
+from asset_studio.skilltree.user_profile import UserProfile, load_or_create_profile, save_profile
 from asset_studio.textures.procedural_texture_engine import ProceduralTextureEngine
 from asset_studio.workspace.asset_database import AssetDatabase
 
@@ -48,6 +49,15 @@ class AssetStudioContext:
         snapshot.parent.mkdir(parents=True, exist_ok=True)
         snapshot.write_text(f"Preview generated for {model_name}\n", encoding="utf-8")
 
+    def user_profile_path(self) -> Path:
+        return self.workspace_root / "user_profile.json"
+
+    def get_user_profile(self) -> UserProfile:
+        return load_or_create_profile(self.user_profile_path())
+
+    def save_user_profile(self, profile: UserProfile) -> None:
+        save_profile(self.user_profile_path(), profile)
+
 
 class WorkspaceManager:
     def __init__(self, workspace_root: Path, repo_root: Path) -> None:
@@ -73,6 +83,7 @@ class WorkspaceManager:
             "machines",
             "tools",
             "blockbench",
+            "skilltrees",
             "previews",
             "build",
             "exports",
@@ -98,6 +109,21 @@ class WorkspaceManager:
         snapshot_path = self.workspace_root / "registry_snapshot.json"
         if not snapshot_path.exists():
             snapshot_path.write_text(json.dumps({"files_scanned": 0}, indent=2) + "\n", encoding="utf-8")
+
+        profile_path = self.workspace_root / "user_profile.json"
+        if not profile_path.exists():
+            profile_path.write_text(
+                json.dumps(
+                    {
+                        "username": "default",
+                        "preferred_class": "adventurer",
+                        "favorite_trees": [],
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
 
         return AssetStudioContext(
             workspace_root=self.workspace_root,

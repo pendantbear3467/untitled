@@ -1,0 +1,7 @@
+{
+  "type": "worldgen",
+  "id": "mythril",
+  "vein_size": 7,
+  "min_y": -48,
+  "max_y": 32
+}

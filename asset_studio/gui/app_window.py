@@ -32,6 +32,7 @@ from asset_studio.gui.console_panel import ConsolePanel
 from asset_studio.gui.menu_bar import build_menu_bar
 from asset_studio.gui.preview_renderer import PreviewRenderer
 from asset_studio.gui.project_browser import ProjectBrowser
+from asset_studio.gui.skilltree_designer import SkillTreeDesigner
 from asset_studio.workspace.workspace_manager import WorkspaceManager
 
 
@@ -53,6 +54,8 @@ class AssetStudioWindow(QMainWindow):
         self._last_preview_texture: Path | None = None
         self.wizard = AssetWizardPanel()
         self.wizard.generate_tool_requested.connect(self._on_generate_tool)
+        self.skilltree_designer = SkillTreeDesigner(self.context)
+        self.skilltree_designer.log_requested.connect(self._write_log)
 
         preview_controls = self._build_preview_controls()
         preview_stack = QWidget()
@@ -62,6 +65,7 @@ class AssetStudioWindow(QMainWindow):
 
         tabs = QTabWidget()
         tabs.addTab(self.wizard, "Asset Wizard")
+        tabs.addTab(self.skilltree_designer, "Skill Tree Designer")
         tabs.addTab(self.browser, "Project Browser")
         tabs.addTab(self.log, "Console")
 
@@ -110,6 +114,7 @@ class AssetStudioWindow(QMainWindow):
     def _new_project(self) -> None:
         self.context = self.workspace_manager.initialize_workspace()
         self.browser.load_workspace(self.context.workspace_root)
+        self.skilltree_designer.set_context(self.context)
         self._write_log("New project initialized")
 
     def _open_project(self) -> None:
@@ -119,6 +124,7 @@ class AssetStudioWindow(QMainWindow):
         self.workspace_manager = WorkspaceManager(workspace_root=Path(selected), repo_root=Path.cwd())
         self.context = self.workspace_manager.load_context()
         self.browser.load_workspace(self.context.workspace_root)
+        self.skilltree_designer.set_context(self.context)
         self._write_log(f"Opened workspace: {selected}")
 
     def _save_workspace(self) -> None:

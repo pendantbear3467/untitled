@@ -9,6 +9,7 @@ from asset_studio.cli.build_commands import build_command
 from asset_studio.cli.generate_commands import register_generate_commands, run_generate_command
 from asset_studio.cli.project_commands import register_project_commands, run_project_command
 from asset_studio.cli.registry_commands import register_registry_commands, run_registry_scan_command
+from asset_studio.cli.skilltree_commands import register_skilltree_commands, run_skilltree_command
 from asset_studio.cli.validate_commands import register_validate_commands, run_validate_command
 from asset_studio.workspace.workspace_manager import WorkspaceManager
 
@@ -28,6 +29,9 @@ def register_subcommands(subparsers: argparse._SubParsersAction[argparse.Argumen
 
     scan = subparsers.add_parser("scan-registry", help="Scan Java registries")
     register_registry_commands(scan)
+
+    skilltree = subparsers.add_parser("skilltree", help="Skill tree editor commands")
+    register_skilltree_commands(skilltree)
 
     export_cmd = subparsers.add_parser("export", help="Export operations")
     export_sub = export_cmd.add_subparsers(dest="export_target", required=True)
@@ -68,5 +72,8 @@ def run_cli(args: argparse.Namespace, workspace_path: Path) -> int:
 
     if args.command == "scan-registry":
         return run_registry_scan_command(args, context)
+
+    if args.command == "skilltree":
+        return run_skilltree_command(args, context)
 
     raise ValueError(f"Unsupported command: {args.command}")
