@@ -1,0 +1,1 @@
+.\.venv\Scripts\python tools/generate_assets.py --materials --export-blockbench --preview
