@@ -24,9 +24,11 @@ import com.extremecraft.net.DwNetwork;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.platform.CompatibilityGate;
 import com.extremecraft.platform.ExtremeCraftApiProviderImpl;
+import com.extremecraft.platform.data.loader.MachineDataLoader;
+import com.extremecraft.platform.data.loader.TechTreeDataLoader;
 import com.extremecraft.platform.module.CoreGameplayModule;
 import com.extremecraft.platform.module.ExtremeCraftModuleLoader;
-import com.extremecraft.platform.module.ModuleRegistry;`r`nimport com.extremecraft.platform.data.loader.MachineDataLoader;`r`nimport com.extremecraft.platform.data.loader.TechTreeDataLoader;
+import com.extremecraft.platform.module.ModuleRegistry;
 import com.extremecraft.progression.ProgressCommands;
 import com.extremecraft.progression.ProgressionEvents;
 import com.extremecraft.progression.StageDataLoader;
@@ -131,7 +133,9 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new ArmorBonusHandler());
             MinecraftForge.EVENT_BUS.register(new PlayerDualWieldEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerSkillTreeEvents());
-            MinecraftForge.EVENT_BUS.register(new ModuleRuntimeEvents());`r`n            MinecraftForge.EVENT_BUS.register(new MachineDataLoader());`r`n            MinecraftForge.EVENT_BUS.register(new TechTreeDataLoader());
+            MinecraftForge.EVENT_BUS.register(new ModuleRuntimeEvents());
+            MinecraftForge.EVENT_BUS.register(new MachineDataLoader());
+            MinecraftForge.EVENT_BUS.register(new TechTreeDataLoader());
         });
     }
 
@@ -154,4 +158,3 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
-
