@@ -12,8 +12,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 public class PlayerLevelProvider implements ICapabilitySerializable<CompoundTag> {
-    public static final Capability<PlayerLevelCapability> PLAYER_LEVEL = CapabilityManager.get(new CapabilityToken<>() {
-    });
+    public static final Capability<PlayerLevelCapability> PLAYER_LEVEL = CapabilityManager.get(new CapabilityToken<>() {});
 
     private final PlayerLevelCapability data = new PlayerLevelCapability();
     private final LazyOptional<PlayerLevelCapability> optional = LazyOptional.of(() -> data);

@@ -238,8 +238,8 @@ public final class ECDevCommands {
                             ServerPlayer player = ctx.getSource().getPlayerOrException();
                             ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new OpenExtremeCraftDebugScreenS2CPacket());
                             return 1;
-                        }))
-        );
+                    }))
+        ));
     }
 
     private static int reloadData(CommandSourceStack source) {
