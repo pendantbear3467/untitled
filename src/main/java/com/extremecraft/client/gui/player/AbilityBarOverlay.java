@@ -3,17 +3,34 @@ package com.extremecraft.client.gui.player;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.magic.mana.ManaApi;
 import com.extremecraft.network.sync.RuntimeSyncClientState;
+import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import org.slf4j.Logger;
+
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 
 public class AbilityBarOverlay {
-    private final java.util.Map<String, Integer> cooldownMaxByAbility = new java.util.LinkedHashMap<>();
-    private static final ResourceLocation SLOT_BG = new ResourceLocation(ECConstants.MODID, "textures/gui/magic_slot.png");
+    private static final Logger LOGGER = LogUtils.getLogger();
+    private static final ResourceLocation SLOT_BG = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/magic_slot.png");
+    private static final ResourceLocation FALLBACK_ICON = ResourceLocation.fromNamespaceAndPath(
+            ECConstants.MODID,
+            "textures/gui/abilities/ability_default.png"
+    );
+
+    private final Map<String, Integer> cooldownMaxByAbility = new LinkedHashMap<>();
+    private final Map<String, ResourceLocation> resolvedIcons = new LinkedHashMap<>();
+    private final Set<String> loggedMissingAbilityIcons = new HashSet<>();
+    private boolean loggedMissingFallback;
 
     private static final int SLOT_SIZE = 22;
     private static final int ICON_SIZE = 16;
@@ -65,7 +82,7 @@ public class AbilityBarOverlay {
         gui.blit(SLOT_BG, x, y, 0, 0, SLOT_SIZE, SLOT_SIZE, SLOT_SIZE, SLOT_SIZE);
 
         if (!abilityId.isBlank()) {
-            ResourceLocation icon = new ResourceLocation(ECConstants.MODID, "textures/gui/abilities/" + abilityId + ".png");
+            ResourceLocation icon = resolveAbilityIcon(Minecraft.getInstance(), abilityId);
             gui.blit(icon, x + 3, y + 3, 0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
         }
 
@@ -103,6 +120,40 @@ public class AbilityBarOverlay {
                 }
             }
         }
+    }
+
+    private ResourceLocation resolveAbilityIcon(Minecraft minecraft, String abilityId) {
+        if (abilityId == null || abilityId.isBlank()) {
+            return FALLBACK_ICON;
+        }
+
+        return resolvedIcons.computeIfAbsent(abilityId, id -> {
+            ResourceLocation specificIcon = ResourceLocation.fromNamespaceAndPath(
+                    ECConstants.MODID,
+                    "textures/gui/abilities/" + id + ".png"
+            );
+            if (hasResource(minecraft.getResourceManager(), specificIcon)) {
+                return specificIcon;
+            }
+
+            if (loggedMissingAbilityIcons.add(id)) {
+                LOGGER.warn("Missing ability icon for '{}', using fallback texture", id);
+            }
+
+            if (hasResource(minecraft.getResourceManager(), FALLBACK_ICON)) {
+                return FALLBACK_ICON;
+            }
+
+            if (!loggedMissingFallback) {
+                LOGGER.error("Missing fallback ability icon texture '{}'", FALLBACK_ICON);
+                loggedMissingFallback = true;
+            }
+            return SLOT_BG;
+        });
+    }
+
+    private static boolean hasResource(ResourceManager resourceManager, ResourceLocation location) {
+        return resourceManager.getResource(location).isPresent();
     }
 }
 

@@ -37,7 +37,7 @@ public final class TechItems {
             DUSTS.put(material.id(), ITEMS.register(material.id() + "_dust", () -> new Item(new Item.Properties())));
             NUGGETS.put(material.id(), ITEMS.register(material.id() + "_nugget", () -> new Item(new Item.Properties())));
 
-            ITEMS.register(material.id() + "_ore", () -> new BlockItem(TechBlocks.ORE_BLOCKS.get(material.id()).get(), new Item.Properties()));
+            ITEMS.register(oreBlockItemId(material.id()), () -> new BlockItem(TechBlocks.ORE_BLOCKS.get(material.id()).get(), new Item.Properties()));
             ITEMS.register(material.id() + "_block", () -> new BlockItem(TechBlocks.STORAGE_BLOCKS.get(material.id()).get(), new Item.Properties()));
 
             if (material.hasTools()) {
@@ -86,6 +86,11 @@ public final class TechItems {
         ITEMS.register(id + "_chestplate", () -> new ArmorItem(material, ArmorItem.Type.CHESTPLATE, new Item.Properties()));
         ITEMS.register(id + "_leggings", () -> new ArmorItem(material, ArmorItem.Type.LEGGINGS, new Item.Properties()));
         ITEMS.register(id + "_boots", () -> new ArmorItem(material, ArmorItem.Type.BOOTS, new Item.Properties()));
+    }
+
+    private static String oreBlockItemId(String materialId) {
+        String normalized = materialId == null ? "" : materialId.trim().toLowerCase();
+        return normalized.endsWith("_ore") ? normalized : normalized + "_ore";
     }
 
     private TechItems() {

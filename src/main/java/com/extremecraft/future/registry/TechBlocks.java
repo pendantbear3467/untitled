@@ -29,7 +29,7 @@ public final class TechBlocks {
 
     static {
         OreMaterialCatalog.MATERIALS.values().forEach(material -> {
-            ORE_BLOCKS.put(material.id(), BLOCKS.register(material.id() + "_ore", () -> new Block(BlockBehaviour.Properties.of()
+            ORE_BLOCKS.put(material.id(), BLOCKS.register(oreBlockId(material.id()), () -> new Block(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.STONE)
                     .strength(3.0F + material.harvestLevel(), 6.0F + material.harvestLevel())
                     .sound(SoundType.STONE)
@@ -65,6 +65,11 @@ public final class TechBlocks {
 
     public static List<RegistryObject<Block>> cableBlocks() {
         return new ArrayList<>(CABLE_BLOCKS.values());
+    }
+
+    private static String oreBlockId(String materialId) {
+        String normalized = materialId == null ? "" : materialId.trim().toLowerCase();
+        return normalized.endsWith("_ore") ? normalized : normalized + "_ore";
     }
 
     private TechBlocks() {
