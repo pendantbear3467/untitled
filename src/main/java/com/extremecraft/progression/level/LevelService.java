@@ -6,13 +6,14 @@ import com.extremecraft.progression.PlayerStatsService;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 public final class LevelService {
-    private static final String[] DEFAULT_ABILITY_SLOT_IDS = {
-            "firebolt",
-            "blink",
-            "arcane_shield",
-            "meteor"
-    };
+    private static final Map<UUID, List<String>> GRANTED_ABILITIES = new LinkedHashMap<>();
 
     private LevelService() {
     }
@@ -28,7 +29,6 @@ public final class LevelService {
             sync(player, levelData);
         });
 
-        // Keep existing progression stats in sync with new XP grants.
         PlayerStatsService.addExperience(player, amount);
         return levelUps[0];
     }
@@ -41,6 +41,11 @@ public final class LevelService {
         PlayerLevelApi.get(player).ifPresent(levelData -> {
             levelData.setLevel(level);
             sync(player, levelData);
+        });
+
+        com.extremecraft.progression.capability.PlayerStatsApi.get(player).ifPresent(stats -> {
+            stats.setLevel(level);
+            PlayerStatsService.sync(player, stats);
         });
     }
 
@@ -60,22 +65,37 @@ public final class LevelService {
     }
 
     public static void grantAbility(ServerPlayer player, String abilityId) {
-        // Ability unlock persistence is not yet backed by PlayerLevelCapability.
-        // Keep this as a no-op compatibility hook for dev commands.
+        if (player == null || abilityId == null || abilityId.isBlank()) {
+            return;
+        }
+
+        List<String> abilities = GRANTED_ABILITIES.computeIfAbsent(player.getUUID(), id -> new ArrayList<>());
+        String normalized = abilityId.trim().toLowerCase();
+        if (!abilities.contains(normalized)) {
+            abilities.add(normalized);
+        }
     }
 
     public static String abilityInSlot(ServerPlayer player, int slotIndex) {
+        if (player == null) {
+            return defaultAbilityForSlot(slotIndex);
+        }
+
+        List<String> granted = GRANTED_ABILITIES.get(player.getUUID());
+        if (granted != null && slotIndex >= 0 && slotIndex < granted.size()) {
+            return granted.get(slotIndex);
+        }
+
         return defaultAbilityForSlot(slotIndex);
     }
 
-    public static int skillPoints(ServerPlayer player) {
-        return PlayerLevelApi.get(player).map(PlayerLevelCapability::skillPoints).orElse(0);
-    }
-
-    public static String defaultAbilityForSlot(int slotIndex) {
-        if (slotIndex < 0 || slotIndex >= DEFAULT_ABILITY_SLOT_IDS.length) {
-            return "";
-        }
-        return DEFAULT_ABILITY_SLOT_IDS[slotIndex];
+    private static String defaultAbilityForSlot(int slotIndex) {
+        return switch (slotIndex) {
+            case 0 -> "firebolt";
+            case 1 -> "blink";
+            case 2 -> "arcane_shield";
+            case 3 -> "meteor";
+            default -> "";
+        };
     }
 }
