@@ -11,6 +11,7 @@ import com.extremecraft.client.gui.machine.TechMachineScreen;
 import com.extremecraft.client.gui.player.InventoryButtonInjector;
 import com.extremecraft.client.gui.player.InventoryXpOverlay;
 import com.extremecraft.client.ExtremeCraftKeybinds;
+import com.extremecraft.client.render.entity.ModEntityRenderers;
 import com.extremecraft.combat.CombatEventHandler;
 import com.extremecraft.combat.dualwield.PlayerDualWieldEvents;
 import com.extremecraft.command.ECDevCommands;
@@ -120,6 +121,8 @@ public final class ExtremeCraft {
         if (FMLEnvironment.dist == Dist.CLIENT) {
             modBus.addListener(DwKeybinds::onRegisterKeyMappings);
             modBus.addListener(ExtremeCraftKeybinds::onRegisterKeyMappings);
+            modBus.addListener(ModEntityRenderers::registerRenderers);
+            modBus.addListener(ModEntityRenderers::registerLayerDefinitions);
         }
 
         MinecraftForge.EVENT_BUS.addListener(this::registerCommands);
@@ -218,6 +221,7 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
 
 
 
