@@ -9,6 +9,8 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -16,6 +18,8 @@ import java.util.Locale;
 import java.util.Set;
 
 public final class Config {
+    private static final Logger LOGGER = LogManager.getLogger();
+
     public static final ForgeConfigSpec COMMON_SPEC;
     public static final Common COMMON;
 
@@ -33,6 +37,7 @@ public final class Config {
 
     public static void register() {
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, COMMON_SPEC, "extremecraft-common.toml");
+        LOGGER.debug("[Config] Registered common config extremecraft-common.toml");
     }
 
     public static boolean isMachineEnabled(String machineId) {
@@ -70,6 +75,7 @@ public final class Config {
             DISABLED_MOB_IDS = parseResourceIds(COMMON.mobs.disabledMobIds.get());
         } catch (IllegalStateException ignored) {
             // Config values are not available yet in early mod bootstrap.
+            LOGGER.debug("[Config] Deferred cache rebuild because config values are not loaded yet");
         }
     }
 
@@ -306,6 +312,8 @@ public final class Config {
         public static void onConfigLoad(ModConfigEvent.Loading event) {
             if (event.getConfig().getSpec() == COMMON_SPEC) {
                 rebuildCaches();
+                LOGGER.info("[Config] Loaded common config: disabledMachines={}, disabledMobs={}",
+                        DISABLED_MACHINE_IDS.size(), DISABLED_MOB_IDS.size());
             }
         }
 
@@ -313,6 +321,8 @@ public final class Config {
         public static void onConfigReload(ModConfigEvent.Reloading event) {
             if (event.getConfig().getSpec() == COMMON_SPEC) {
                 rebuildCaches();
+                LOGGER.info("[Config] Reloaded common config: disabledMachines={}, disabledMobs={}",
+                        DISABLED_MACHINE_IDS.size(), DISABLED_MOB_IDS.size());
             }
         }
     }

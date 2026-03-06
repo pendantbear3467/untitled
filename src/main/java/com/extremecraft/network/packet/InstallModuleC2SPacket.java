@@ -4,12 +4,17 @@ import com.extremecraft.modules.service.ModuleInstallService;
 import com.extremecraft.network.ModNetwork;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.function.Supplier;
 
 public record InstallModuleC2SPacket(String moduleId, String targetSlot) {
+    private static final Logger LOGGER = LogManager.getLogger();
+
     public static void encode(InstallModuleC2SPacket packet, FriendlyByteBuf buf) {
         buf.writeUtf(packet.moduleId, 128);
         buf.writeUtf(packet.targetSlot, 32);
@@ -21,15 +26,29 @@ public record InstallModuleC2SPacket(String moduleId, String targetSlot) {
 
     public static void handle(InstallModuleC2SPacket packet, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context context = ctx.get();
+        if (context.getDirection() != NetworkDirection.PLAY_TO_SERVER) {
+            LOGGER.debug("[Network] Dropped InstallModuleC2SPacket from invalid direction {}", context.getDirection());
+            context.setPacketHandled(true);
+            return;
+        }
+
         context.enqueueWork(() -> {
             ServerPlayer sender = context.getSender();
             if (sender == null || sender.isSpectator()) {
+                LOGGER.debug("[Network] Dropped InstallModuleC2SPacket due to missing sender or spectator state");
                 return;
             }
 
-            ModuleInstallService.TargetSlot slot = ModuleInstallService.TargetSlot.byName(packet.targetSlot);
-            ModuleInstallService.Result result = ModuleInstallService.install(sender, slot, packet.moduleId);
-            String message = ModuleInstallService.formatResultMessage(result, true, packet.moduleId, slot);
+            String moduleId = packet.moduleId == null ? "" : packet.moduleId.trim().toLowerCase();
+            String requestedSlot = packet.targetSlot == null ? "" : packet.targetSlot.trim();
+            if (moduleId.isEmpty()) {
+                LOGGER.debug("[Network] Dropped InstallModuleC2SPacket with blank module id from {}", sender.getScoreboardName());
+                return;
+            }
+
+            ModuleInstallService.TargetSlot slot = ModuleInstallService.TargetSlot.byName(requestedSlot);
+            ModuleInstallService.Result result = ModuleInstallService.install(sender, slot, moduleId);
+            String message = ModuleInstallService.formatResultMessage(result, true, moduleId, slot);
             ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> sender), new SyncModuleActionResultS2CPacket(ModuleInstallService.isSuccess(result), message));
         });
         context.setPacketHandled(true);

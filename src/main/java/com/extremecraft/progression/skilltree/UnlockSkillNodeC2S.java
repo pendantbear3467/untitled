@@ -2,11 +2,16 @@ package com.extremecraft.progression.skilltree;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.function.Supplier;
 
 public record UnlockSkillNodeC2S(String treeId, String nodeId) {
+    private static final Logger LOGGER = LogManager.getLogger();
+
     public static void encode(UnlockSkillNodeC2S packet, FriendlyByteBuf buf) {
         buf.writeUtf(packet.treeId, 64);
         buf.writeUtf(packet.nodeId, 128);
@@ -18,17 +23,26 @@ public record UnlockSkillNodeC2S(String treeId, String nodeId) {
 
     public static void handle(UnlockSkillNodeC2S packet, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context context = ctx.get();
+        if (context.getDirection() != NetworkDirection.PLAY_TO_SERVER) {
+            LOGGER.debug("[Network] Dropped UnlockSkillNodeC2S from invalid direction {}", context.getDirection());
+            context.setPacketHandled(true);
+            return;
+        }
+
         context.enqueueWork(() -> {
             ServerPlayer sender = context.getSender();
             if (sender == null || sender.isSpectator()) {
                 return;
             }
 
-            if (packet.treeId == null || packet.treeId.isBlank() || packet.nodeId == null || packet.nodeId.isBlank()) {
+            String treeId = packet.treeId == null ? "" : packet.treeId.trim();
+            String nodeId = packet.nodeId == null ? "" : packet.nodeId.trim();
+            if (treeId.isEmpty() || nodeId.isEmpty()) {
+                LOGGER.debug("[Network] Dropped UnlockSkillNodeC2S with blank ids from {}", sender.getScoreboardName());
                 return;
             }
 
-            SkillTreeService.tryUnlock(sender, packet.treeId, packet.nodeId);
+            SkillTreeService.tryUnlock(sender, treeId, nodeId);
         });
         context.setPacketHandled(true);
     }
