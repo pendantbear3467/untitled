@@ -28,6 +28,7 @@ import com.extremecraft.entity.mob.EnergyParasiteEntity;
 import com.extremecraft.entity.mob.RunicGolemEntity;
 import com.extremecraft.entity.mob.TechConstructEntity;
 import com.extremecraft.entity.mob.VoidStalkerEntity;
+import com.extremecraft.entity.system.BossArenaManager;
 import com.extremecraft.entity.system.GameplayMechanicsEvents;
 import com.extremecraft.future.registry.TechBlockEntities;
 import com.extremecraft.future.registry.TechBlocks;
@@ -173,6 +174,7 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new ModuleRuntimeEvents());
             MinecraftForge.EVENT_BUS.register(new RuntimeSyncEvents());
             MinecraftForge.EVENT_BUS.register(new GameplayMechanicsEvents());
+            MinecraftForge.EVENT_BUS.register(new BossArenaManager());
 
             MinecraftForge.EVENT_BUS.register(new AbilityRegistry());
             AbilityEngine.initialize();
@@ -221,6 +223,7 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
 
 
 
