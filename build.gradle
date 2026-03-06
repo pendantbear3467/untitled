@@ -39,6 +39,7 @@ repositories {
 dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.4.0'
     implementation project(':api')
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
 }
 
 sourceSets {
@@ -52,6 +53,10 @@ sourceSets {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
 }
 
 checkstyle {

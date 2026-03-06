@@ -14,8 +14,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Build
-        run: ./gradlew --no-daemon clean compileJava jar
+      - name: Build + Checkstyle + Tests
+        run: ./gradlew --no-daemon clean build checkstyleMain test
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
