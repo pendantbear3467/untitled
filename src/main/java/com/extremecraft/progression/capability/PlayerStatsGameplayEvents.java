@@ -1,6 +1,7 @@
 package com.extremecraft.progression.capability;
 
 import com.extremecraft.progression.PlayerStatsService;
+import com.extremecraft.progression.level.LevelService;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -21,8 +22,14 @@ public class PlayerStatsGameplayEvents {
         }
 
         LivingEntity living = event.getEntity();
-        int xp = Math.max(4, (int) living.getMaxHealth() / 2);
-        PlayerStatsService.addExperience(player, xp);
+        String mobId = living.getType().builtInRegistryHolder().key().location().getPath();
+        int xp = switch (mobId) {
+            case "zombie" -> 5;
+            case "skeleton" -> 6;
+            case "creeper" -> 8;
+            default -> Math.max(4, (int) living.getMaxHealth() / 2);
+        };
+        LevelService.grantXp(player, xp);
     }
 
     @SubscribeEvent
@@ -83,4 +90,5 @@ public class PlayerStatsGameplayEvents {
         }
     }
 }
+
 
