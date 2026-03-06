@@ -25,8 +25,32 @@ class GraphEngine:
         self.nodes.append(node)
         return node
 
-    def add_link(self, src_node_id: str, dst_node_id: str, src_port: str = "out", dst_port: str = "in") -> None:
-        self.links.append({"from": src_node_id, "to": dst_node_id, "from_port": src_port, "to_port": dst_port})
+    def add_link(self, src_node_id: str, dst_node_id: str, src_port: str | None = None, dst_port: str | None = None) -> None:
+        src_node = self._find_node(src_node_id)
+        dst_node = self._find_node(dst_node_id)
+        if src_node is None or dst_node is None:
+            raise ValueError(f"Invalid link {src_node_id} -> {dst_node_id}: node not found")
+
+        resolved_src_port = src_port or (src_node.outputs[0].name if src_node.outputs else "")
+        resolved_dst_port = dst_port or (dst_node.inputs[0].name if dst_node.inputs else "")
+
+        errors, _ = self.validator.validate_link(
+            src_node,
+            dst_node,
+            src_port=resolved_src_port,
+            dst_port=resolved_dst_port,
+        )
+        if errors:
+            raise ValueError("; ".join(errors))
+
+        self.links.append(
+            {
+                "from": src_node_id,
+                "to": dst_node_id,
+                "from_port": resolved_src_port,
+                "to_port": resolved_dst_port,
+            }
+        )
 
     def save(self, name: str | None = None) -> Path:
         if name:
@@ -48,3 +72,9 @@ class GraphEngine:
         if report.errors:
             raise ValueError("Graph validation failed: " + "; ".join(report.errors))
         return self.executor.execute(self.nodes, self.links, context)
+
+    def _find_node(self, node_id: str) -> BaseGraphNode | None:
+        for node in self.nodes:
+            if node.node_id == node_id:
+                return node
+        return None

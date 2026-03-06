@@ -9,6 +9,7 @@ from asset_studio.cli.addon_commands import register_addon_commands, run_addon_c
 from asset_studio.cli.build_commands import build_command
 from asset_studio.cli.compile_commands import register_compile_commands, run_compile_command
 from asset_studio.cli.generate_commands import register_generate_commands, run_generate_command
+from asset_studio.cli.graph_commands import register_graph_commands, run_graph_command
 from asset_studio.cli.modpack_commands import register_modpack_commands, run_modpack_command
 from asset_studio.cli.pack_commands import export_pack_command
 from asset_studio.cli.project_commands import register_project_commands, run_project_command
@@ -59,6 +60,9 @@ def register_subcommands(subparsers: argparse._SubParsersAction[argparse.Argumen
 
     addon = subparsers.add_parser("addon", help="Addon install/build/publish")
     register_addon_commands(addon)
+
+    graph = subparsers.add_parser("graph", help="Visual graph authoring and execution")
+    register_graph_commands(graph)
 
     export_cmd = subparsers.add_parser("export", help="Export operations")
     export_sub = export_cmd.add_subparsers(dest="export_target", required=True)
@@ -115,6 +119,9 @@ def run_cli(args: argparse.Namespace, workspace_path: Path) -> int:
 
     if args.command == "addon":
         return run_addon_command(args, context)
+
+    if args.command == "graph":
+        return run_graph_command(args, context)
 
     if args.command == "export" and args.export_target == "blockbench":
         path = export_bbmodel(args.model_id, context=context, kind=args.kind)
