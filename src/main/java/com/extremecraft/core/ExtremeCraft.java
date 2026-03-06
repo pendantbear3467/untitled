@@ -5,8 +5,10 @@ import com.extremecraft.ability.AbilityRegistry;
 import com.extremecraft.api.ExtremeCraftAPI;
 import com.extremecraft.classsystem.ClassRegistry;
 import com.extremecraft.client.DwClientHooks;
+import com.extremecraft.client.ExtremeCraftKeybinds;
 import com.extremecraft.client.DwKeybinds;
 import com.extremecraft.client.gui.machine.TechMachineScreen;
+import com.extremecraft.client.gui.player.AbilityBarOverlay;
 import com.extremecraft.client.gui.player.InventoryButtonInjector;
 import com.extremecraft.client.gui.player.InventoryXpOverlay;
 import com.extremecraft.combat.CombatEventHandler;
@@ -45,6 +47,7 @@ import com.extremecraft.progression.capability.PlayerStatsCapabilityEvents;
 import com.extremecraft.progression.capability.PlayerStatsGameplayEvents;
 import com.extremecraft.progression.capability.ProgressCapabilityEvents;
 import com.extremecraft.progression.classsystem.data.ClassAbilityLoader;
+import com.extremecraft.progression.level.PlayerLevelEvents;
 import com.extremecraft.progression.classsystem.data.ClassDefinitionLoader;
 import com.extremecraft.progression.skilltree.PlayerSkillTreeEvents;
 import com.extremecraft.progression.skilltree.SkillTreeDataLoader;
@@ -100,6 +103,7 @@ public final class ExtremeCraft {
         modBus.addListener(this::onEntityAttributeModification);
         if (FMLEnvironment.dist == Dist.CLIENT) {
             modBus.addListener(DwKeybinds::onRegisterKeyMappings);
+            modBus.addListener(ExtremeCraftKeybinds::onRegisterKeyMappings);
         }
 
         MinecraftForge.EVENT_BUS.addListener(this::registerCommands);
@@ -123,6 +127,7 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new ProgressCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerStatsCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerStatsGameplayEvents());
+            MinecraftForge.EVENT_BUS.register(new PlayerLevelEvents());
             MinecraftForge.EVENT_BUS.register(new ManaCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new StageCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new SkillsCapabilityEvents());
@@ -168,6 +173,7 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new DwClientHooks());
             MinecraftForge.EVENT_BUS.register(new InventoryButtonInjector());
             MinecraftForge.EVENT_BUS.register(new InventoryXpOverlay());
+            MinecraftForge.EVENT_BUS.register(new AbilityBarOverlay());
         });
     }
 
@@ -180,5 +186,6 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
 
 

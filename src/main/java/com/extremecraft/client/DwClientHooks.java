@@ -1,5 +1,6 @@
 package com.extremecraft.client;
 
+import com.extremecraft.client.input.ExtremeCraftKeybinds;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.net.DwNetwork;
 import com.extremecraft.net.OffhandActionC2S;
@@ -9,8 +10,8 @@ import com.extremecraft.network.packet.ActivateAbilityC2SPacket;
 import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
 import com.extremecraft.network.packet.SpellCastPacket;
 import com.extremecraft.progression.classsystem.ability.ClassAbilityClientState;
-import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
@@ -21,6 +22,7 @@ import net.minecraft.world.item.TridentItem;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.event.TickEvent;
@@ -34,13 +36,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class DwClientHooks {
-    private static final String[] DEFAULT_ABILITY_SLOT_IDS = {
-            "firebolt",
-            "blink",
-            "arcane_shield",
-            "meteor"
-    };
-
     private boolean isMining = false;
 
     @SubscribeEvent
@@ -113,15 +108,19 @@ public final class DwClientHooks {
             return;
         }
 
-        if (DwKeybinds.CLASS_ABILITY != null && DwKeybinds.CLASS_ABILITY.consumeClick()) {
+        boolean abilityCastTriggered = false;
+        abilityCastTriggered |= consumeAbilitySlot(mc.player, ExtremeCraftKeybinds.ABILITY_SLOT_1, 0);
+        abilityCastTriggered |= consumeAbilitySlot(mc.player, ExtremeCraftKeybinds.ABILITY_SLOT_2, 1);
+        abilityCastTriggered |= consumeAbilitySlot(mc.player, ExtremeCraftKeybinds.ABILITY_SLOT_3, 2);
+        abilityCastTriggered |= consumeAbilitySlot(mc.player, ExtremeCraftKeybinds.ABILITY_SLOT_4, 3);
+
+        if (!abilityCastTriggered && DwKeybinds.CLASS_ABILITY != null && DwKeybinds.CLASS_ABILITY.consumeClick()) {
             ModNetwork.CHANNEL.sendToServer(new ActivateClassAbilityC2SPacket(""));
         }
 
         if (DwKeybinds.CAST_SPELL != null && DwKeybinds.CAST_SPELL.consumeClick()) {
             ModNetwork.CHANNEL.sendToServer(new SpellCastPacket());
         }
-
-        processAbilitySlotKeybinds(mc.player);
     }
 
     @SubscribeEvent
@@ -131,23 +130,29 @@ public final class DwClientHooks {
         }
     }
 
-    private static void processAbilitySlotKeybinds(Player player) {
-        consumeAbilitySlot(ExtremeCraftKeybinds.ABILITY_SLOT_1, player, 0);
-        consumeAbilitySlot(ExtremeCraftKeybinds.ABILITY_SLOT_2, player, 1);
-        consumeAbilitySlot(ExtremeCraftKeybinds.ABILITY_SLOT_3, player, 2);
-        consumeAbilitySlot(ExtremeCraftKeybinds.ABILITY_SLOT_4, player, 3);
-    }
-
-    private static void consumeAbilitySlot(KeyMapping keyMapping, Player player, int slotIndex) {
-        if (keyMapping == null || !keyMapping.consumeClick()) {
-            return;
+    private boolean consumeAbilitySlot(LocalPlayer player, net.minecraft.client.KeyMapping key, int slotIndex) {
+        if (key == null || !key.consumeClick()) {
+            return false;
         }
 
-        String abilityId = slotIndex >= 0 && slotIndex < DEFAULT_ABILITY_SLOT_IDS.length
-                ? DEFAULT_ABILITY_SLOT_IDS[slotIndex]
-                : "";
+        String abilityId = ExtremeCraftKeybinds.resolveAbilityForSlot(player, slotIndex);
+        if (abilityId.isBlank()) {
+            return true;
+        }
 
-        ModNetwork.CHANNEL.sendToServer(new ActivateAbilityC2SPacket(abilityId, slotIndex, player.getYRot(), player.getXRot()));
+        Vec3 target = resolveTargetPosition(player);
+        ModNetwork.CHANNEL.sendToServer(new ActivateAbilityC2SPacket(player.getUUID(), abilityId, target));
+        return true;
+    }
+
+    private Vec3 resolveTargetPosition(LocalPlayer player) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.hitResult != null && minecraft.hitResult.getType() != HitResult.Type.MISS) {
+            return minecraft.hitResult.getLocation();
+        }
+
+        Vec3 eye = player.getEyePosition();
+        return eye.add(player.getLookAngle().scale(16.0D));
     }
 
     private static boolean isBlacklisted(ItemStack stack) {
