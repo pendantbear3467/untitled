@@ -172,7 +172,7 @@ public final class ECDevCommands {
                                             }
                                             ctx.getSource().sendSuccess(() -> Component.literal("Unlocked node: " + nodeId), false);
                                             return 1;
-                                        })))))
+                                        }))))
                 .then(Commands.literal("spell")
                         .then(Commands.literal("cast")
                                 .then(Commands.argument("spell", StringArgumentType.word())
@@ -239,7 +239,7 @@ public final class ECDevCommands {
                             ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new OpenExtremeCraftDebugScreenS2CPacket());
                             return 1;
                     }))
-        ));
+        );
     }
 
     private static int reloadData(CommandSourceStack source) {

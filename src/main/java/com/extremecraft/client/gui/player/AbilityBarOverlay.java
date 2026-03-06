@@ -13,7 +13,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public class AbilityBarOverlay {
     private final java.util.Map<String, Integer> cooldownMaxByAbility = new java.util.LinkedHashMap<>();
-    private static final ResourceLocation SLOT_BG = new ResourceLocation(ECConstants.MODID, "textures/gui/ability_slot.png");
+    private static final ResourceLocation SLOT_BG = new ResourceLocation(ECConstants.MODID, "textures/gui/magic_slot.png");
 
     private static final int SLOT_SIZE = 22;
     private static final int ICON_SIZE = 16;
@@ -105,4 +105,5 @@ public class AbilityBarOverlay {
         }
     }
 }
+
 

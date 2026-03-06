@@ -18,7 +18,8 @@ import com.extremecraft.network.packet.SyncMaterialsPacket;
 import com.extremecraft.network.packet.SyncModuleAbilityStateS2CPacket;
 import com.extremecraft.network.packet.SyncModuleActionResultS2CPacket;
 import com.extremecraft.network.packet.SyncModuleCatalogS2CPacket;
-import com.extremecraft.network.packet.SyncProgressPacket;`r`nimport com.extremecraft.network.packet.SyncPlayerLevelS2CPacket;
+import com.extremecraft.network.packet.SyncPlayerLevelS2CPacket;
+import com.extremecraft.network.packet.SyncProgressPacket;
 import com.extremecraft.network.packet.SyncSkillTreesPacket;
 import com.extremecraft.network.packet.UpgradeStatPacket;
 import com.extremecraft.network.sync.SyncAbilityStateS2CPacket;
@@ -55,6 +56,12 @@ public final class ModNetwork {
                 .encoder(PlayerStatsPacket::encode)
                 .decoder(PlayerStatsPacket::decode)
                 .consumerMainThread(PlayerStatsPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncPlayerLevelS2CPacket.class, nextId())
+                .encoder(SyncPlayerLevelS2CPacket::encode)
+                .decoder(SyncPlayerLevelS2CPacket::decode)
+                .consumerMainThread(SyncPlayerLevelS2CPacket::handle)
                 .add();
 
         CHANNEL.messageBuilder(UpgradeStatPacket.class, nextId())
@@ -194,4 +201,3 @@ public final class ModNetwork {
         return index++;
     }
 }
-
