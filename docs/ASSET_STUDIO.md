@@ -2,7 +2,7 @@
 
 ## Overview
 
-EXTREMECRAFT ASSET STUDIO is now the orchestration layer for the full ExtremeCraft ecosystem platform:
+EXTREMECRAFT ASSET STUDIO orchestrates the full ExtremeCraft ecosystem platform:
 
 - SDK (`extremecraft_sdk`) for addon definitions and validation
 - Compiler (`compiler`) for addon-to-module builds
@@ -14,34 +14,46 @@ EXTREMECRAFT ASSET STUDIO is now the orchestration layer for the full ExtremeCra
 - `assetstudio generate ...`
 - `assetstudio sdk ...`
 - `assetstudio compile expansion <addon_name>`
+- `assetstudio addon list|build-all|install|remove`
+- `assetstudio validate --strict`
 - `assetstudio repair run`
 - `assetstudio registry scan|diff|history`
 - `assetstudio release build|publish`
 - `assetstudio modpack build <name>`
 
-## GUI Additions
+## Compiler Outputs
 
-- Material editor
-- Machine editor
-- Weapon editor
-- Worldgen editor
-- Quest editor
-- Skill tree editor
-- Animated timeline preview
+`assetstudio compile expansion <addon>` now emits:
 
-## Plugin Extension Points
+- Forge registry Java classes (`GeneratedItems`, `GeneratedBlocks`, `GeneratedMachines`, `GeneratedRecipes`, `GeneratedWorldgen`)
+- dependency graph metadata with load ordering
+- compiled datapack roots (`recipes`, `loot_tables`, `tags`, `advancements`, `worldgen`)
+- generated markdown docs for addons and API surface
 
-Plugin registry now supports:
+## Plugin Marketplace Metadata
 
-- generators
-- validators
-- asset repair handlers
-- GUI editors
-- datapack rules
-- texture styles
-- templates/exporters (legacy compatibility)
+Plugin registry supports versioned metadata:
 
-Auto-load locations:
+- `name`
+- `version`
+- `dependencies`
+- `compatible_platform_version`
 
-- `plugins/` (repository root)
-- `workspace/plugins/` (project-local)
+Resolved plugin metadata is exported to `workspace/plugin_marketplace/index.json`.
+
+## Blockbench Upgrades
+
+Import/export now supports:
+
+- `.bbmodel` animation bundles
+- texture baking (`data:image/png;base64` on export)
+- automatic blockstate generation on import
+
+## Validation Coverage
+
+Validation pipeline includes checks for:
+
+- registry conflicts
+- missing textures/models references
+- invalid datapack JSON shapes
+- missing worldgen pair files

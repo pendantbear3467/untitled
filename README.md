@@ -1,23 +1,22 @@
 # EXTREMECRAFT PLATFORM + ASSET STUDIO
 
-ExtremeCraft now includes a full ecosystem toolchain for large Minecraft mega-mod development:
+ExtremeCraft now includes a full ecosystem toolchain for large Minecraft mod development:
 
 - `extremecraft_sdk/` for addon/content-pack authoring
 - `compiler/` for module compilation to distributable JAR artifacts
-- Expanded Asset Studio CLI + GUI for generation, validation, repair, release, and modpack assembly
+- Asset Studio CLI + GUI for generation, validation, repair, release, and modpack assembly
 
 ## Platform Capabilities
 
-- SDK definitions in JSON or Python (`material`, `machine`, `weapon`, `tool`, `armor`, `skill_tree`, `quest`, `worldgen`)
-- Batch generation for complete material sets
-- Automatic validation and auto-repair for missing textures/models/recipes
-- Registry scan, history, and diff tooling (removed/renamed/conflict detection)
-- Animated preview pipeline (renderer + timeline control)
-- Visual editors (materials, machines, weapons, worldgen, quests, skill trees)
-- Addon module compiler with dependency/conflict resolution
-- Release pipeline (artifact + changelog + GitHub/CurseForge publish workflow)
-- Modpack builder pipeline (manifest + distributable zip)
-- Plugin ecosystem with generator/validator/repair/editor/datapack hooks
+- Forge registry code generation (`GeneratedItems`, `GeneratedBlocks`, `GeneratedMachines`, `GeneratedRecipes`, `GeneratedWorldgen`)
+- Graph-based dependency resolver with material/machine/addon/API dependencies and version checks
+- Datapack compilation pipeline (recipes, loot tables, tags, advancements, worldgen features)
+- Procedural texture styles: `industrial`, `ancient`, `arcane`, `mechanical`, `crystalline`
+- Blockbench import/export with animation bundle support, texture baking, and blockstate generation
+- Plugin metadata + marketplace index architecture (`workspace/plugin_marketplace/index.json`)
+- Dynamic runtime module jar loader (`<game-dir>/extremecraft/modules/*.jar`)
+- Automated validation for registry conflicts, missing assets, and invalid datapacks
+- Auto-generated addon/API documentation inside module build output
 
 ## Install
 
@@ -30,17 +29,25 @@ pip install -e .[all]
 ## Core Commands
 
 ```bash
-# SDK scaffold + validation
+# SDK scaffold + validation + generation
 assetstudio sdk init-addon mythril_expansion
 assetstudio sdk validate mythril_expansion
+assetstudio sdk generate mythril_expansion
 
-# Compile addon to module artifact
+# Compile addon to module artifact (registry code + datapack + docs)
 assetstudio compile expansion mythril_expansion
 
-# Batch content generation
-assetstudio generate material_set mythril --tier 5 --style metallic
+# Addon lifecycle
+assetstudio addon list
+assetstudio addon build-all
+assetstudio addon install workspace/addons/mythril_expansion
+assetstudio addon remove mythril_expansion
 
-# Auto repair missing assets
+# Batch content generation
+assetstudio generate material_set mythril --tier 5 --style industrial
+
+# Validation + repair
+assetstudio validate --strict
 assetstudio repair run
 
 # Registry tools
@@ -68,8 +75,6 @@ extremecraft_sdk/
   templates/
 ```
 
-Templates are available in `extremecraft_sdk/templates/*.json`.
-
 ## Compiler Structure
 
 ```text
@@ -77,21 +82,10 @@ compiler/
   module_builder.py
   code_generator.py
   datapack_builder.py
+  documentation_generator.py
   asset_builder.py
   dependency_resolver.py
 ```
-
-## Plugin API Extensions
-
-Plugins auto-load from repository `plugins/` and optional workspace `workspace/plugins/`.
-
-Supported hook registration:
-
-- `register_generator(name, handler)`
-- `register_validator(name, handler)`
-- `register_asset_repair(name, handler)`
-- `register_gui_editor(name, handler)`
-- `register_datapack_rule(name, handler)`
 
 ## GUI
 
