@@ -277,8 +277,9 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
         int lookupCooldown = Math.max(1, Config.COMMON.machines.recipeLookupIntervalTicks.get());
         nextRecipeLookupTick = now + lookupCooldown;
 
-        Optional<MachineProcessingRecipe> found = level.getRecipeManager().getAllRecipesFor(ModTechRecipeTypes.MACHINE_PROCESSING).stream()
-                .filter(recipe -> recipe.machineId().equals(machineId) && recipe.matches(inventory, level))
+        Optional<MachineProcessingRecipe> found = level.getRecipeManager()
+                .getRecipesFor(ModTechRecipeTypes.MACHINE_PROCESSING, inventory, level).stream()
+                .filter(recipe -> recipe.machineId().equals(machineId))
                 .findFirst();
 
         cachedRecipeId = found.map(recipe -> recipe.getId().toString()).orElse("");
@@ -463,3 +464,6 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
         return true;
     }
 }
+
+
+

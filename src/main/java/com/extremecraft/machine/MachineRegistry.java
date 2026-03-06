@@ -13,6 +13,7 @@ import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,6 +22,10 @@ import java.util.Map;
 public final class MachineRegistry {
     private static final Map<String, MachineDefinition> MACHINES = new LinkedHashMap<>();
     private static final Map<String, MachineRecipe> RECIPES = new LinkedHashMap<>();
+    private static final Map<String, List<MachineRecipe>> RECIPES_BY_MACHINE = new LinkedHashMap<>();
+
+    private static List<MachineDefinition> CACHED_MACHINES = List.of();
+    private static List<MachineRecipe> CACHED_RECIPES = List.of();
 
     @SubscribeEvent
     public void onAddReloadListener(AddReloadListenerEvent event) {
@@ -28,26 +33,48 @@ public final class MachineRegistry {
     }
 
     public static synchronized MachineDefinition getMachine(String id) {
-        return id == null ? null : MACHINES.get(id.trim().toLowerCase());
+        return id == null ? null : MACHINES.get(normalize(id));
     }
 
     public static synchronized Collection<MachineDefinition> machines() {
-        return List.copyOf(MACHINES.values());
+        return CACHED_MACHINES;
     }
 
     public static synchronized Collection<MachineRecipe> recipes() {
-        return List.copyOf(RECIPES.values());
+        return CACHED_RECIPES;
+    }
+
+    public static synchronized List<MachineRecipe> recipesForMachine(String machineId) {
+        if (machineId == null) {
+            return List.of();
+        }
+        return RECIPES_BY_MACHINE.getOrDefault(normalize(machineId), List.of());
     }
 
     public static synchronized MachineRecipe recipe(String id) {
-        return id == null ? null : RECIPES.get(id.trim().toLowerCase());
+        return id == null ? null : RECIPES.get(normalize(id));
     }
 
     private static synchronized void replace(Map<String, MachineDefinition> machines, Map<String, MachineRecipe> recipes) {
         MACHINES.clear();
         MACHINES.putAll(machines);
+
         RECIPES.clear();
         RECIPES.putAll(recipes);
+
+        RECIPES_BY_MACHINE.clear();
+        Map<String, List<MachineRecipe>> byMachine = new LinkedHashMap<>();
+        for (MachineRecipe recipe : RECIPES.values()) {
+            byMachine.computeIfAbsent(normalize(recipe.machineId()), ignored -> new ArrayList<>()).add(recipe);
+        }
+        byMachine.forEach((machineId, machineRecipes) -> RECIPES_BY_MACHINE.put(machineId, List.copyOf(machineRecipes)));
+
+        CACHED_MACHINES = List.copyOf(MACHINES.values());
+        CACHED_RECIPES = List.copyOf(RECIPES.values());
+    }
+
+    private static String normalize(String id) {
+        return id == null ? "" : id.trim().toLowerCase();
     }
 
     private static final class Loader extends SimpleJsonResourceReloadListener {
@@ -81,7 +108,7 @@ public final class MachineRegistry {
                 List<String> recipeIds = List.of();
                 if (root.has("recipes") && root.get("recipes").isJsonArray()) {
                     JsonArray recipeArray = root.getAsJsonArray("recipes");
-                    java.util.ArrayList<String> ids = new java.util.ArrayList<>();
+                    ArrayList<String> ids = new ArrayList<>();
                     for (JsonElement recipeId : recipeArray) {
                         String value = recipeId.getAsString().trim().toLowerCase();
                         if (!value.isBlank()) {

@@ -8,6 +8,7 @@ import net.minecraft.world.item.Items;
 import net.minecraftforge.items.ItemHandlerHelper;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -62,10 +63,8 @@ public final class MachineProcessingLogic {
             return active;
         }
 
-        for (MachineRecipe candidate : MachineRegistry.recipes()) {
-            if (!candidate.machineId().equals(definition.id())) {
-                continue;
-            }
+        List<MachineRecipe> candidates = MachineRegistry.recipesForMachine(definition.id());
+        for (MachineRecipe candidate : candidates) {
             if (hasInputs(machine, candidate.input())) {
                 machine.setActiveRecipeId(candidate.id());
                 return candidate;
