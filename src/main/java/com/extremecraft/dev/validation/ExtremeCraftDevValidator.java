@@ -1,4 +1,3 @@
-
 package com.extremecraft.dev.validation;
 
 import com.extremecraft.dev.validation.ValidatorRules.Severity;
@@ -15,7 +14,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -69,7 +67,7 @@ public final class ExtremeCraftDevValidator {
         scanStaticCollectionLeaks(projectRoot, javaFiles, findings, dedupe);
 
         KnownResources knownResources = buildKnownResources(resourcesRoot);
-        scanRegistryAndDatapackIssues(projectRoot, javaFiles, jsonFiles, resourcesRoot, knownResources, findings, dedupe);
+        scanRegistryAndDatapackIssues(projectRoot, javaFiles, jsonFiles, knownResources, findings, dedupe);
         scanModelTextureLangConsistency(projectRoot, resourcesRoot, knownResources, findings, dedupe);
 
         writeReport(reportPath, findings);
@@ -382,7 +380,7 @@ public final class ExtremeCraftDevValidator {
             }
 
             if (normalized.contains("/data/" + MOD_ID + "/tags/")) {
-                Set<String> expectedTagSet = expectedTagSetForPath(json, resourcesRoot, known);
+                Set<String> expectedTagSet = expectedTagSetForPath(json, known);
                 Matcher tagMatcher = ValidatorRules.TAG_VALUE_ID.matcher(text);
                 while (tagMatcher.find()) {
                     String ref = tagMatcher.group(1);
@@ -586,7 +584,7 @@ public final class ExtremeCraftDevValidator {
         return new KnownResources(registryIds, itemModelIds, blockStateIds, textureIds, itemTagIds, blockTagIds, langKeys);
     }
 
-    private static Set<String> expectedTagSetForPath(Path tagFile, Path resourcesRoot, KnownResources known) {
+    private static Set<String> expectedTagSetForPath(Path tagFile, KnownResources known) {
         String normalized = normalizePath(tagFile);
         if (normalized.contains("/data/" + MOD_ID + "/tags/items/")) {
             return known.itemTagIds();
@@ -838,3 +836,6 @@ public final class ExtremeCraftDevValidator {
     ) {
     }
 }
+
+
+

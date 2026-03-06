@@ -146,6 +146,19 @@ tasks.register('validateContentCompleteness') {
     }
 }
 
+tasks.register('validateExtremeCraft', JavaExec) {
+    group = 'verification'
+    description = 'Runs ExtremeCraft static development validation scans.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.extremecraft.dev.validation.ExtremeCraftDevValidator'
+}
+
 tasks.named('check').configure {
     dependsOn tasks.named('validateContentCompleteness')
+    dependsOn tasks.named('validateExtremeCraft')
 }
+
+tasks.named('build').configure {
+    dependsOn tasks.named('validateExtremeCraft')
+}
+
