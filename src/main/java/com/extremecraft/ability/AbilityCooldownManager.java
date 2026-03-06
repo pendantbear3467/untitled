@@ -1,10 +1,14 @@
 package com.extremecraft.ability;
 
+import com.extremecraft.classsystem.ClassRegistry;
+import com.extremecraft.classsystem.PlayerClass;
 import com.extremecraft.network.sync.RuntimeSyncService;
+import com.extremecraft.progression.capability.ProgressApi;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -54,9 +58,13 @@ public final class AbilityCooldownManager {
     public static CompoundTag serializeFor(ServerPlayer player) {
         CompoundTag root = new CompoundTag();
         CompoundTag cooldownTag = new CompoundTag();
+        CompoundTag slotTag = new CompoundTag();
+        CompoundTag slotManaTag = new CompoundTag();
 
         if (player == null) {
             root.put("cooldowns", cooldownTag);
+            root.put("slots", slotTag);
+            root.put("slot_mana", slotManaTag);
             return root;
         }
 
@@ -68,7 +76,21 @@ public final class AbilityCooldownManager {
             }
         }
 
+        String classId = ProgressApi.get(player).map(data -> data.currentClass()).orElse("warrior");
+        PlayerClass playerClass = ClassRegistry.get(classId);
+        List<String> abilities = playerClass == null ? List.of() : playerClass.abilityAccess();
+
+        for (int slot = 1; slot <= 4; slot++) {
+            String key = "slot_" + slot;
+            String abilityId = slot <= abilities.size() ? abilities.get(slot - 1) : "";
+            slotTag.putString(key, abilityId == null ? "" : abilityId);
+            int manaCost = AbilityRegistry.get(abilityId) == null ? 0 : AbilityRegistry.get(abilityId).manaCost();
+            slotManaTag.putInt(key, manaCost);
+        }
+
         root.put("cooldowns", cooldownTag);
+        root.put("slots", slotTag);
+        root.put("slot_mana", slotManaTag);
         return root;
     }
 

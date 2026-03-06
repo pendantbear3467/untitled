@@ -3,18 +3,11 @@ package com.extremecraft.progression.level;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.SyncPlayerLevelS2CPacket;
 import com.extremecraft.progression.PlayerStatsService;
+import com.extremecraft.progression.capability.PlayerStatsApi;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
 public final class LevelService {
-    private static final Map<UUID, List<String>> GRANTED_ABILITIES = new LinkedHashMap<>();
-
     private LevelService() {
     }
 
@@ -43,7 +36,7 @@ public final class LevelService {
             sync(player, levelData);
         });
 
-        com.extremecraft.progression.capability.PlayerStatsApi.get(player).ifPresent(stats -> {
+        PlayerStatsApi.get(player).ifPresent(stats -> {
             stats.setLevel(level);
             PlayerStatsService.sync(player, stats);
         });
@@ -62,40 +55,5 @@ public final class LevelService {
 
     public static int xpRequiredForLevel(int level) {
         return PlayerLevelCapability.xpRequired(level);
-    }
-
-    public static void grantAbility(ServerPlayer player, String abilityId) {
-        if (player == null || abilityId == null || abilityId.isBlank()) {
-            return;
-        }
-
-        List<String> abilities = GRANTED_ABILITIES.computeIfAbsent(player.getUUID(), id -> new ArrayList<>());
-        String normalized = abilityId.trim().toLowerCase();
-        if (!abilities.contains(normalized)) {
-            abilities.add(normalized);
-        }
-    }
-
-    public static String abilityInSlot(ServerPlayer player, int slotIndex) {
-        if (player == null) {
-            return defaultAbilityForSlot(slotIndex);
-        }
-
-        List<String> granted = GRANTED_ABILITIES.get(player.getUUID());
-        if (granted != null && slotIndex >= 0 && slotIndex < granted.size()) {
-            return granted.get(slotIndex);
-        }
-
-        return defaultAbilityForSlot(slotIndex);
-    }
-
-    private static String defaultAbilityForSlot(int slotIndex) {
-        return switch (slotIndex) {
-            case 0 -> "firebolt";
-            case 1 -> "blink";
-            case 2 -> "arcane_shield";
-            case 3 -> "meteor";
-            default -> "";
-        };
     }
 }

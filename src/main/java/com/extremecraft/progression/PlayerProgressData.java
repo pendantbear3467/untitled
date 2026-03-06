@@ -157,7 +157,8 @@ public class PlayerProgressData {
     }
 
     public static int xpToNextLevel(int level) {
-        return 50 + (level * level * 12);
+        int safeLevel = Math.max(1, level);
+        return safeLevel * safeLevel * 10;
     }
 
     public CompoundTag serializeNBT() {
@@ -248,3 +249,5 @@ public class PlayerProgressData {
         markSyncDirty();
     }
 }
+
+

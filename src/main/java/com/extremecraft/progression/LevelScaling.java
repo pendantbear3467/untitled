@@ -6,7 +6,7 @@ public final class LevelScaling {
 
     public static int xpForLevel(int level) {
         int safeLevel = Math.max(1, level);
-        return 100 + (safeLevel * safeLevel * 20);
+        return safeLevel * safeLevel * 10;
     }
 
     public static double statBudgetForLevel(int level) {
@@ -19,3 +19,4 @@ public final class LevelScaling {
         return 1.0D + ((safeLevel - 1) * 0.035D);
     }
 }
+

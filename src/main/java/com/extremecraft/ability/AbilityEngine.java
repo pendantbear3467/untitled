@@ -57,16 +57,16 @@ public final class AbilityEngine {
     public static AbilityCastResult cast(ServerPlayer player, String requestedAbilityId, UUID requestPlayerUuid, Vec3 requestedTargetPosition) {
         initialize();
         if (player == null) {
-            return AbilityCastResult.failure("", AbilityCastResult.Status.INVALID_REQUEST, "player_missing");
+            return AbilityCastResult.failure("", AbilityCastResult.Status.EXECUTION_FAILED, "player_missing");
         }
 
         if (requestPlayerUuid != null && !player.getUUID().equals(requestPlayerUuid)) {
-            return AbilityCastResult.failure("", AbilityCastResult.Status.INVALID_REQUEST, "uuid_mismatch");
+            return AbilityCastResult.failure("", AbilityCastResult.Status.EXECUTION_FAILED, "uuid_mismatch");
         }
 
         String abilityId = normalize(requestedAbilityId);
         if (abilityId.isBlank()) {
-            return AbilityCastResult.failure("", AbilityCastResult.Status.INVALID_REQUEST, "ability_id_missing");
+            return AbilityCastResult.failure("", AbilityCastResult.Status.EXECUTION_FAILED, "ability_id_missing");
         }
 
         Ability ability = AbilityRegistry.runtime(abilityId);
@@ -76,7 +76,7 @@ public final class AbilityEngine {
         }
 
         if (!validateRequirements(player, abilityId, ability, definition)) {
-            return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.NOT_UNLOCKED, "requirements_failed");
+            return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.EXECUTION_FAILED, "requirements_failed");
         }
 
         int remaining = AbilityCooldownManager.remainingTicks(player, abilityId);
@@ -292,3 +292,4 @@ public final class AbilityEngine {
         }
     }
 }
+

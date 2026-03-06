@@ -7,10 +7,7 @@ public record AbilityCastResult(String abilityId, Status status, String message,
         ON_COOLDOWN,
         INSUFFICIENT_MANA,
         INVALID_TARGET,
-        EXECUTION_FAILED,
-        INVALID_REQUEST,
-        NOT_UNLOCKED,
-        ERROR
+        EXECUTION_FAILED
     }
 
     public static AbilityCastResult success(String abilityId) {
@@ -33,4 +30,3 @@ public record AbilityCastResult(String abilityId, Status status, String message,
         return status == Status.SUCCESS;
     }
 }
-
