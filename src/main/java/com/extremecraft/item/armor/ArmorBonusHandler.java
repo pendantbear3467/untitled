@@ -1,6 +1,7 @@
 package com.extremecraft.item.armor;
 
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -15,6 +16,12 @@ public class ArmorBonusHandler {
             return;
         }
 
+        int interval = 20;
+        int offset = Math.floorMod(player.getUUID().hashCode(), interval);
+        if (((player.tickCount + offset) % interval) != 0) {
+            return;
+        }
+
         applyTitaniumBonus(player);
         applyMythrilBonus(player);
         applyVoidBonus(player);
@@ -24,26 +31,26 @@ public class ArmorBonusHandler {
 
     private void applyTitaniumBonus(ServerPlayer player) {
         if (wearingFullSet(player, "titanium")) {
-            player.addEffect(new MobEffectInstance(MobEffects.DIG_SPEED, 120, 1, true, false, true));
+            refreshEffect(player, MobEffects.DIG_SPEED, 160, 1);
         }
     }
 
     private void applyMythrilBonus(ServerPlayer player) {
         if (wearingFullSet(player, "mythril")) {
-            player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 0, true, false, true));
+            refreshEffect(player, MobEffects.REGENERATION, 140, 0);
         }
     }
 
     private void applyVoidBonus(ServerPlayer player) {
         if (wearingFullSet(player, "void")) {
-            player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 120, 1, true, false, true));
+            refreshEffect(player, MobEffects.DAMAGE_RESISTANCE, 160, 1);
         }
     }
 
     private void applyAetherBonus(ServerPlayer player) {
         if (wearingFullSet(player, "aether") || wearingFullSet(player, "celestial")) {
-            player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 120, 0, true, false, true));
-            player.addEffect(new MobEffectInstance(MobEffects.JUMP, 120, 1, true, false, true));
+            refreshEffect(player, MobEffects.SLOW_FALLING, 160, 0);
+            refreshEffect(player, MobEffects.JUMP, 160, 1);
         }
     }
 
@@ -74,5 +81,14 @@ public class ArmorBonusHandler {
         }
 
         return stack.getItem().builtInRegistryHolder().key().location().getPath().equals(pathSuffix);
+    }
+
+    private static void refreshEffect(ServerPlayer player, MobEffect effect, int duration, int amplifier) {
+        MobEffectInstance current = player.getEffect(effect);
+        if (current != null && current.getAmplifier() == amplifier && current.getDuration() > 80) {
+            return;
+        }
+
+        player.addEffect(new MobEffectInstance(effect, duration, amplifier, true, false, true));
     }
 }

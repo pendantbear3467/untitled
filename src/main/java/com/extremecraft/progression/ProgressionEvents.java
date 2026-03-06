@@ -46,7 +46,9 @@ public class ProgressionEvents {
 
         ProgressionService.flushDirty(player);
 
-        int regionTickInterval = 80;`r`n        int regionTickOffset = Math.floorMod(player.getUUID().hashCode(), regionTickInterval);`r`n        if (((player.tickCount + regionTickOffset) % regionTickInterval) == 0) {
+        int regionTickInterval = 80;
+        int regionTickOffset = Math.floorMod(player.getUUID().hashCode(), regionTickInterval);
+        if (((player.tickCount + regionTickOffset) % regionTickInterval) == 0) {
             int rx = player.blockPosition().getX() >> 8;
             int rz = player.blockPosition().getZ() >> 8;
             String regionKey = player.level().dimension().location() + "|" + rx + "|" + rz;
@@ -135,4 +137,5 @@ public class ProgressionEvents {
         }
     }
 }
+
 

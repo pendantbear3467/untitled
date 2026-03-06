@@ -66,7 +66,9 @@ public class PlayerDualWieldEvents {
         }
 
         // Batch sync checks to avoid packet spam each tick.
-        if ((player.tickCount % 5) == 0) {
+        int interval = 5;
+        int offset = Math.floorMod(player.getUUID().hashCode(), interval);
+        if (((player.tickCount + offset) % interval) == 0) {
             DualWieldService.flushDirty(player);
         }
     }

@@ -54,7 +54,9 @@ public class ModuleRuntimeEvents {
             return;
         }
 
-        if ((player.tickCount % 200) == 0) {
+        int interval = 200;
+        int offset = Math.floorMod(player.getUUID().hashCode(), interval);
+        if (((player.tickCount + offset) % interval) == 0) {
             ModuleRuntimeService.refreshPassiveModifiers(player);
         }
     }

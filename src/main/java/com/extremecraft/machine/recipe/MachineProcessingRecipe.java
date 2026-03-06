@@ -90,6 +90,12 @@ public class MachineProcessingRecipe implements Recipe<SimpleContainer> {
         return list;
     }
 
+    @Override
+    public boolean isSpecial() {
+        // Machine-only recipe; keep it out of vanilla recipe book categories.
+        return true;
+    }
+
     public static class Serializer implements RecipeSerializer<MachineProcessingRecipe> {
         @Override
         public MachineProcessingRecipe fromJson(ResourceLocation id, JsonObject json) {

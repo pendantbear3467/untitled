@@ -294,9 +294,12 @@ public final class ECValidationService {
 
     private static Optional<Path> resolveResourcesRoot() {
         Path gameDir = FMLPaths.GAMEDIR.get().toAbsolutePath().normalize();
+        Path parent = gameDir.getParent();
         Path[] candidates = new Path[]{
                 gameDir.resolve("src").resolve("main").resolve("resources"),
-                gameDir.resolve("build").resolve("resources").resolve("main")
+            gameDir.resolve("build").resolve("resources").resolve("main"),
+            parent == null ? gameDir.resolve("src").resolve("main").resolve("resources") : parent.resolve("src").resolve("main").resolve("resources"),
+            parent == null ? gameDir.resolve("build").resolve("resources").resolve("main") : parent.resolve("build").resolve("resources").resolve("main")
         };
 
         for (Path candidate : candidates) {

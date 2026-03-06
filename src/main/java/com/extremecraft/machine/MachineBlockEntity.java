@@ -3,6 +3,7 @@ package com.extremecraft.machine;
 import com.extremecraft.energy.EnergyStorageExt;
 import com.extremecraft.machine.core.ECEStorageAdapter;
 import com.extremecraft.machine.core.IECEStorage;
+import com.extremecraft.machine.sync.MachineStateSyncProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -20,7 +21,9 @@ import net.minecraftforge.items.wrapper.CombinedInvWrapper;
 
 import javax.annotation.Nullable;
 
-public class MachineBlockEntity extends BlockEntity {
+public class MachineBlockEntity extends BlockEntity implements MachineStateSyncProvider {
+    private static final int DATA_VERSION = 1;
+
     private final String definitionId;
     private final ItemStackHandler inputInventory;
     private final ItemStackHandler outputInventory;
@@ -122,6 +125,7 @@ public class MachineBlockEntity extends BlockEntity {
 
     public CompoundTag syncTag() {
         CompoundTag tag = new CompoundTag();
+        tag.putInt("data_version", DATA_VERSION);
         tag.putString("machine", definitionId);
         tag.putInt("processing_ticks", processingTicks);
         tag.putString("active_recipe", activeRecipeId);
@@ -130,8 +134,14 @@ public class MachineBlockEntity extends BlockEntity {
     }
 
     @Override
+    public CompoundTag machineSyncTag() {
+        return syncTag();
+    }
+
+    @Override
     protected void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);
+        tag.putInt("data_version", DATA_VERSION);
         tag.putString("machine", definitionId);
         tag.put("input_inventory", inputInventory.serializeNBT());
         tag.put("output_inventory", outputInventory.serializeNBT());
@@ -143,10 +153,20 @@ public class MachineBlockEntity extends BlockEntity {
     @Override
     public void load(CompoundTag tag) {
         super.load(tag);
+        int dataVersion = tag.getInt("data_version");
+
         inputInventory.deserializeNBT(tag.getCompound("input_inventory"));
         outputInventory.deserializeNBT(tag.getCompound("output_inventory"));
-        energyStorage.setStored(tag.getInt("energy"));
+
+        int storedEnergy = Math.max(0, tag.getInt("energy"));
+        energyStorage.setStored(Math.min(energyStorage.getMaxEnergyStored(), storedEnergy));
+
         processingTicks = Math.max(0, tag.getInt("processing_ticks"));
         activeRecipeId = tag.getString("active_recipe");
+
+        // Legacy saves before versioning are treated as version 0 and loaded defensively above.
+        if (dataVersion <= 0 && activeRecipeId == null) {
+            activeRecipeId = "";
+        }
     }
 }

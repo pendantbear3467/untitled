@@ -47,7 +47,9 @@ public class PlayerSkillTreeEvents {
         }
 
         // Batch sync and modifier refresh to reduce network overhead.
-        if ((player.tickCount % 5) == 0) {
+        int interval = 5;
+        int offset = Math.floorMod(player.getUUID().hashCode(), interval);
+        if (((player.tickCount + offset) % interval) == 0) {
             SkillTreeService.flushDirty(player);
         }
     }
