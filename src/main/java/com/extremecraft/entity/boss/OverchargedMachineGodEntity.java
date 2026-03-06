@@ -1,8 +1,11 @@
 package com.extremecraft.entity.boss;
 
 import com.extremecraft.entity.ModEntities;
+import com.extremecraft.registry.ModSounds;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.BossEvent;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
@@ -52,6 +55,41 @@ public final class OverchargedMachineGodEntity extends AbstractECBoss {
 
         spawnMinions(ModEntities.TECH_CONSTRUCT.get(), 3, 9.0D);
         spawnMinions(ModEntities.ENERGY_PARASITE.get(), 1, 9.0D);
+    }
+
+    @Override
+    protected SoundEvent getAttackSoundEvent() {
+        return ModSounds.OVERCHARGED_MACHINE_GOD_ATTACK.get();
+    }
+
+    @Override
+    protected SoundEvent getAmbientSound() {
+        return ModSounds.OVERCHARGED_MACHINE_GOD_AMBIENT.get();
+    }
+
+    @Override
+    protected SoundEvent getHurtSound(DamageSource source) {
+        return ModSounds.OVERCHARGED_MACHINE_GOD_HURT.get();
+    }
+
+    @Override
+    protected SoundEvent getDeathSound() {
+        return ModSounds.OVERCHARGED_MACHINE_GOD_DEATH.get();
+    }
+
+    @Override
+    protected SoundEvent getIntroSound() {
+        return ModSounds.OVERCHARGED_MACHINE_GOD_INTRO.get();
+    }
+
+    @Override
+    protected SoundEvent getPhaseTransitionSound() {
+        return ModSounds.OVERCHARGED_MACHINE_GOD_PHASE.get();
+    }
+
+    @Override
+    protected SoundEvent getBossDeathRoar() {
+        return ModSounds.OVERCHARGED_MACHINE_GOD_DEATH_ROAR.get();
     }
 
     private void fireMachineLaser(LivingEntity target, int phase) {

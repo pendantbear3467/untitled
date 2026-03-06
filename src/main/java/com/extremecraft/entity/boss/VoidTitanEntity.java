@@ -1,8 +1,11 @@
 package com.extremecraft.entity.boss;
 
 import com.extremecraft.entity.ModEntities;
+import com.extremecraft.registry.ModSounds;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.BossEvent;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
@@ -46,6 +49,41 @@ public final class VoidTitanEntity extends AbstractECBoss {
     protected void summonBossMinions(int phase) {
         int count = phase >= 3 ? 3 : (phase == 2 ? 2 : 1);
         spawnMinions(ModEntities.VOID_STALKER.get(), count, 9.0D);
+    }
+
+    @Override
+    protected SoundEvent getAttackSoundEvent() {
+        return ModSounds.VOID_TITAN_ATTACK.get();
+    }
+
+    @Override
+    protected SoundEvent getAmbientSound() {
+        return ModSounds.VOID_TITAN_AMBIENT.get();
+    }
+
+    @Override
+    protected SoundEvent getHurtSound(DamageSource source) {
+        return ModSounds.VOID_TITAN_HURT.get();
+    }
+
+    @Override
+    protected SoundEvent getDeathSound() {
+        return ModSounds.VOID_TITAN_DEATH.get();
+    }
+
+    @Override
+    protected SoundEvent getIntroSound() {
+        return ModSounds.VOID_TITAN_INTRO.get();
+    }
+
+    @Override
+    protected SoundEvent getPhaseTransitionSound() {
+        return ModSounds.VOID_TITAN_PHASE.get();
+    }
+
+    @Override
+    protected SoundEvent getBossDeathRoar() {
+        return ModSounds.VOID_TITAN_DEATH_ROAR.get();
     }
 
     private void teleportAttack(LivingEntity target) {

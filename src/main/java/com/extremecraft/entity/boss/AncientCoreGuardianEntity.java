@@ -1,8 +1,11 @@
 package com.extremecraft.entity.boss;
 
 import com.extremecraft.entity.ModEntities;
+import com.extremecraft.registry.ModSounds;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.BossEvent;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
@@ -55,6 +58,41 @@ public final class AncientCoreGuardianEntity extends AbstractECBoss {
             return 0.55F;
         }
         return super.incomingDamageMultiplier();
+    }
+
+    @Override
+    protected SoundEvent getAttackSoundEvent() {
+        return ModSounds.ANCIENT_CORE_GUARDIAN_ATTACK.get();
+    }
+
+    @Override
+    protected SoundEvent getAmbientSound() {
+        return ModSounds.ANCIENT_CORE_GUARDIAN_AMBIENT.get();
+    }
+
+    @Override
+    protected SoundEvent getHurtSound(DamageSource source) {
+        return ModSounds.ANCIENT_CORE_GUARDIAN_HURT.get();
+    }
+
+    @Override
+    protected SoundEvent getDeathSound() {
+        return ModSounds.ANCIENT_CORE_GUARDIAN_DEATH.get();
+    }
+
+    @Override
+    protected SoundEvent getIntroSound() {
+        return ModSounds.ANCIENT_CORE_GUARDIAN_INTRO.get();
+    }
+
+    @Override
+    protected SoundEvent getPhaseTransitionSound() {
+        return ModSounds.ANCIENT_CORE_GUARDIAN_PHASE.get();
+    }
+
+    @Override
+    protected SoundEvent getBossDeathRoar() {
+        return ModSounds.ANCIENT_CORE_GUARDIAN_DEATH_ROAR.get();
     }
 
     private void energyPulse(int phase) {

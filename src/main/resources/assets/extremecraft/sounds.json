@@ -1,0 +1,362 @@
+{
+  "entity.tech_construct.ambient": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.iron_golem.repair"
+      }
+    ]
+  },
+  "entity.tech_construct.hurt": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.iron_golem.hurt"
+      }
+    ]
+  },
+  "entity.tech_construct.death": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.iron_golem.death"
+      }
+    ]
+  },
+  "entity.tech_construct.attack": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.iron_golem.attack"
+      }
+    ]
+  },
+  "entity.arcane_wraith.ambient": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.evoker.ambient"
+      }
+    ]
+  },
+  "entity.arcane_wraith.hurt": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.evoker.hurt"
+      }
+    ]
+  },
+  "entity.arcane_wraith.death": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.evoker.death"
+      }
+    ]
+  },
+  "entity.arcane_wraith.attack": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.evoker.cast_spell"
+      }
+    ]
+  },
+  "entity.void_stalker.ambient": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.enderman.ambient"
+      }
+    ]
+  },
+  "entity.void_stalker.hurt": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.enderman.hurt"
+      }
+    ]
+  },
+  "entity.void_stalker.death": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.enderman.death"
+      }
+    ]
+  },
+  "entity.void_stalker.attack": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.enderman.scream"
+      }
+    ]
+  },
+  "entity.ancient_sentinel.ambient": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.guardian.ambient"
+      }
+    ]
+  },
+  "entity.ancient_sentinel.hurt": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.guardian.hurt"
+      }
+    ]
+  },
+  "entity.ancient_sentinel.death": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.guardian.death"
+      }
+    ]
+  },
+  "entity.ancient_sentinel.attack": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.guardian.attack"
+      }
+    ]
+  },
+  "entity.energy_parasite.ambient": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.silverfish.ambient"
+      }
+    ]
+  },
+  "entity.energy_parasite.hurt": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.silverfish.hurt"
+      }
+    ]
+  },
+  "entity.energy_parasite.death": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.silverfish.death"
+      }
+    ]
+  },
+  "entity.energy_parasite.attack": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.spider.hurt"
+      }
+    ]
+  },
+  "entity.runic_golem.ambient": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.ravager.ambient"
+      }
+    ]
+  },
+  "entity.runic_golem.hurt": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.ravager.hurt"
+      }
+    ]
+  },
+  "entity.runic_golem.death": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.ravager.death"
+      }
+    ]
+  },
+  "entity.runic_golem.attack": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.ravager.attack"
+      }
+    ]
+  },
+  "entity.ancient_core_guardian.ambient": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.wither.ambient"
+      }
+    ]
+  },
+  "entity.ancient_core_guardian.hurt": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.wither.hurt"
+      }
+    ]
+  },
+  "entity.ancient_core_guardian.death": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.wither.death"
+      }
+    ]
+  },
+  "entity.ancient_core_guardian.attack": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.wither.shoot"
+      }
+    ]
+  },
+  "entity.ancient_core_guardian.intro": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.wither.spawn"
+      }
+    ]
+  },
+  "entity.ancient_core_guardian.phase_transition": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:block.beacon.power_select"
+      }
+    ]
+  },
+  "entity.ancient_core_guardian.death_roar": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.ender_dragon.growl"
+      }
+    ]
+  },
+  "entity.void_titan.ambient": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.ender_dragon.ambient"
+      }
+    ]
+  },
+  "entity.void_titan.hurt": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.ender_dragon.hurt"
+      }
+    ]
+  },
+  "entity.void_titan.death": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.ender_dragon.death"
+      }
+    ]
+  },
+  "entity.void_titan.attack": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.ender_dragon.shoot"
+      }
+    ]
+  },
+  "entity.void_titan.intro": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.ender_dragon.growl"
+      }
+    ]
+  },
+  "entity.void_titan.phase_transition": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:block.respawn_anchor.set_spawn"
+      }
+    ]
+  },
+  "entity.void_titan.death_roar": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.ender_dragon.growl"
+      }
+    ]
+  },
+  "entity.overcharged_machine_god.ambient": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.blaze.ambient"
+      }
+    ]
+  },
+  "entity.overcharged_machine_god.hurt": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.blaze.hurt"
+      }
+    ]
+  },
+  "entity.overcharged_machine_god.death": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.blaze.death"
+      }
+    ]
+  },
+  "entity.overcharged_machine_god.attack": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.lightning_bolt.impact"
+      }
+    ]
+  },
+  "entity.overcharged_machine_god.intro": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:block.beacon.activate"
+      }
+    ]
+  },
+  "entity.overcharged_machine_god.phase_transition": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:block.respawn_anchor.charge"
+      }
+    ]
+  },
+  "entity.overcharged_machine_god.death_roar": {
+    "sounds": [
+      {
+        "type": "event",
+        "name": "minecraft:entity.lightning_bolt.thunder"
+      }
+    ]
+  }
+}

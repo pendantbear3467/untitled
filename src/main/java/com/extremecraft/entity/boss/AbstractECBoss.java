@@ -80,6 +80,12 @@ public abstract class AbstractECBoss extends AbstractECMonster {
         performPhaseTick(this.phase);
     }
 
+    @Override
+    public void die(DamageSource source) {
+        this.playSound(getBossDeathRoar(), 2.0F, 0.85F + this.random.nextFloat() * 0.1F);
+        super.die(source);
+    }
+
     protected int currentPhase() {
         return this.phase;
     }
@@ -159,7 +165,11 @@ public abstract class AbstractECBoss extends AbstractECMonster {
     }
 
     protected SoundEvent getBossAttackSound() {
-        return SoundEvents.IRON_GOLEM_ATTACK;
+        return getAttackSoundEvent();
+    }
+
+    protected SoundEvent getBossDeathRoar() {
+        return this.getDeathSound();
     }
 
     protected float incomingDamageMultiplier() {
