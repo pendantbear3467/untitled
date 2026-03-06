@@ -29,6 +29,9 @@ public final class CombatEngine {
      */
     private static final Logger LOGGER = LogManager.getLogger();
     private static final ThreadLocal<DamageContext> PENDING_CONTEXT = new ThreadLocal<>();
+    private static final ThreadLocal<Integer> REENTRANCY_DEPTH = ThreadLocal.withInitial(() -> 0);
+
+    private static final int MAX_REENTRANCY_DEPTH = 8;
 
     private CombatEngine() {
     }
@@ -42,6 +45,11 @@ public final class CombatEngine {
             return previewDamage(context);
         }
 
+        if (!enterDamageScope()) {
+            LOGGER.warn("[CombatEngine] Rejected damage application due to excessive recursion depth");
+            return previewDamage(context);
+        }
+
         try {
             PENDING_CONTEXT.set(context);
             DamageSource source = resolveDamageSource(context);
@@ -50,6 +58,7 @@ public final class CombatEngine {
             LOGGER.error("CombatEngine failed to apply damage", ex);
         } finally {
             PENDING_CONTEXT.remove();
+            exitDamageScope();
         }
 
         return previewDamage(context);
@@ -86,11 +95,16 @@ public final class CombatEngine {
     }
 
     public static void processLivingHurtEvent(LivingHurtEvent event) {
-        if (event == null || event.getEntity() == null || event.getAmount() <= 0.0F) {
+        if (event == null || event.getEntity() == null || event.getSource() == null || event.getAmount() <= 0.0F) {
             return;
         }
 
         if (event.getEntity().level().isClientSide) {
+            return;
+        }
+
+        if (currentDepth() > MAX_REENTRANCY_DEPTH) {
+            event.setAmount(Math.max(0.0F, event.getAmount()));
             return;
         }
 
@@ -192,5 +206,29 @@ public final class CombatEngine {
             return context.attacker().damageSources().mobAttack(context.attacker());
         }
         return context.target().damageSources().generic();
+    }
+
+    private static boolean enterDamageScope() {
+        int current = REENTRANCY_DEPTH.get();
+        if (current >= MAX_REENTRANCY_DEPTH) {
+            return false;
+        }
+
+        REENTRANCY_DEPTH.set(current + 1);
+        return true;
+    }
+
+    private static void exitDamageScope() {
+        int next = REENTRANCY_DEPTH.get() - 1;
+        if (next <= 0) {
+            REENTRANCY_DEPTH.remove();
+            return;
+        }
+
+        REENTRANCY_DEPTH.set(next);
+    }
+
+    private static int currentDepth() {
+        return REENTRANCY_DEPTH.get();
     }
 }
