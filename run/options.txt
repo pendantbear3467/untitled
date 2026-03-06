@@ -120,6 +120,7 @@ key_key.hotbar.8:key.keyboard.8
 key_key.hotbar.9:key.keyboard.9
 key_key.extremecraft.offhand_action:key.mouse.right
 key_key.extremecraft.class_ability:key.keyboard.r
+key_key.extremecraft.cast_spell:key.keyboard.g
 soundCategory_master:1.0
 soundCategory_music:1.0
 soundCategory_record:1.0
