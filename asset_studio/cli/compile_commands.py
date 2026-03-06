@@ -28,6 +28,17 @@ def run_compile_command(args: argparse.Namespace, context) -> int:
     print(f"Addon: {result.addon_name}")
     print(f"Java source: {result.java_source}")
     print(f"Artifact: {result.jar_path}")
+
+    if result.dependency_load_order:
+        print("Dependency load order:")
+        for dependency in result.dependency_load_order:
+            print(f"- {dependency}")
+
+    if result.generated_java_sources:
+        print("Generated Forge registry classes:")
+        for source in result.generated_java_sources:
+            print(f"- {source}")
+
     if result.conflicts:
         print("Conflicts detected:")
         for conflict in result.conflicts:
