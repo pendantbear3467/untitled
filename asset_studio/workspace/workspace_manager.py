@@ -3,8 +3,12 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
-from PIL import Image
+try:
+    from PIL import Image
+except ModuleNotFoundError:  # pragma: no cover - optional dependency for non-render test environments.
+    Image = Any
 
 from asset_studio.plugins.marketplace import PluginMarketplace
 from asset_studio.plugins.plugin_loader import load_plugins
@@ -24,7 +28,7 @@ class AssetStudioContext:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
-    def write_texture(self, path: Path, image: Image.Image) -> None:
+    def write_texture(self, path: Path, image: Image) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         image.save(path, format="PNG")
 

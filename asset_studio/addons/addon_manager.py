@@ -28,6 +28,8 @@ class AddonManager:
         self.addons_root.mkdir(parents=True, exist_ok=True)
 
     def install(self, source: Path) -> Path:
+        if source.suffix.lower() == ".jar" and source.is_file():
+            return self._install_runtime_module_jar(source)
         if source.suffix.lower() == ".zip" and source.is_file():
             return self._install_from_archive(source)
         return self._install_from_directory(source)
@@ -59,6 +61,11 @@ class AddonManager:
             raise FileNotFoundError(f"Addon not found: {addon_name}")
 
         shutil.rmtree(addon_root)
+
+        runtime_jar = self.context.repo_root / "run" / "extremecraft" / "modules" / f"extremecraft-{addon_name.replace('_', '-')}.jar"
+        if runtime_jar.exists():
+            runtime_jar.unlink()
+
         return addon_root
 
     def build(self, addon_name: str) -> AddonBuildResult:
@@ -116,3 +123,11 @@ class AddonManager:
 
         addon_root = candidates[0].parent
         return self._install_from_directory(addon_root)
+
+    def _install_runtime_module_jar(self, source: Path) -> Path:
+        modules_dir = self.context.repo_root / "run" / "extremecraft" / "modules"
+        modules_dir.mkdir(parents=True, exist_ok=True)
+
+        target = modules_dir / source.name
+        shutil.copy2(source, target)
+        return target

@@ -4,7 +4,14 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+try:
+    from PIL import Image, ImageDraw
+
+    _PILLOW_AVAILABLE = True
+except ModuleNotFoundError:  # pragma: no cover - optional dependency for headless validation/test runs.
+    Image = None
+    ImageDraw = None
+    _PILLOW_AVAILABLE = False
 
 from asset_studio.textures.material_styles import STYLES
 from asset_studio.textures.palette_generator import material_hex_color
@@ -27,6 +34,11 @@ _STYLE_ALIASES = {
     "crystalline": "crystal",
     "mechanical": "industrial",
 }
+
+
+class _FallbackImage:
+    def save(self, *_args, **_kwargs) -> None:
+        raise RuntimeError("Texture output requires Pillow to be installed")
 
 
 class ProceduralTextureEngine:
@@ -66,6 +78,15 @@ class ProceduralTextureEngine:
     def _fallback_texture(self, material: str, style: str, icon: str):
         style_key = self._normalize_style(style)
         style_def = STYLES.get(style_key, STYLES["metallic"])
+
+        if not _PILLOW_AVAILABLE:
+            class _Generated:
+                def __init__(self):
+                    self.image = _FallbackImage()
+                    self.emissive = None
+
+            return _Generated()
+
         rgb = material_hex_color(material, style_def.color_hint).lstrip("#")
         color = tuple(int(rgb[i : i + 2], 16) for i in (0, 2, 4))
 

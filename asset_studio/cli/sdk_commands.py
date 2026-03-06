@@ -64,7 +64,16 @@ def _init_addon(addon_name: str, context) -> int:
         "name": addon_name,
         "namespace": addon_name,
         "version": "0.1.0",
-        "dependencies": ["extremecraft-core"],
+        "compatible_platform_version": ">=1.2.0",
+        "dependency_graph": {
+            "materials": [],
+            "machines": [],
+            "addons": [{"id": "extremecraft-core", "version": ">=1.0.0"}],
+            "apis": [
+                {"id": "extremecraft-api", "version": ">=1"},
+                {"id": "extremecraft-protocol", "version": ">=1"},
+            ],
+        },
     }
     context.write_json(addon_root / "addon.json", manifest)
 
