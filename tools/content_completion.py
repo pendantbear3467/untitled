@@ -184,3 +184,179 @@ def write_shapeless(name: str, result: str, ingredients: list[str], count: int =
             "result": {"item": f"extremecraft:{result}", "count": count},
         },
     )
+
+def write_smelting(name: str, input_item: str, output_item: str, xp: float = 0.7, time: int = 200) -> bool:
+    return write_json_missing(
+        recipe_path(name),
+        {
+            "type": "minecraft:smelting",
+            "ingredient": {"item": f"extremecraft:{input_item}"},
+            "result": f"extremecraft:{output_item}",
+            "experience": xp,
+            "cookingtime": time,
+        },
+    )
+
+
+def write_blasting(name: str, input_item: str, output_item: str, xp: float = 0.7, time: int = 100) -> bool:
+    return write_json_missing(
+        recipe_path(name),
+        {
+            "type": "minecraft:blasting",
+            "ingredient": {"item": f"extremecraft:{input_item}"},
+            "result": f"extremecraft:{output_item}",
+            "experience": xp,
+            "cookingtime": time,
+        },
+    )
+
+
+def write_machine_recipe(name: str, machine: str, input_item: str, output_item: str, output_count: int, process: int, ept: int) -> bool:
+    return write_json_missing(
+        machine_recipe_path(name),
+        {
+            "type": "extremecraft:machine_processing",
+            "machine": machine,
+            "input": {"item": f"extremecraft:{input_item}"},
+            "output": {"item": f"extremecraft:{output_item}", "count": output_count},
+            "process_time": max(20, process),
+            "energy_per_tick": max(1, ept),
+        },
+    )
+
+
+def write_pulverizing(name: str, input_item: str, output_item: str, output_count: int, process: int, ept: int) -> bool:
+    return write_json_missing(
+        pulverizing_path(name),
+        {
+            "type": "extremecraft:pulverizing",
+            "input": {"item": f"extremecraft:{input_item}"},
+            "output": {"item": f"extremecraft:{output_item}", "count": output_count},
+            "process_time": max(40, process),
+            "energy_per_tick": max(1, ept),
+        },
+    )
+
+
+def parse_existing_recipe_outputs() -> set[str]:
+    outputs: set[str] = set()
+    for path in DATA.rglob("*.json"):
+        if "loot_tables" in path.parts or "worldgen" in path.parts:
+            continue
+        try:
+            obj = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(obj, dict):
+            result = obj.get("result")
+            if isinstance(result, dict) and isinstance(result.get("item"), str):
+                outputs.add(result["item"].replace("extremecraft:", ""))
+            elif isinstance(result, str) and result.startswith("extremecraft:"):
+                outputs.add(result.replace("extremecraft:", ""))
+            output = obj.get("output")
+            if isinstance(output, dict) and isinstance(output.get("item"), str):
+                outputs.add(output["item"].replace("extremecraft:", ""))
+    return outputs
+
+
+def build_runtime_graph() -> dict:
+    materials = parse_materials()
+    machines = parse_machines()
+    cable_ids = parse_cable_ids()
+
+    runtime_items = parse_moditems_ids()
+    runtime_blocks = parse_modblock_ids()
+
+    armor_materials = re.findall(
+        r'registerArmorSet\("([a-z0-9_]+)"',
+        (JAVA / "com" / "extremecraft" / "future" / "registry" / "TechItems.java").read_text(encoding="utf-8"),
+    )
+
+    for mat in materials:
+        runtime_items.update(
+            {
+                f"raw_{mat.id}",
+                f"{mat.id}_ingot",
+                f"{mat.id}_dust",
+                f"{mat.id}_nugget",
+                f"{mat.id}_ore",
+                f"{mat.id}_block",
+            }
+        )
+        runtime_blocks.update({f"{mat.id}_ore", f"{mat.id}_block"})
+        if mat.has_tools:
+            runtime_items.update(
+                {
+                    f"{mat.id}_pickaxe",
+                    f"{mat.id}_sword",
+                    f"{mat.id}_axe",
+                    f"{mat.id}_shovel",
+                    f"{mat.id}_hammer",
+                    f"{mat.id}_hoe",
+                }
+            )
+    for armor in armor_materials:
+        runtime_items.update(
+            {
+                f"{armor}_helmet",
+                f"{armor}_chestplate",
+                f"{armor}_leggings",
+                f"{armor}_boots",
+            }
+        )
+    for machine in machines:
+        runtime_items.add(machine.id)
+        runtime_blocks.add(machine.id)
+    runtime_items.update(cable_ids)
+    runtime_blocks.update(cable_ids)
+
+    categories: dict[str, set[str]] = {
+        "raw materials": set(),
+        "ores": set(),
+        "ingots": set(),
+        "dusts": set(),
+        "nuggets": set(),
+        "tools": set(),
+        "armor": set(),
+        "machines": set(),
+        "components": set(),
+        "magic items": set(),
+        "technology items": set(),
+    }
+
+    tool_suffixes = ("_pickaxe", "_sword", "_axe", "_shovel", "_hammer", "_hoe", "_drill", "_staff", "_multi_tool")
+    armor_suffixes = ("_helmet", "_chestplate", "_leggings", "_boots")
+    magic_terms = ("arcane", "mana", "rune", "void", "spell", "aether")
+    tech_terms = ("quantum", "reactor", "generator", "processor", "core", "infinity", "dimensional", "celestial")
+
+    for rid in sorted(runtime_items):
+        if rid.startswith("raw_"):
+            categories["raw materials"].add(rid)
+        elif rid.endswith("_ore"):
+            categories["ores"].add(rid)
+        elif rid.endswith("_ingot"):
+            categories["ingots"].add(rid)
+        elif rid.endswith("_dust"):
+            categories["dusts"].add(rid)
+        elif rid.endswith("_nugget"):
+            categories["nuggets"].add(rid)
+        elif rid.endswith(tool_suffixes):
+            categories["tools"].add(rid)
+        elif rid.endswith(armor_suffixes):
+            categories["armor"].add(rid)
+        elif rid in {m.id for m in machines}:
+            categories["machines"].add(rid)
+        elif any(t in rid for t in magic_terms):
+            categories["magic items"].add(rid)
+        elif any(t in rid for t in tech_terms):
+            categories["technology items"].add(rid)
+        else:
+            categories["components"].add(rid)
+
+    return {
+        "materials": [m.__dict__ for m in materials],
+        "machines": [m.__dict__ for m in machines],
+        "runtime_items": sorted(runtime_items),
+        "runtime_blocks": sorted(runtime_blocks),
+        "categories": {k: sorted(v) for k, v in categories.items()},
+    }
