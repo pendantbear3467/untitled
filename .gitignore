@@ -36,6 +36,7 @@ bin/
 
 ### VS Code ###
 .vscode/
+.gradle-user-temp/
 
 ### Mac OS ###
 .DS_Store
