@@ -122,3 +122,4 @@ public abstract class ECBipedEntityModel<T extends Mob> extends HierarchicalMode
         }
     }
 }
+

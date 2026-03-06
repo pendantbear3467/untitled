@@ -1,8 +1,11 @@
 package com.extremecraft.entity.mob;
 
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
@@ -14,6 +17,8 @@ import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+
+import java.util.List;
 
 public abstract class AbstractECMonster extends Monster {
     protected AbstractECMonster(EntityType<? extends Monster> type, Level level) {
@@ -37,6 +42,22 @@ public abstract class AbstractECMonster extends Monster {
     protected boolean hasTargetInRange(double range) {
         LivingEntity target = this.getTarget();
         return target != null && this.distanceToSqr(target) <= range * range;
+    }
+
+    protected double attackDamage() {
+        return this.getAttributeValue(Attributes.ATTACK_DAMAGE);
+    }
+
+    protected List<LivingEntity> livingTargetsInRange(double range) {
+        return this.level().getEntitiesOfClass(LivingEntity.class, this.getBoundingBox().inflate(range),
+                entity -> entity != this && entity.isAlive());
+    }
+
+    protected void emitAbilityParticles(ParticleOptions particle, int count, double spread, double speed) {
+        if (!(this.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        serverLevel.sendParticles(particle, this.getX(), this.getY(0.55D), this.getZ(), count, spread, spread * 0.6D, spread, speed);
     }
 
     @Override
