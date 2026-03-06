@@ -3,6 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 
+@dataclass(frozen=True)
+class PluginMetadata:
+    name: str
+    version: str
+    dependencies: tuple[str, ...] = ()
+    compatible_platform_version: str = "*"
+    entrypoint: str = ""
+
+
 @dataclass
 class PluginAPI:
     generators: dict[str, object] = field(default_factory=dict)
@@ -14,6 +23,10 @@ class PluginAPI:
     gui_editors: dict[str, object] = field(default_factory=dict)
     datapack_rules: dict[str, object] = field(default_factory=dict)
     graph_nodes: dict[str, object] = field(default_factory=dict)
+    metadata: dict[str, PluginMetadata] = field(default_factory=dict)
+
+    def register_plugin(self, metadata: PluginMetadata) -> None:
+        self.metadata[metadata.name] = metadata
 
     def register_generator(self, name: str, handler: object) -> None:
         self.generators[name] = handler

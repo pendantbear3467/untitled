@@ -36,7 +36,7 @@ class GraphTemplateManager:
     def import_template(self, template_name: str) -> tuple[list[BaseGraphNode], list[dict]]:
         path = self.templates_root / f"{template_name}.template.json"
         payload = json.loads(path.read_text(encoding="utf-8"))
-        _, nodes, links = GraphSerializer.from_dict(payload)
+        _, nodes, links, _metadata = GraphSerializer.from_dict(payload)
         return nodes, links
 
     def list_templates(self) -> list[str]:

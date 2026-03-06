@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from asset_studio.graph.graph_nodes import BaseGraphNode, NODE_TYPES
+from asset_studio.graph.graph_node_registry import get_registry
+from asset_studio.graph.graph_nodes import BaseGraphNode, NODE_TYPES, refresh_node_types_from_registry
+from asset_studio.graph.graph_ports import PortDirection
 
 
 @dataclass
@@ -13,10 +15,12 @@ class GraphValidationReport:
 
 class GraphValidator:
     def validate(self, nodes: list[BaseGraphNode], links: list[dict]) -> GraphValidationReport:
+        refresh_node_types_from_registry()
         errors: list[str] = []
         warnings: list[str] = []
         seen: set[str] = set()
         node_map: dict[str, BaseGraphNode] = {}
+        registry = get_registry()
 
         for node in nodes:
             if node.node_id in seen:
@@ -24,7 +28,7 @@ class GraphValidator:
             seen.add(node.node_id)
             node_map[node.node_id] = node
 
-            if node.node_type not in NODE_TYPES:
+            if node.node_type not in NODE_TYPES and registry.get(node.node_type) is None:
                 errors.append(f"Unsupported node type: {node.node_type}")
 
             errors.extend(f"{node.node_id}: {e}" for e in node.validate())
@@ -66,11 +70,19 @@ class GraphValidator:
 
         src_type = self._find_port_type(src_node.outputs, src_port)
         dst_type = self._find_port_type(dst_node.inputs, dst_port)
+        src_dir = self._find_port_direction(src_node.outputs, src_port)
+        dst_dir = self._find_port_direction(dst_node.inputs, dst_port)
 
         if src_type is None:
             errors.append(f"{src_node.node_id}: unknown output port '{src_port}'")
         if dst_type is None:
             errors.append(f"{dst_node.node_id}: unknown input port '{dst_port}'")
+
+        if src_dir is not None and src_dir != PortDirection.OUTPUT.value:
+            errors.append(f"{src_node.node_id}: port '{src_port}' is not an output")
+        if dst_dir is not None and dst_dir != PortDirection.INPUT.value:
+            errors.append(f"{dst_node.node_id}: port '{dst_port}' is not an input")
+
         if src_type is None or dst_type is None:
             return errors, warnings
 
@@ -87,4 +99,11 @@ class GraphValidator:
         for port in ports:
             if port.name == port_name:
                 return port.port_type
+        return None
+
+    @staticmethod
+    def _find_port_direction(ports, port_name: str) -> str | None:
+        for port in ports:
+            if port.name == port_name:
+                return getattr(port, "direction", None)
         return None

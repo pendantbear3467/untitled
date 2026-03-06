@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import zipfile
+from pathlib import Path
 
 from asset_studio.graph.graph_engine import GraphEngine
 from asset_studio.workspace.workspace_manager import AssetStudioContext
@@ -40,10 +42,31 @@ def register_graph_commands(parser: argparse.ArgumentParser) -> None:
     execute_cmd = sub.add_parser("execute", help="Execute graph")
     execute_cmd.add_argument("name", help="Graph name")
 
+    sub.add_parser("execute-all", help="Execute all graphs in workspace")
+
+    arrange_cmd = sub.add_parser("auto-layout", help="Auto arrange graph nodes")
+    arrange_cmd.add_argument("name", help="Graph name")
+    arrange_cmd.add_argument("--algorithm", choices=["layered", "dag", "force"], default="layered")
+
+    export_cmd = sub.add_parser("export", help="Export graph")
+    export_cmd.add_argument("name", help="Graph name")
+    export_cmd.add_argument("--format", choices=["json", "yaml", "package"], default="json")
+
+    tpl_export = sub.add_parser("template-export", help="Export current graph as template")
+    tpl_export.add_argument("name", help="Graph name")
+    tpl_export.add_argument("template_name", help="Template name")
+
+    tpl_import = sub.add_parser("template-import", help="Import template into graph")
+    tpl_import.add_argument("name", help="Graph name")
+    tpl_import.add_argument("template_name", help="Template name")
+
+    sub.add_parser("template-list", help="List available graph templates")
+
 
 def run_graph_command(args: argparse.Namespace, context: AssetStudioContext) -> int:
     action = args.graph_action
-    engine = GraphEngine(context.workspace_root)
+    plugin_nodes = getattr(getattr(context, "plugins", None), "graph_nodes", {})
+    engine = GraphEngine(context.workspace_root, plugin_api_nodes=plugin_nodes)
 
     if action == "new":
         engine.name = args.name
@@ -123,6 +146,58 @@ def run_graph_command(args: argparse.Namespace, context: AssetStudioContext) -> 
         print(f"Executed graph {engine.name} ({len(generated)} outputs)")
         for item in generated:
             print(f"- {item}")
+        if engine.metadata.get("last_bundle"):
+            print(f"Bundle: {engine.metadata['last_bundle']}")
+        return 0
+
+    if action == "execute-all":
+        graph_files = sorted(engine.graph_root.glob("*.json"))
+        if not graph_files:
+            print("No graphs found")
+            return 0
+        failures = 0
+        for graph_file in graph_files:
+            graph_name = graph_file.stem
+            try:
+                _load_graph(engine, graph_name)
+                generated = engine.execute(context)
+                print(f"Executed {graph_name}: {len(generated)} outputs")
+            except Exception as exc:  # noqa: BLE001
+                failures += 1
+                print(f"FAILED {graph_name}: {exc}")
+        return 1 if failures else 0
+
+    if action == "auto-layout":
+        _load_graph(engine, args.name)
+        engine.auto_arrange(algorithm=args.algorithm)
+        path = engine.save()
+        print(f"Auto arranged {args.name} using {args.algorithm} -> {path}")
+        return 0
+
+    if action == "export":
+        _load_graph(engine, args.name)
+        return _export_graph(engine, args.name, args.format)
+
+    if action == "template-export":
+        _load_graph(engine, args.name)
+        path = engine.export_template(args.template_name)
+        print(f"Template exported: {path}")
+        return 0
+
+    if action == "template-import":
+        _load_graph(engine, args.name)
+        engine.import_template(args.template_name)
+        path = engine.save()
+        print(f"Template imported into {args.name}: {path}")
+        return 0
+
+    if action == "template-list":
+        templates = engine.templates.list_templates()
+        if not templates:
+            print("No templates found")
+            return 0
+        for template in templates:
+            print(template)
         return 0
 
     raise ValueError(f"Unsupported graph action: {action}")
@@ -170,3 +245,66 @@ def _coerce_value(raw: str) -> object:
             return raw
 
     return raw
+
+
+def _export_graph(engine: GraphEngine, graph_name: str, export_format: str) -> int:
+    graph_path = engine.graph_root / f"{graph_name}.json"
+    if export_format == "json":
+        print(f"Exported JSON: {graph_path}")
+        return 0
+
+    if export_format == "yaml":
+        payload = json.loads(graph_path.read_text(encoding="utf-8"))
+        yaml_path = engine.graph_root / f"{graph_name}.yaml"
+        yaml_path.write_text(_to_yaml(payload), encoding="utf-8")
+        print(f"Exported YAML: {yaml_path}")
+        return 0
+
+    package_path = engine.graph_root / f"{graph_name}.ecgraph.zip"
+    with zipfile.ZipFile(package_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.write(graph_path, arcname=f"{graph_name}.json")
+        manifest = {
+            "name": graph_name,
+            "type": "extremecraft_graph_package",
+            "version": 1,
+        }
+        manifest_path = engine.graph_root / f"{graph_name}.manifest.json"
+        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        zf.write(manifest_path, arcname="manifest.json")
+        manifest_path.unlink(missing_ok=True)
+    print(f"Exported package: {package_path}")
+    return 0
+
+
+def _to_yaml(value, indent: int = 0) -> str:
+    pad = " " * indent
+    if isinstance(value, dict):
+        lines: list[str] = []
+        for key, child in value.items():
+            if isinstance(child, (dict, list)):
+                lines.append(f"{pad}{key}:")
+                lines.append(_to_yaml(child, indent + 2))
+            else:
+                lines.append(f"{pad}{key}: {_yaml_scalar(child)}")
+        return "\n".join(lines) + "\n"
+    if isinstance(value, list):
+        lines = []
+        for child in value:
+            if isinstance(child, (dict, list)):
+                lines.append(f"{pad}-")
+                lines.append(_to_yaml(child, indent + 2))
+            else:
+                lines.append(f"{pad}- {_yaml_scalar(child)}")
+        return "\n".join(lines) + "\n"
+    return f"{pad}{_yaml_scalar(value)}\n"
+
+
+def _yaml_scalar(value) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    text = str(value).replace("\"", "\\\"")
+    return f'"{text}"'

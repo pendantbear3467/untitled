@@ -23,6 +23,12 @@ RESOLUTIONS = {
 }
 
 
+_STYLE_ALIASES = {
+    "crystalline": "crystal",
+    "mechanical": "industrial",
+}
+
+
 class ProceduralTextureEngine:
     def __init__(self, seed: int = 1337, resolution: str = "32x") -> None:
         self._fallback = False
@@ -44,15 +50,22 @@ class ProceduralTextureEngine:
             self._fallback = True
         self._resolution = RESOLUTIONS.get(resolution, RESOLUTIONS["32x"]).size
 
+    def _normalize_style(self, style: str) -> str:
+        normalized = style.strip().lower() if style else "metallic"
+        normalized = _STYLE_ALIASES.get(normalized, normalized)
+        return normalized if normalized in STYLES else "metallic"
+
     def _material(self, name: str, style: str):
         if self._fallback:
             return None
-        style_def = STYLES.get(style, STYLES["metallic"])
+        style_key = self._normalize_style(style)
+        style_def = STYLES.get(style_key, STYLES["metallic"])
         color = material_hex_color(name, style_def.color_hint)
         return self._material_definition(name=name, color=color, tier=3, glow=style_def.glow)
 
     def _fallback_texture(self, material: str, style: str, icon: str):
-        style_def = STYLES.get(style, STYLES["metallic"])
+        style_key = self._normalize_style(style)
+        style_def = STYLES.get(style_key, STYLES["metallic"])
         rgb = material_hex_color(material, style_def.color_hint).lstrip("#")
         color = tuple(int(rgb[i : i + 2], 16) for i in (0, 2, 4))
 
@@ -94,8 +107,9 @@ class ProceduralTextureEngine:
         return self._texture_generator.generate_machine_casing(self._material(material, style), size=self._resolution)
 
     def generate_block_texture(self, material: str, style: str):
+        style_key = self._normalize_style(style)
         if self._fallback:
-            return self._fallback_texture(material, style, "Blk")
-        if style in {"crystal", "arcane", "void", "quantum"}:
-            return self._texture_generator.generate_ore(self._material(material, style), size=self._resolution)
-        return self._texture_generator.generate_metal_block(self._material(material, style), size=self._resolution)
+            return self._fallback_texture(material, style_key, "Blk")
+        if style_key in {"crystal", "arcane", "void", "quantum"}:
+            return self._texture_generator.generate_ore(self._material(material, style_key), size=self._resolution)
+        return self._texture_generator.generate_metal_block(self._material(material, style_key), size=self._resolution)
