@@ -106,37 +106,8 @@ public final class RuntimeSyncService {
         if (blockEntity instanceof MachineBlockEntity runtimeMachine) {
             return runtimeMachine.syncTag();
         }
-
-        String simple = blockEntity.getClass().getSimpleName().toLowerCase();
-        if (!simple.contains("machine")) {
-            return new CompoundTag();
-        }
-
-        return trimMachineTag(blockEntity.saveWithoutMetadata());
-    }
-
-    private static CompoundTag trimMachineTag(CompoundTag source) {
-        CompoundTag trimmed = new CompoundTag();
-
-        if (source.contains("machine")) {
-            trimmed.putString("machine", source.getString("machine"));
-        }
-        if (source.contains("progress")) {
-            trimmed.putInt("progress", source.getInt("progress"));
-        }
-        if (source.contains("max_progress")) {
-            trimmed.putInt("max_progress", source.getInt("max_progress"));
-        }
-        if (source.contains("processing_ticks")) {
-            trimmed.putInt("processing_ticks", source.getInt("processing_ticks"));
-        }
-        if (source.contains("active_recipe")) {
-            trimmed.putString("active_recipe", source.getString("active_recipe"));
-        }
-        if (source.contains("energy")) {
-            trimmed.putInt("energy", source.getInt("energy"));
-        }
-
-        return trimmed;
+        return new CompoundTag();
     }
 }
+
+
