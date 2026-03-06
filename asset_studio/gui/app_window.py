@@ -24,16 +24,18 @@ from asset_studio.cli.validate_commands import run_validate_command
 from asset_studio.cli.pack_commands import export_pack_command
 from asset_studio.generators.armor_generator import ArmorGenerator
 from asset_studio.generators.block_generator import BlockGenerator
-from asset_studio.generators.content_set_generator import ContentSetGenerator
+from asset_studio.generators.content_pack_generator import ContentPackGenerator
 from asset_studio.generators.machine_generator import MachineGenerator
 from asset_studio.generators.ore_generator import OreGenerator
 from asset_studio.generators.tool_generator import ToolGenerator
 from asset_studio.gui.asset_wizard import AssetWizardPanel, ToolWizardInput
 from asset_studio.gui.console_panel import ConsolePanel
 from asset_studio.gui.editors import MachineEditor, MaterialEditor, QuestEditor, SkillTreeEditor, WeaponEditor, WorldgenEditor
+from asset_studio.gui.graph_editor import GraphEditor
 from asset_studio.gui.menu_bar import build_menu_bar
 from asset_studio.gui.preview_renderer import PreviewRenderer
 from asset_studio.gui.project_browser import ProjectBrowser
+from asset_studio.gui.skilltree_designer import SkillTreeDesigner
 from asset_studio.gui.timeline_widget import TimelineWidget
 from asset_studio.modpack.modpack_builder import ModpackBuilder
 from asset_studio.release.release_manager import ReleaseManager
@@ -58,9 +60,14 @@ class AssetStudioWindow(QMainWindow):
         self.browser.load_workspace(self.context.workspace_root)
 
         self.preview = PreviewRenderer()
+        self.preview_tab_renderer = PreviewRenderer()
         self._last_preview_texture: Path | None = None
         self.wizard = AssetWizardPanel()
         self.wizard.generate_tool_requested.connect(self._on_generate_tool)
+        self.visual_builder = GraphEditor(self.context)
+        self.visual_builder.graph_log.connect(self._write_log)
+        self.skilltree_designer = SkillTreeDesigner(self.context)
+        self.skilltree_designer.log_requested.connect(self._write_log)
 
         self.editor_tabs = self._build_editor_tabs()
 
@@ -72,9 +79,12 @@ class AssetStudioWindow(QMainWindow):
 
         tabs = QTabWidget()
         tabs.addTab(self.wizard, "Asset Wizard")
+        tabs.addTab(self.visual_builder, "Visual Builder")
+        tabs.addTab(self.skilltree_designer, "Skill Tree Designer")
         tabs.addTab(self.editor_tabs, "Content Editors")
         tabs.addTab(self.browser, "Project Browser")
         tabs.addTab(self.log, "Console")
+        tabs.addTab(self.preview_tab_renderer, "Preview Renderer")
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(tabs)
@@ -127,6 +137,8 @@ class AssetStudioWindow(QMainWindow):
     def _new_project(self) -> None:
         self.context = self.workspace_manager.initialize_workspace()
         self.browser.load_workspace(self.context.workspace_root)
+        self.visual_builder.set_context(self.context)
+        self.skilltree_designer.set_context(self.context)
         self._write_log("New project initialized")
 
     def _open_project(self) -> None:
@@ -137,6 +149,8 @@ class AssetStudioWindow(QMainWindow):
         self.context = self.workspace_manager.load_context()
         self.browser.load_workspace(self.context.workspace_root)
         self.editor_tabs = self._build_editor_tabs()
+        self.visual_builder.set_context(self.context)
+        self.skilltree_designer.set_context(self.context)
         self._write_log(f"Opened workspace: {selected}")
 
     def _save_workspace(self) -> None:
@@ -246,7 +260,7 @@ class AssetStudioWindow(QMainWindow):
         )
 
     def _generate_material_set(self) -> None:
-        generated = ContentSetGenerator(self.context).generate_material_set("mythril", tier=4, style="metallic")
+        generated = ContentPackGenerator(self.context).generate_material_set("mythril", tier=4, style="metallic")
         self._write_log(f"Generated material set (count={len(generated)})")
 
     def _export_target(self, target: str) -> None:
@@ -283,6 +297,8 @@ class AssetStudioWindow(QMainWindow):
         self._last_preview_texture = texture_path
         self.preview.set_mode(mode)
         self.preview.load_texture(texture_path)
+        self.preview_tab_renderer.set_mode(mode)
+        self.preview_tab_renderer.load_texture(texture_path)
 
     def _build_preview_controls(self) -> QWidget:
         holder = QWidget()

@@ -2,20 +2,60 @@
   "materials": {
     "mythril": {
       "tier": 4,
-      "texture_style": "metallic",
-      "kind": "ore"
+      "kind": "material"
     }
   },
   "items": {
     "mythril_pickaxe": {
       "material": "mythril",
-      "durability": 1800,
-      "attack_damage": 7,
-      "mining_speed": 9,
+      "durability": 1500,
+      "attack_damage": 7.0,
+      "mining_speed": 8.0,
       "tier": 4,
-      "texture_style": "ancient",
+      "texture_style": "metallic",
+      "type": "tool"
+    },
+    "mythril_axe": {
+      "material": "mythril",
+      "durability": 1500,
+      "attack_damage": 7.0,
+      "mining_speed": 8.0,
+      "tier": 4,
+      "texture_style": "metallic",
+      "type": "tool"
+    },
+    "mythril_shovel": {
+      "material": "mythril",
+      "durability": 1500,
+      "attack_damage": 7.0,
+      "mining_speed": 8.0,
+      "tier": 4,
+      "texture_style": "metallic",
+      "type": "tool"
+    },
+    "mythril_hoe": {
+      "material": "mythril",
+      "durability": 1500,
+      "attack_damage": 7.0,
+      "mining_speed": 8.0,
+      "tier": 4,
+      "texture_style": "metallic",
+      "type": "tool"
+    },
+    "mythril_sword": {
+      "material": "mythril",
+      "durability": 1500,
+      "attack_damage": 7.0,
+      "mining_speed": 8.0,
+      "tier": 4,
+      "texture_style": "metallic",
       "type": "tool"
     }
   },
-  "machines": {}
+  "machines": {
+    "mythril_assembler": {
+      "material": "mythril",
+      "texture_style": "industrial"
+    }
+  }
 }

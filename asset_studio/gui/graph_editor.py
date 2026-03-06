@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from asset_studio.graph.graph_engine import GraphEngine
-from asset_studio.graph.graph_nodes import NODE_TYPES
+from asset_studio.graph.graph_nodes import NODE_TYPES, NodePort
 
 
 class GraphNodeItem(QGraphicsRectItem):
@@ -56,8 +56,7 @@ class GraphEditor(QWidget):
         left = QWidget()
         left_layout = QVBoxLayout(left)
         self.palette = QListWidget()
-        for node_name in NODE_TYPES.keys():
-            self.palette.addItem(node_name)
+        self._refresh_palette()
 
         self.node_type = QComboBox()
         self.node_type.addItems(list(NODE_TYPES.keys()))
@@ -97,6 +96,31 @@ class GraphEditor(QWidget):
         self.engine = GraphEngine(context.workspace_root)
         self.node_items.clear()
         self.scene.clear()
+        self._refresh_palette()
+
+    def _refresh_palette(self) -> None:
+        if hasattr(self, "palette"):
+            self.palette.clear()
+        if hasattr(self, "node_type"):
+            self.node_type.clear()
+
+        for node_name in list(NODE_TYPES.keys()):
+            if hasattr(self, "palette"):
+                self.palette.addItem(node_name)
+
+        plugins = getattr(getattr(self, "context", None), "plugins", None)
+        if plugins is not None:
+            for node_name in plugins.graph_nodes.keys():
+                if node_name not in NODE_TYPES:
+                    NODE_TYPES[node_name] = {
+                        "inputs": [NodePort("in", "any")],
+                        "outputs": [NodePort("out", "any")],
+                    }
+                if hasattr(self, "palette"):
+                    self.palette.addItem(node_name)
+
+        if hasattr(self, "node_type"):
+            self.node_type.addItems(list(NODE_TYPES.keys()))
 
     def _add_node(self) -> None:
         node_type = self.node_type.currentText()

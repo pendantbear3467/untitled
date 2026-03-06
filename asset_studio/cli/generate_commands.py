@@ -5,7 +5,7 @@ import json
 
 from asset_studio.generators.armor_generator import ArmorGenerator
 from asset_studio.generators.block_generator import BlockGenerator
-from asset_studio.generators.content_set_generator import ContentSetGenerator
+from asset_studio.generators.content_pack_generator import ContentPackGenerator
 from asset_studio.generators.datapack_generator import DatapackGenerator
 from asset_studio.generators.item_generator import ItemGenerator
 from asset_studio.generators.machine_generator import MachineGenerator
@@ -102,7 +102,7 @@ def run_generate_command(args: argparse.Namespace, context: AssetStudioContext) 
         return _generate_from_material_definition(args.material_name, context)
 
     if gtype == "material_set":
-        generated = ContentSetGenerator(context).generate_material_set(material=args.material, tier=args.tier, style=args.style)
+        generated = ContentPackGenerator(context).generate_material_set(material=args.material, tier=args.tier, style=args.style)
         print(f"Generated material set '{args.material}': {len(generated)} assets")
         return 0
 
