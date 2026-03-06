@@ -10,7 +10,6 @@ import com.extremecraft.network.packet.ActivateAbilityC2SPacket;
 import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
 import com.extremecraft.network.packet.SpellCastPacket;
 import com.extremecraft.progression.classsystem.ability.ClassAbilityClientState;
-import com.extremecraft.network.sync.RuntimeSyncClientState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;

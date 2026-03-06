@@ -3,7 +3,6 @@ package com.extremecraft.worldgen.validation;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.machine.material.OreMaterialCatalog;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;

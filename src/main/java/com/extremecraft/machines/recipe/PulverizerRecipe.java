@@ -1,6 +1,5 @@
 package com.extremecraft.machines.recipe;
 
-import com.extremecraft.core.ECConstants;
 import com.extremecraft.registry.ModRecipeSerializers;
 import com.google.gson.JsonObject;
 import net.minecraft.core.NonNullList;
