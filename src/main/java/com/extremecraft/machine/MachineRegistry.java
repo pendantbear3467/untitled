@@ -55,6 +55,36 @@ public final class MachineRegistry {
         return id == null ? null : RECIPES.get(normalize(id));
     }
 
+    /**
+     * Extension hook for other modules/mods to register machine definitions at runtime.
+     */
+    public static synchronized void registerMachineDefinition(MachineDefinition definition) {
+        if (definition == null || normalize(definition.id()).isBlank()) {
+            return;
+        }
+
+        MACHINES.put(normalize(definition.id()), definition);
+        CACHED_MACHINES = List.copyOf(MACHINES.values());
+    }
+
+    /**
+     * Extension hook for other modules/mods to register machine recipes at runtime.
+     */
+    public static synchronized void registerRecipeDefinition(MachineRecipe recipe) {
+        if (recipe == null || normalize(recipe.id()).isBlank() || normalize(recipe.machineId()).isBlank()) {
+            return;
+        }
+
+        String machineId = normalize(recipe.machineId());
+        RECIPES.put(normalize(recipe.id()), recipe);
+
+        List<MachineRecipe> rebuilt = new ArrayList<>(RECIPES_BY_MACHINE.getOrDefault(machineId, List.of()));
+        rebuilt.add(recipe);
+        RECIPES_BY_MACHINE.put(machineId, List.copyOf(rebuilt));
+
+        CACHED_RECIPES = List.copyOf(RECIPES.values());
+    }
+
     private static synchronized void replace(Map<String, MachineDefinition> machines, Map<String, MachineRecipe> recipes) {
         MACHINES.clear();
         MACHINES.putAll(machines);
@@ -164,4 +194,7 @@ public final class MachineRegistry {
         }
     }
 }
+
+
+
 

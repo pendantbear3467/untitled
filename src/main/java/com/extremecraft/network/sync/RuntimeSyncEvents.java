@@ -2,6 +2,7 @@ package com.extremecraft.network.sync;
 
 import com.extremecraft.ability.AbilityEngine;
 import com.extremecraft.magic.SpellCastingSystem;
+import com.extremecraft.server.task.ServerDeferredWorkQueue;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.minecraftforge.event.TickEvent;
@@ -30,8 +31,11 @@ public class RuntimeSyncEvents {
             return;
         }
 
+        int delay = 0;
         for (ServerPlayer player : event.getPlayerList().getPlayers()) {
-            RuntimeSyncService.syncAll(player);
+            int taskDelay = delay;
+            ServerDeferredWorkQueue.schedule(player, taskDelay, () -> RuntimeSyncService.syncAll(player));
+            delay = Math.min(delay + 1, 40);
         }
     }
 

@@ -12,6 +12,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
 
 public final class PlayerStatsService {
+    private static final int MODULE_SCAN_INTERVAL = 10;
+
     private PlayerStatsService() {
     }
 
@@ -46,7 +48,11 @@ public final class PlayerStatsService {
 
     public static void tickResources(ServerPlayer player) {
         PlayerStatsApi.get(player).ifPresent(stats -> {
-            boolean moduleEffectsChanged = ModuleEffectService.applyEquippedModules(player, stats);
+            boolean moduleEffectsChanged = false;
+            if ((player.tickCount % MODULE_SCAN_INTERVAL) == 0) {
+                moduleEffectsChanged = ModuleEffectService.applyEquippedModules(player, stats);
+            }
+
             stats.regenerateResources();
             if (moduleEffectsChanged || (player.tickCount % 20) == 0) {
                 sync(player, stats);
