@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from asset_studio.cli.cli_commands import run_cli
+from asset_studio.cli.cli_commands import register_subcommands, run_cli
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -23,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers = parser.add_subparsers(dest="command")
-    run_cli.register_subcommands(subparsers)
+    register_subcommands(subparsers)
     return parser
 
 
