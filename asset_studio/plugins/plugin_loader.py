@@ -15,10 +15,14 @@ def load_plugins(plugins_dir: Path) -> PluginAPI:
     for plugin_file in sorted(plugins_dir.glob("*.py")):
         if plugin_file.name.startswith("_"):
             continue
-        module = _load_module(plugin_file)
-        register_fn = getattr(module, "register", None)
-        if callable(register_fn):
-            register_fn(registry)
+        try:
+            module = _load_module(plugin_file)
+            register_fn = getattr(module, "register", None)
+            if callable(register_fn):
+                register_fn(registry)
+        except Exception:  # noqa: BLE001
+            # Keep the platform resilient when one plugin fails to load.
+            continue
     return registry
 
 
