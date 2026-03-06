@@ -1,10 +1,7 @@
 {
-  "name": "cli_demo",
+  "name": "mythril_toolset",
   "graph_version": 2,
-  "metadata": {
-    "last_bundle": "workspace\\generated\\cli_demo\\content_bundle.json",
-    "last_debug_events": 4
-  },
+  "metadata": {},
   "nodes": [
     {
       "node_id": "materialnode_1",
@@ -61,5 +58,6 @@
       "from_port": "material",
       "to_port": "material"
     }
-  ]
+  ],
+  "template": true
 }

@@ -105,14 +105,16 @@ class GraphCanvasView(QGraphicsView):
         self.setAcceptDrops(True)
 
     def dragEnterEvent(self, event: QDragEnterEvent | None) -> None:  # noqa: N802
-        if event is not None and event.mimeData() is not None and event.mimeData().hasText():
+        mime = event.mimeData() if event is not None else None
+        if mime is not None and mime.hasText() and event is not None:
             event.acceptProposedAction()
             return
         super().dragEnterEvent(event)
 
     def dropEvent(self, event: QDropEvent | None) -> None:  # noqa: N802
-        if event is not None and event.mimeData() is not None and event.mimeData().hasText():
-            node_type = event.mimeData().text().strip()
+        mime = event.mimeData() if event is not None else None
+        if mime is not None and mime.hasText() and event is not None:
+            node_type = mime.text().strip()
             point = self.mapToScene(event.position().toPoint())
             self.node_drop_requested.emit(node_type, float(point.x()), float(point.y()))
             event.acceptProposedAction()

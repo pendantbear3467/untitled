@@ -1,0 +1,64 @@
+name: "template_target"
+graph_version: 2
+metadata:
+
+
+nodes:
+  -
+    node_id: "materialnode_1"
+    node_type: "MaterialNode"
+    title: "MaterialNode"
+    x: 160.0
+    y: 160.0
+    inputs:
+
+
+    outputs:
+      -
+        name: "material"
+        port_type: "material"
+        direction: "output"
+
+
+    parameters:
+      material: "mythril"
+      tier: 4
+
+    execution_state: "success"
+    last_error: null
+
+  -
+    node_id: "toolnode_2"
+    node_type: "ToolNode"
+    title: "ToolNode"
+    x: 440.0
+    y: 160.0
+    inputs:
+      -
+        name: "material"
+        port_type: "material"
+        direction: "input"
+
+
+    outputs:
+      -
+        name: "tool"
+        port_type: "item"
+        direction: "output"
+
+
+    parameters:
+      tool_name: "mythril_pickaxe"
+
+    execution_state: "success"
+    last_error: null
+
+
+links:
+  -
+    from: "materialnode_1"
+    to: "toolnode_2"
+    from_port: "material"
+    to_port: "material"
+
+

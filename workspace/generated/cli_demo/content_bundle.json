@@ -1,0 +1,8 @@
+{
+  "graph": "cli_demo",
+  "generated": [
+    "material:mythril",
+    "tool:mythril_pickaxe"
+  ],
+  "generated_at": "2026-03-06T02:08:12.599374+00:00"
+}
