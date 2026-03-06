@@ -17,15 +17,22 @@ public class PlayerDualWieldEvents {
     @SubscribeEvent
     public void attachCapabilities(AttachCapabilitiesEvent<Entity> event) {
         if (event.getObject() instanceof Player) {
-            event.addCapability(ID, new PlayerDualWieldProvider());
+            PlayerDualWieldProvider provider = new PlayerDualWieldProvider();
+            event.addCapability(ID, provider);
+            event.addListener(provider::invalidate);
         }
     }
 
     @SubscribeEvent
     public void onPlayerClone(PlayerEvent.Clone event) {
-        PlayerDualWieldApi.get(event.getOriginal()).ifPresent(oldData ->
-                PlayerDualWieldApi.get(event.getEntity()).ifPresent(newData -> newData.copyFrom(oldData))
-        );
+        event.getOriginal().reviveCaps();
+        try {
+            PlayerDualWieldApi.get(event.getOriginal()).ifPresent(oldData ->
+                    PlayerDualWieldApi.get(event.getEntity()).ifPresent(newData -> newData.copyFrom(oldData))
+            );
+        } finally {
+            event.getOriginal().invalidateCaps();
+        }
     }
 
     @SubscribeEvent

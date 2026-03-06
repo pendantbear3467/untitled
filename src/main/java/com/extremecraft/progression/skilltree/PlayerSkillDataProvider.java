@@ -28,4 +28,9 @@ public class PlayerSkillDataProvider implements ICapabilitySerializable<Compound
     public void deserializeNBT(CompoundTag nbt) {
         data.deserializeNBT(nbt);
     }
+
+    public void invalidate() {
+        optional.invalidate();
+    }
 }
+

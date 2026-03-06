@@ -13,7 +13,9 @@ public class ProgressCapabilityEvents {
     @SubscribeEvent
     public void attachCapabilities(AttachCapabilitiesEvent<Entity> event) {
         if (event.getObject() instanceof Player) {
-            event.addCapability(ID, new PlayerProgressProvider());
+            PlayerProgressProvider provider = new PlayerProgressProvider();
+            event.addCapability(ID, provider);
+            event.addListener(provider::invalidate);
         }
     }
 }

@@ -32,4 +32,9 @@ public class PlayerStatsProvider implements ICapabilitySerializable<CompoundTag>
     public void deserializeNBT(CompoundTag nbt) {
         data.deserializeNBT(nbt);
     }
+
+    public void invalidate() {
+        optional.invalidate();
+    }
 }
+

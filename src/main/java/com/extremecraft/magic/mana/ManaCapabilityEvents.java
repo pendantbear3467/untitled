@@ -16,15 +16,22 @@ public class ManaCapabilityEvents {
     @SubscribeEvent
     public void attachCapabilities(AttachCapabilitiesEvent<Entity> event) {
         if (event.getObject() instanceof Player) {
-            event.addCapability(ID, new ManaCapabilityProvider());
+            ManaCapabilityProvider provider = new ManaCapabilityProvider();
+            event.addCapability(ID, provider);
+            event.addListener(provider::invalidate);
         }
     }
 
     @SubscribeEvent
     public void onClone(PlayerEvent.Clone event) {
-        ManaApi.get(event.getOriginal()).ifPresent(oldData ->
-                ManaApi.get(event.getEntity()).ifPresent(newData -> newData.copyFrom(oldData))
-        );
+        event.getOriginal().reviveCaps();
+        try {
+            ManaApi.get(event.getOriginal()).ifPresent(oldData ->
+                    ManaApi.get(event.getEntity()).ifPresent(newData -> newData.copyFrom(oldData))
+            );
+        } finally {
+            event.getOriginal().invalidateCaps();
+        }
     }
 
     @SubscribeEvent

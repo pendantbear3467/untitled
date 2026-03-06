@@ -16,15 +16,22 @@ public class PlayerSkillTreeEvents {
     @SubscribeEvent
     public void attachCapabilities(AttachCapabilitiesEvent<Entity> event) {
         if (event.getObject() instanceof Player) {
-            event.addCapability(ID, new PlayerSkillDataProvider());
+            PlayerSkillDataProvider provider = new PlayerSkillDataProvider();
+            event.addCapability(ID, provider);
+            event.addListener(provider::invalidate);
         }
     }
 
     @SubscribeEvent
     public void onPlayerClone(PlayerEvent.Clone event) {
-        PlayerSkillTreeApi.get(event.getOriginal()).ifPresent(oldData ->
-                PlayerSkillTreeApi.get(event.getEntity()).ifPresent(newData -> newData.copyFrom(oldData))
-        );
+        event.getOriginal().reviveCaps();
+        try {
+            PlayerSkillTreeApi.get(event.getOriginal()).ifPresent(oldData ->
+                    PlayerSkillTreeApi.get(event.getEntity()).ifPresent(newData -> newData.copyFrom(oldData))
+            );
+        } finally {
+            event.getOriginal().invalidateCaps();
+        }
     }
 
     @SubscribeEvent

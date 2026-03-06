@@ -14,14 +14,21 @@ public class ResearchCapabilityEvents {
     @SubscribeEvent
     public void attachCapabilities(AttachCapabilitiesEvent<Entity> event) {
         if (event.getObject() instanceof Player) {
-            event.addCapability(ID, new ResearchProvider());
+            ResearchProvider provider = new ResearchProvider();
+            event.addCapability(ID, provider);
+            event.addListener(provider::invalidate);
         }
     }
 
     @SubscribeEvent
     public void onPlayerClone(PlayerEvent.Clone event) {
-        ResearchApi.get(event.getOriginal()).ifPresent(oldData ->
-                ResearchApi.get(event.getEntity()).ifPresent(newData -> newData.copyFrom(oldData))
-        );
+        event.getOriginal().reviveCaps();
+        try {
+            ResearchApi.get(event.getOriginal()).ifPresent(oldData ->
+                    ResearchApi.get(event.getEntity()).ifPresent(newData -> newData.copyFrom(oldData))
+            );
+        } finally {
+            event.getOriginal().invalidateCaps();
+        }
     }
 }

@@ -14,14 +14,21 @@ public class StageCapabilityEvents {
     @SubscribeEvent
     public void attachCapabilities(AttachCapabilitiesEvent<Entity> event) {
         if (event.getObject() instanceof Player) {
-            event.addCapability(ID, new PlayerStageProvider());
+            PlayerStageProvider provider = new PlayerStageProvider();
+            event.addCapability(ID, provider);
+            event.addListener(provider::invalidate);
         }
     }
 
     @SubscribeEvent
     public void onPlayerClone(PlayerEvent.Clone event) {
-        StageApi.get(event.getOriginal()).ifPresent(oldData ->
-                StageApi.get(event.getEntity()).ifPresent(newData -> newData.copyFrom(oldData))
-        );
+        event.getOriginal().reviveCaps();
+        try {
+            StageApi.get(event.getOriginal()).ifPresent(oldData ->
+                    StageApi.get(event.getEntity()).ifPresent(newData -> newData.copyFrom(oldData))
+            );
+        } finally {
+            event.getOriginal().invalidateCaps();
+        }
     }
 }

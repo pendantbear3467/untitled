@@ -14,14 +14,21 @@ public class SkillsCapabilityEvents {
     @SubscribeEvent
     public void attachCapabilities(AttachCapabilitiesEvent<Entity> event) {
         if (event.getObject() instanceof Player) {
-            event.addCapability(ID, new PlayerSkillsProvider());
+            PlayerSkillsProvider provider = new PlayerSkillsProvider();
+            event.addCapability(ID, provider);
+            event.addListener(provider::invalidate);
         }
     }
 
     @SubscribeEvent
     public void onPlayerClone(PlayerEvent.Clone event) {
-        SkillsApi.get(event.getOriginal()).ifPresent(oldData ->
-                SkillsApi.get(event.getEntity()).ifPresent(newData -> newData.copyFrom(oldData))
-        );
+        event.getOriginal().reviveCaps();
+        try {
+            SkillsApi.get(event.getOriginal()).ifPresent(oldData ->
+                    SkillsApi.get(event.getEntity()).ifPresent(newData -> newData.copyFrom(oldData))
+            );
+        } finally {
+            event.getOriginal().invalidateCaps();
+        }
     }
 }
