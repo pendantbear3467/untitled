@@ -1,7 +1,7 @@
 package com.extremecraft.command;
 
 import com.extremecraft.api.ExtremeCraftAPI;
-import com.extremecraft.platform.module.ModuleRegistry;
+import com.extremecraft.platform.module.ModuleRegistry;`r`nimport com.extremecraft.platform.data.registry.MachineDataRegistry;`r`nimport com.extremecraft.platform.data.registry.TechTreeDataRegistry;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -21,7 +21,7 @@ public final class ECDevCommands {
                             ctx.getSource().sendSuccess(() -> Component.literal("Loaded modules: " + ModuleRegistry.size()), false);
                             ctx.getSource().sendSuccess(() -> Component.literal("API machines: " + ExtremeCraftAPI.machines().size()), false);
                             ctx.getSource().sendSuccess(() -> Component.literal("API skills: " + ExtremeCraftAPI.skillTrees().size()), false);
-                            ctx.getSource().sendSuccess(() -> Component.literal("API quests: " + ExtremeCraftAPI.quests().size()), false);
+                            ctx.getSource().sendSuccess(() -> Component.literal("API quests: " + ExtremeCraftAPI.quests().size()), false);`r`n                            ctx.getSource().sendSuccess(() -> Component.literal("Datapack machines: " + MachineDataRegistry.all().size()), false);`r`n                            ctx.getSource().sendSuccess(() -> Component.literal("Datapack tech trees: " + TechTreeDataRegistry.all().size()), false);
                             return 1;
                         }))
                 .then(Commands.literal("modules")
@@ -53,3 +53,4 @@ public final class ECDevCommands {
                         })));
     }
 }
+
