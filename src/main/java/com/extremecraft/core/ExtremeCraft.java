@@ -15,6 +15,19 @@ import com.extremecraft.combat.CombatEventHandler;
 import com.extremecraft.combat.dualwield.PlayerDualWieldEvents;
 import com.extremecraft.command.ECDevCommands;
 import com.extremecraft.config.DwConfig;
+import com.extremecraft.entity.ModEntities;
+import com.extremecraft.entity.MobAttributes;
+import com.extremecraft.entity.MobSpawns;
+import com.extremecraft.entity.boss.AncientCoreGuardianEntity;
+import com.extremecraft.entity.boss.OverchargedMachineGodEntity;
+import com.extremecraft.entity.boss.VoidTitanEntity;
+import com.extremecraft.entity.mob.AncientSentinelEntity;
+import com.extremecraft.entity.mob.ArcaneWraithEntity;
+import com.extremecraft.entity.mob.EnergyParasiteEntity;
+import com.extremecraft.entity.mob.RunicGolemEntity;
+import com.extremecraft.entity.mob.TechConstructEntity;
+import com.extremecraft.entity.mob.VoidStalkerEntity;
+import com.extremecraft.entity.system.GameplayMechanicsEvents;
 import com.extremecraft.future.registry.TechBlockEntities;
 import com.extremecraft.future.registry.TechBlocks;
 import com.extremecraft.future.registry.TechCreativeTabs;
@@ -70,6 +83,7 @@ import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
 import net.minecraftforge.event.entity.EntityAttributeModificationEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
@@ -97,10 +111,12 @@ public final class ExtremeCraft {
         TechBlockEntities.BLOCK_ENTITIES.register(modBus);
         TechMenuTypes.MENUS.register(modBus);
         TechRecipeSerializers.RECIPE_SERIALIZERS.register(modBus);
+        ModEntities.ENTITY_TYPES.register(modBus);
 
         modBus.addListener(this::commonSetup);
         modBus.addListener(this::clientSetup);
         modBus.addListener(this::onEntityAttributeModification);
+        modBus.addListener(this::onEntityAttributeCreation);
         if (FMLEnvironment.dist == Dist.CLIENT) {
             modBus.addListener(DwKeybinds::onRegisterKeyMappings);
             modBus.addListener(ExtremeCraftKeybinds::onRegisterKeyMappings);
@@ -153,6 +169,7 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new PlayerSkillTreeEvents());
             MinecraftForge.EVENT_BUS.register(new ModuleRuntimeEvents());
             MinecraftForge.EVENT_BUS.register(new RuntimeSyncEvents());
+            MinecraftForge.EVENT_BUS.register(new GameplayMechanicsEvents());
 
             MinecraftForge.EVENT_BUS.register(new AbilityRegistry());
             AbilityEngine.initialize();
@@ -161,6 +178,7 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new MachineRegistry());
             MinecraftForge.EVENT_BUS.register(new ProgressionRegistry());
 
+            MobSpawns.bootstrap();
             PlatformDataLoaderBootstrap.registerAll();
             MinecraftForge.EVENT_BUS.register(new PlatformDataSyncEvents());
         });
@@ -180,6 +198,20 @@ public final class ExtremeCraft {
     private void registerCommands(RegisterCommandsEvent event) {
         ProgressCommands.register(event.getDispatcher());
         ECDevCommands.register(event.getDispatcher());
+    }
+
+
+    private void onEntityAttributeCreation(EntityAttributeCreationEvent event) {
+        event.put(ModEntities.TECH_CONSTRUCT.get(), MobAttributes.basic(38.0F, 7.0F, 0.25F, 6.0F).build());
+        event.put(ModEntities.ARCANE_WRAITH.get(), MobAttributes.basic(26.0F, 6.0F, 0.30F, 2.0F).build());
+        event.put(ModEntities.VOID_STALKER.get(), MobAttributes.basic(34.0F, 8.0F, 0.34F, 4.0F).build());
+        event.put(ModEntities.ANCIENT_SENTINEL.get(), MobAttributes.basic(46.0F, 9.0F, 0.22F, 8.0F).build());
+        event.put(ModEntities.ENERGY_PARASITE.get(), MobAttributes.basic(20.0F, 5.5F, 0.36F, 1.0F).build());
+        event.put(ModEntities.RUNIC_GOLEM.get(), MobAttributes.basic(64.0F, 11.0F, 0.20F, 10.0F).build());
+
+        event.put(ModEntities.ANCIENT_CORE_GUARDIAN.get(), MobAttributes.boss(260.0F, 15.0F, 0.24F, 14.0F, 3.0F).build());
+        event.put(ModEntities.VOID_TITAN.get(), MobAttributes.boss(340.0F, 18.0F, 0.23F, 16.0F, 4.0F).build());
+        event.put(ModEntities.OVERCHARGED_MACHINE_GOD.get(), MobAttributes.boss(420.0F, 21.0F, 0.27F, 18.0F, 4.0F).build());
     }
 
     private void onEntityAttributeModification(EntityAttributeModificationEvent event) {
