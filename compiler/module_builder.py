@@ -21,6 +21,8 @@ class ModuleBuildResult:
     java_source: Path
     conflicts: list[Conflict] = field(default_factory=list)
     generated_paths: list[Path] = field(default_factory=list)
+    generated_java_sources: list[Path] = field(default_factory=list)
+    dependency_load_order: list[str] = field(default_factory=list)
 
 
 class ModuleBuilder:
@@ -50,15 +52,23 @@ class ModuleBuilder:
 
         java_source = self.code_generator.generate_registry_code(addon, module_root)
         self.asset_builder.build(self.context.workspace_root, module_root)
-        self.datapack_builder.build(self.context.workspace_root, module_root)
+        datapack_root = self.datapack_builder.build(self.context.workspace_root, module_root, addon=addon)
 
         manifest = {
             "name": addon.name,
             "namespace": addon.namespace,
             "version": addon.version,
+            "compatible_platform": addon.compatible_platform_version,
             "dependencies": resolution.dependencies,
+            "dependency_load_order": resolution.load_order,
+            "dependency_graph": {
+                "nodes": [node.__dict__ for node in resolution.nodes],
+                "edges": [edge.__dict__ for edge in resolution.edges],
+            },
             "conflicts": [conflict.__dict__ for conflict in resolution.conflicts],
             "generated_files": [str(path) for path in generated.generated_paths],
+            "generated_java_sources": [str(path) for path in self.code_generator.generated_sources],
+            "datapack_root": str(datapack_root),
         }
         manifest_path = module_root / "module_manifest.json"
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
@@ -71,6 +81,8 @@ class ModuleBuilder:
             java_source=java_source,
             conflicts=resolution.conflicts,
             generated_paths=generated.generated_paths,
+            generated_java_sources=self.code_generator.generated_sources,
+            dependency_load_order=resolution.load_order,
         )
 
     def _package_module(self, module_root: Path, addon_name: str) -> Path:
