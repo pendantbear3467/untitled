@@ -30,6 +30,10 @@ public final class OffhandActionExecutor {
     }
 
     public static void execute(ServerPlayer player, ServerLevel level, OffhandActionC2S packet) {
+        if (player == null || level == null || player.level().isClientSide()) {
+            return;
+        }
+
         try {
             switch (packet.action()) {
                 case ATTACK_ENTITY -> attackEntity(player, level, packet.entityId());
@@ -159,12 +163,9 @@ public final class OffhandActionExecutor {
             } catch (NoSuchMethodException ignored) {
             }
 
-            player.gameMode.destroyBlock(pos);
+            LOGGER.log(Level.FINE, "No compatible handleBlockBreakAction signature found for offhand break action");
         } catch (Throwable ex) {
-            try {
-                player.gameMode.destroyBlock(pos);
-            } catch (Throwable ignored) {
-            }
+            LOGGER.log(Level.FINE, "Failed to invoke handleBlockBreakAction for offhand action", ex);
         }
     }
 
@@ -174,3 +175,4 @@ public final class OffhandActionExecutor {
         return new BlockHitResult(hit, face, pos, false);
     }
 }
+

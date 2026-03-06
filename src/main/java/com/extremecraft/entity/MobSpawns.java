@@ -18,6 +18,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class MobSpawns {
     private static final Map<String, DensitySnapshot> DENSITY_CACHE = new ConcurrentHashMap<>();
+    private static final long DENSITY_CACHE_WINDOW_TICKS = 10L;
+    private static final long DENSITY_CACHE_TTL_TICKS = 200L;
+    private static final long DENSITY_CACHE_PRUNE_INTERVAL_TICKS = 40L;
+    private static final int DENSITY_CACHE_MAX_ENTRIES = 8192;
+
+    private static volatile long lastCachePruneTick = Long.MIN_VALUE / 2L;
     private static boolean bootstrapped;
 
     public static synchronized void bootstrap() {
@@ -83,8 +89,10 @@ public final class MobSpawns {
         long now = level.getLevel().getGameTime();
         String key = cacheKey(level, entityType, pos);
 
+        pruneCacheIfNeeded(now);
+
         DensitySnapshot cached = DENSITY_CACHE.get(key);
-        if (cached != null && (now - cached.tick()) <= 10L) {
+        if (cached != null && (now - cached.tick()) <= DENSITY_CACHE_WINDOW_TICKS) {
             return cached.count();
         }
 
@@ -106,9 +114,38 @@ public final class MobSpawns {
         return level.getLevel().dimension().location() + "|" + id + "|" + chunkX + "|" + chunkZ;
     }
 
+    private static void pruneCacheIfNeeded(long now) {
+        if ((now - lastCachePruneTick) < DENSITY_CACHE_PRUNE_INTERVAL_TICKS) {
+            return;
+        }
+
+        lastCachePruneTick = now;
+        DENSITY_CACHE.entrySet().removeIf(entry -> (now - entry.getValue().tick()) > DENSITY_CACHE_TTL_TICKS);
+
+        int overflow = DENSITY_CACHE.size() - DENSITY_CACHE_MAX_ENTRIES;
+        if (overflow <= 0) {
+            return;
+        }
+
+        for (String key : DENSITY_CACHE.keySet()) {
+            if (overflow <= 0) {
+                break;
+            }
+            if (DENSITY_CACHE.remove(key) != null) {
+                overflow--;
+            }
+        }
+    }
+
+    public static void clearCache() {
+        DENSITY_CACHE.clear();
+        lastCachePruneTick = Long.MIN_VALUE / 2L;
+    }
+
     private MobSpawns() {
     }
 
     private record DensitySnapshot(long tick, int count) {
     }
 }
+

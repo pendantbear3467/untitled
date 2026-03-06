@@ -54,6 +54,10 @@ public class ModularDrillItem extends PickaxeItem {
             return super.use(level, player, hand);
         }
 
+        if (level.isClientSide()) {
+            return InteractionResultHolder.sidedSuccess(stack, true);
+        }
+
         if (!(player instanceof ServerPlayer serverPlayer)) {
             return InteractionResultHolder.sidedSuccess(stack, true);
         }
@@ -64,7 +68,7 @@ public class ModularDrillItem extends PickaxeItem {
 
         double baseDistance = Math.max(1.0D, Config.COMMON.tools.drillTeleportBaseDistance.get());
         double perLevel = Math.max(0.0D, Config.COMMON.tools.drillTeleportDistancePerLevel.get());
-        double distance = baseDistance + (perLevel * teleportLevel);
+        double distance = Math.min(64.0D, baseDistance + (perLevel * teleportLevel));
 
         Vec3 look = serverPlayer.getLookAngle();
         Vec3 target = serverPlayer.position().add(look.scale(distance));
@@ -104,3 +108,4 @@ public class ModularDrillItem extends PickaxeItem {
         }
     }
 }
+

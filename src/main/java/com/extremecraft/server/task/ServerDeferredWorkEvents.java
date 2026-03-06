@@ -1,5 +1,6 @@
 package com.extremecraft.server.task;
 
+import com.extremecraft.entity.MobSpawns;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -18,5 +19,7 @@ public class ServerDeferredWorkEvents {
     @SubscribeEvent
     public void onServerStopping(ServerStoppingEvent event) {
         ServerDeferredWorkQueue.clear();
+        MobSpawns.clearCache();
     }
 }
+

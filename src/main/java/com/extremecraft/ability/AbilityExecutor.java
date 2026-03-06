@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 
 public final class AbilityExecutor {
+    private static final double MAX_TELEPORT_DISTANCE = 64.0D;
+
     private AbilityExecutor() {
     }
 
@@ -28,7 +30,7 @@ public final class AbilityExecutor {
     }
 
     public static boolean executeSpellAbility(ServerPlayer player, AbilityDefinition definition) {
-        if (player == null || definition == null) {
+        if (player == null || definition == null || player.level().isClientSide()) {
             return false;
         }
 
@@ -39,7 +41,7 @@ public final class AbilityExecutor {
     }
 
     public static boolean executeDefinition(AbilityContext context) {
-        if (context == null || context.player() == null || context.definition() == null) {
+        if (context == null || context.player() == null || context.definition() == null || context.player().level().isClientSide()) {
             return false;
         }
 
@@ -65,7 +67,7 @@ public final class AbilityExecutor {
     }
 
     public static void executeAreaEffect(AbilityContext context, double radius, List<AbilityEffect> effects) {
-        if (context == null || context.player() == null || effects == null || effects.isEmpty()) {
+        if (context == null || context.player() == null || context.player().level().isClientSide() || effects == null || effects.isEmpty()) {
             return;
         }
 
@@ -167,7 +169,7 @@ public final class AbilityExecutor {
     }
 
     private static void applyDamage(AbilityContext context, List<LivingEntity> targets, AbilityEffect effect) {
-        if (targets.isEmpty()) {
+        if (context == null || context.caster() == null || context.caster().level().isClientSide() || targets.isEmpty()) {
             return;
         }
 
@@ -199,6 +201,9 @@ public final class AbilityExecutor {
     private static void applyIgnite(List<LivingEntity> targets, AbilityEffect effect) {
         int seconds = Math.max(1, effect.duration());
         for (LivingEntity target : targets) {
+            if (target.level().isClientSide()) {
+                continue;
+            }
             target.setSecondsOnFire(seconds);
         }
     }
@@ -206,6 +211,9 @@ public final class AbilityExecutor {
     private static void applyHeal(List<LivingEntity> targets, AbilityEffect effect) {
         float amount = (float) Math.max(0.0D, effect.value());
         for (LivingEntity target : targets) {
+            if (target.level().isClientSide()) {
+                continue;
+            }
             target.heal(amount);
         }
     }
@@ -222,21 +230,29 @@ public final class AbilityExecutor {
         }
 
         int durationTicks = Math.max(20, effect.duration() * 20);
-        MobEffectInstance instance = new MobEffectInstance(mobEffect, durationTicks, effect.amplifier());
         for (LivingEntity target : targets) {
+            if (target.level().isClientSide()) {
+                continue;
+            }
+
+            MobEffectInstance instance = new MobEffectInstance(mobEffect, durationTicks, effect.amplifier());
             target.addEffect(instance);
             BuffStackingSystem.track(target, effect.type() + ":" + effect.id(), durationTicks, effect.amplifier());
         }
     }
 
     private static void applySummon(AbilityContext context, Vec3 center, AbilityEffect effect) {
+        if (context == null || context.caster() == null || context.caster().level().isClientSide()) {
+            return;
+        }
+
         ResourceLocation entityId = ResourceLocation.tryParse(effect.id());
-        if (entityId == null) {
+        if (entityId == null || !BuiltInRegistries.ENTITY_TYPE.containsKey(entityId)) {
             return;
         }
 
         EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(entityId);
-        if (type == null || type == EntityType.PIG) {
+        if (type == EntityType.PIG) {
             return;
         }
 
@@ -267,7 +283,12 @@ public final class AbilityExecutor {
     }
 
     private static void applyTeleport(AbilityContext context, AbilityEffect effect) {
-        double distance = effect.scalars().getOrDefault("distance", Math.max(2.0D, effect.value()));
+        if (context == null || context.caster() == null || context.caster().level().isClientSide()) {
+            return;
+        }
+
+        double rawDistance = effect.scalars().getOrDefault("distance", Math.max(2.0D, effect.value()));
+        double distance = Math.min(MAX_TELEPORT_DISTANCE, Math.max(0.5D, rawDistance));
         Vec3 look = context.caster().getLookAngle().normalize();
 
         double targetX = context.caster().getX() + (look.x * distance);
@@ -277,3 +298,4 @@ public final class AbilityExecutor {
         context.caster().teleportTo(targetX, targetY, targetZ);
     }
 }
+

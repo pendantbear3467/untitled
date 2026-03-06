@@ -110,6 +110,10 @@ public final class VoidTitanEntity extends AbstractECBoss {
     }
 
     private void projectileBurst(LivingEntity target, int count) {
+        if (this.level().isClientSide()) {
+            return;
+        }
+
         for (int i = 0; i < count; i++) {
             Vec3 toTarget = target.getEyePosition().subtract(this.getEyePosition())
                     .add((this.random.nextDouble() - 0.5D) * 0.35D, (this.random.nextDouble() - 0.5D) * 0.25D, (this.random.nextDouble() - 0.5D) * 0.35D)
@@ -124,3 +128,4 @@ public final class VoidTitanEntity extends AbstractECBoss {
         this.pulseParticles(ParticleTypes.SCULK_SOUL, 20, 0.55D, 0.03D);
     }
 }
+

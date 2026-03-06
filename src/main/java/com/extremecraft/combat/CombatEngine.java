@@ -18,6 +18,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 public final class CombatEngine {
     /**
@@ -30,6 +32,7 @@ public final class CombatEngine {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final ThreadLocal<DamageContext> PENDING_CONTEXT = new ThreadLocal<>();
     private static final ThreadLocal<Integer> REENTRANCY_DEPTH = ThreadLocal.withInitial(() -> 0);
+    private static final ThreadLocal<Set<Integer>> ACTIVE_TARGET_IDS = ThreadLocal.withInitial(HashSet::new);
 
     private static final int MAX_REENTRANCY_DEPTH = 8;
 
@@ -50,6 +53,13 @@ public final class CombatEngine {
             return previewDamage(context);
         }
 
+        int targetId = context.target().getId();
+        if (!enterTargetScope(targetId)) {
+            LOGGER.warn("[CombatEngine] Rejected damage application due to recursive target processing");
+            exitDamageScope();
+            return previewDamage(context);
+        }
+
         try {
             PENDING_CONTEXT.set(context);
             DamageSource source = resolveDamageSource(context);
@@ -58,6 +68,7 @@ public final class CombatEngine {
             LOGGER.error("CombatEngine failed to apply damage", ex);
         } finally {
             PENDING_CONTEXT.remove();
+            exitTargetScope(targetId);
             exitDamageScope();
         }
 
@@ -208,6 +219,18 @@ public final class CombatEngine {
         return context.target().damageSources().generic();
     }
 
+    private static boolean enterTargetScope(int targetId) {
+        return ACTIVE_TARGET_IDS.get().add(targetId);
+    }
+
+    private static void exitTargetScope(int targetId) {
+        Set<Integer> activeTargets = ACTIVE_TARGET_IDS.get();
+        activeTargets.remove(targetId);
+        if (activeTargets.isEmpty()) {
+            ACTIVE_TARGET_IDS.remove();
+        }
+    }
+
     private static boolean enterDamageScope() {
         int current = REENTRANCY_DEPTH.get();
         if (current >= MAX_REENTRANCY_DEPTH) {
@@ -232,3 +255,4 @@ public final class CombatEngine {
         return REENTRANCY_DEPTH.get();
     }
 }
+
