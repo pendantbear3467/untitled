@@ -4,6 +4,7 @@ import com.extremecraft.ability.AbilityCooldownManager;
 import com.extremecraft.classsystem.ClassAbilityBindings;
 import com.extremecraft.magic.mana.ManaApi;
 import com.extremecraft.magic.mana.ManaService;
+import com.extremecraft.network.sync.RuntimeSyncService;
 import com.extremecraft.progression.BuffStackingSystem;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -59,6 +60,7 @@ public final class SpellCastingSystem {
 
         if (cast) {
             AbilityCooldownManager.startCooldown(player, cooldownKey, spell.cooldownTicks());
+            RuntimeSyncService.syncAbilities(player);
         }
 
         return cast;
@@ -93,6 +95,7 @@ public final class SpellCastingSystem {
         castArea(player, spell);
         channel.nextPulseTick = player.level().getGameTime() + 10;
         ManaService.sync(player);
+        RuntimeSyncService.syncAbilities(player);
     }
 
     private static boolean castInstant(ServerPlayer player, SpellDefinition spell) {

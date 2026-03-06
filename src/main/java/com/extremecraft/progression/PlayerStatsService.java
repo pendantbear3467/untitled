@@ -3,6 +3,7 @@ package com.extremecraft.progression;
 import com.extremecraft.item.module.ModuleEffectService;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.PlayerStatsPacket;
+import com.extremecraft.network.sync.RuntimeSyncService;
 import com.extremecraft.progression.capability.PlayerStatsApi;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
 import com.extremecraft.progression.skilltree.SkillNode;
@@ -59,6 +60,8 @@ public final class PlayerStatsService {
 
     public static void sync(ServerPlayer player, PlayerStatsCapability stats) {
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new PlayerStatsPacket(stats.serializeNBT()));
+        RuntimeSyncService.syncStats(player);
+        RuntimeSyncService.syncSkillUnlocks(player);
     }
 
     private static boolean unlockSkillNode(PlayerStatsCapability stats, String nodeId) {
