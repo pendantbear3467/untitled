@@ -1,5 +1,6 @@
 package com.extremecraft.machines.pulverizer;
 
+import com.extremecraft.config.Config;
 import com.extremecraft.progression.ProgressionGate;
 import com.extremecraft.progression.stage.ProgressionStage;
 import com.extremecraft.registry.ModBlockEntities;
@@ -47,6 +48,11 @@ public class PulverizerBlock extends BaseEntityBlock implements EntityBlock {
             return InteractionResult.SUCCESS;
         }
 
+        if (!Config.isMachineEnabled("pulverizer")) {
+            player.displayClientMessage(Component.translatable("message.extremecraft.machine_disabled", "pulverizer"), true);
+            return InteractionResult.FAIL;
+        }
+
         if (!ProgressionGate.canUseMachine(player, "pulverizer")) {
             player.displayClientMessage(Component.translatable("message.extremecraft.machine_locked", ProgressionStage.INDUSTRIAL.name()), true);
             return InteractionResult.FAIL;
@@ -59,3 +65,4 @@ public class PulverizerBlock extends BaseEntityBlock implements EntityBlock {
         return InteractionResult.CONSUME;
     }
 }
+

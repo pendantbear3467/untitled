@@ -71,6 +71,18 @@ public final class OffhandActionValidator {
         return player.position().distanceToSqr(Vec3.atCenterOf(pos)) <= 36.0D;
     }
 
+    public static void clearPlayer(ServerPlayer player) {
+        if (player != null) {
+            LAST_ACTION_TICK.remove(player.getUUID());
+        }
+    }
+
+    public static void clearPlayer(UUID playerId) {
+        if (playerId != null) {
+            LAST_ACTION_TICK.remove(playerId);
+        }
+    }
+
     private static boolean passesRateLimit(ServerPlayer player, OffhandActionC2S.Action action) {
         int now = player.tickCount;
         int minDelta = minTickDelta(action);

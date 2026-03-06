@@ -1,5 +1,6 @@
 package com.extremecraft.machine.core;
 
+import com.extremecraft.config.Config;
 import com.extremecraft.future.registry.TechBlockEntities;
 import com.extremecraft.progression.ProgressionGate;
 import net.minecraft.core.BlockPos;
@@ -52,6 +53,11 @@ public class MachineBlock extends BaseEntityBlock implements EntityBlock {
         }
 
         String machineId = machine.getMachineId();
+        if (!Config.isMachineEnabled(machineId)) {
+            player.displayClientMessage(Component.translatable("message.extremecraft.machine_disabled", machineId), true);
+            return InteractionResult.FAIL;
+        }
+
         if (!ProgressionGate.canUseMachine(player, machineId)) {
             player.displayClientMessage(Component.translatable("message.extremecraft.machine_locked", machineId), true);
             return InteractionResult.FAIL;
@@ -64,3 +70,4 @@ public class MachineBlock extends BaseEntityBlock implements EntityBlock {
         return InteractionResult.CONSUME;
     }
 }
+

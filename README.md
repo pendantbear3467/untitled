@@ -26,6 +26,24 @@ python -m venv .venv
 pip install -e .[all]
 ```
 
+## Runtime Config (Modpacks)
+
+Server config now lives in `config/extremecraft-common.toml` and is grouped for pack tuning:
+
+- `[machines]`: tick intervals, recipe lookup cooldown, fallback recipe toggle, and `disabledMachineIds`
+- `[tools]`: hammer AOE toggles/radius/hardness and drill teleport tuning
+- `[mobs]`: natural spawn switch, mob density cap, `disabledMobIds`, boss arena scan interval, and machine hazard settings
+
+Examples:
+
+```toml
+[machines]
+disabledMachineIds = ["extremecraft:quantum_fabricator"]
+
+[mobs]
+disabledMobIds = ["extremecraft:arcane_wraith"]
+maxNearbySameMob = 8
+```
 ## Core Commands
 
 ```bash
@@ -94,3 +112,4 @@ assetstudio --gui
 ```
 
 The GUI includes the asset wizard, visual definition editors, project browser, console, and animated preview controls.
+

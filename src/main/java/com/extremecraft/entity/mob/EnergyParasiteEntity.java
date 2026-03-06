@@ -1,5 +1,6 @@
 package com.extremecraft.entity.mob;
 
+import com.extremecraft.config.Config;
 import com.extremecraft.registry.ModSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -28,8 +29,12 @@ public final class EnergyParasiteEntity extends AbstractECMonster {
             return;
         }
 
-        if (this.tickCount % 40 == 0) {
-            int drained = drainNearbyMachines(4, 260);
+        int drainInterval = Math.max(10, Config.COMMON.mobs.energyParasiteDrainIntervalTicks.get());
+        int drainRadius = Math.max(1, Config.COMMON.mobs.energyParasiteDrainRadius.get());
+        int maxDrain = Math.max(0, Config.COMMON.mobs.energyParasiteMaxDrainPerPulse.get());
+
+        if (maxDrain > 0 && this.tickCount % drainInterval == 0) {
+            int drained = drainNearbyMachines(drainRadius, maxDrain);
             if (drained > 0) {
                 float healAmount = Math.min(6.0F, drained / 120.0F);
                 this.heal(healAmount);

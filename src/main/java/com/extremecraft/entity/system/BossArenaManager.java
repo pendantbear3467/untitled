@@ -1,5 +1,6 @@
 package com.extremecraft.entity.system;
 
+import com.extremecraft.config.Config;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.entity.ModEntities;
 import net.minecraft.core.BlockPos;
@@ -68,7 +69,13 @@ public final class BossArenaManager {
             return;
         }
 
-        if (player.tickCount % 40 != 0) {
+        if (!Config.COMMON.mobs.enableBossArenaSpawns.get() || player.isSpectator()) {
+            return;
+        }
+
+        int interval = Math.max(10, Config.COMMON.mobs.bossArenaCheckIntervalTicks.get());
+        int offset = Math.floorMod(player.getUUID().hashCode(), interval);
+        if (((player.tickCount + offset) % interval) != 0) {
             return;
         }
 
@@ -97,6 +104,10 @@ public final class BossArenaManager {
         }
 
         EntityType<? extends Monster> bossType = arena.bossType().get();
+        if (Config.isMobDisabled(bossType)) {
+            return;
+        }
+
         if (hasExistingBoss(level, center, bossType)) {
             state.markTriggered(arenaKey);
             return;

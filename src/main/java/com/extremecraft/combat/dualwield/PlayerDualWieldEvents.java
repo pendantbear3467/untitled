@@ -1,5 +1,6 @@
 package com.extremecraft.combat.dualwield;
 
+import com.extremecraft.combat.dualwield.validation.OffhandActionValidator;
 import com.extremecraft.core.ECConstants;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -31,6 +32,13 @@ public class PlayerDualWieldEvents {
     public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             syncState(player);
+        }
+    }
+
+    @SubscribeEvent
+    public void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            OffhandActionValidator.clearPlayer(player);
         }
     }
 

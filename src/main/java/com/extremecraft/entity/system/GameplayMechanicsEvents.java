@@ -1,5 +1,6 @@
 package com.extremecraft.entity.system;
 
+import com.extremecraft.config.Config;
 import com.extremecraft.machine.core.TechMachineBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -19,25 +20,40 @@ public final class GameplayMechanicsEvents {
             return;
         }
 
-        if (player.tickCount % 100 != 0) {
+        if (!Config.COMMON.mobs.enableMachineHazard.get()) {
             return;
         }
+
+        int interval = Math.max(20, Config.COMMON.mobs.machineHazardScanIntervalTicks.get());
+        int offset = Math.floorMod(player.getUUID().hashCode(), interval);
+        if (((player.tickCount + offset) % interval) != 0) {
+            return;
+        }
+
+        int horizontalRadius = Math.max(1, Config.COMMON.mobs.machineHazardHorizontalRadius.get());
+        int verticalRadius = Math.max(1, Config.COMMON.mobs.machineHazardVerticalRadius.get());
 
         int activeMachines = 0;
         BlockPos center = player.blockPosition();
         ServerLevel level = player.serverLevel();
 
-        for (BlockPos pos : BlockPos.betweenClosed(center.offset(-8, -3, -8), center.offset(8, 3, 8))) {
+        for (BlockPos pos : BlockPos.betweenClosed(
+                center.offset(-horizontalRadius, -verticalRadius, -horizontalRadius),
+                center.offset(horizontalRadius, verticalRadius, horizontalRadius))) {
             BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof TechMachineBlockEntity machine && machine.getEnergyStorageExt().getEnergyStored() > machine.getEnergyStorageExt().getMaxEnergyStored() * 0.8F) {
+            if (be instanceof TechMachineBlockEntity machine
+                    && machine.getEnergyStorageExt().getEnergyStored() > machine.getEnergyStorageExt().getMaxEnergyStored() * 0.8F) {
                 activeMachines++;
             }
         }
 
-        if (activeMachines >= 4) {
-            boolean protectedByGear = hasProtection(player);
-            if (!protectedByGear) {
-                player.hurt(player.damageSources().magic(), 2.0F);
+        int requiredMachines = Math.max(1, Config.COMMON.mobs.machineHazardRequiredMachines.get());
+        if (activeMachines >= requiredMachines) {
+            if (!hasProtection(player)) {
+                float damage = (float) Math.max(0.0D, Config.COMMON.mobs.machineHazardDamage.get());
+                if (damage > 0.0F) {
+                    player.hurt(player.damageSources().magic(), damage);
+                }
             } else {
                 player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 120, 0));
             }
@@ -62,4 +78,3 @@ public final class GameplayMechanicsEvents {
         return !chest.isEmpty() && chest.getDescriptionId().contains("pioneer_chestplate");
     }
 }
-

@@ -385,6 +385,7 @@
   "key.extremecraft.open_progression": "Open Progression Screen",
   "key.extremecraft.open_skill_tree": "Open Skill Tree",
   "message.extremecraft.machine_locked": "Machine locked. Required stage: %s",
+  "message.extremecraft.machine_disabled": "Machine disabled by server config: %s",
   "entity.extremecraft.tech_construct": "Tech Construct",
   "entity.extremecraft.arcane_wraith": "Arcane Wraith",
   "entity.extremecraft.void_stalker": "Void Stalker",
@@ -411,3 +412,4 @@
   "advancement.extremecraft.defeat_machine_god.title": "Defeat Machine God",
   "advancement.extremecraft.defeat_machine_god.description": "Overcome the Overcharged Machine God."
 }
+
