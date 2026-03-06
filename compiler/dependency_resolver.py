@@ -197,6 +197,8 @@ class DependencyResolver:
             edges.add(DependencyEdge(source=dep_key, target=parent_key))
 
             manifest = manifests.get(dep.id)
+            if manifest is None and dep.id == "extremecraft-core":
+                manifest = _AddonManifest(name=dep.id, version=self.platform_version, dependencies=tuple())
             if manifest is None:
                 resolution.conflicts.append(
                     Conflict(

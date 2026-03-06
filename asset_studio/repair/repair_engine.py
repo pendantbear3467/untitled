@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+import base64
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+try:
+    from PIL import Image, ImageDraw
+
+    _PILLOW_AVAILABLE = True
+except ModuleNotFoundError:  # pragma: no cover - optional dependency fallback.
+    Image = None
+    ImageDraw = None
+    _PILLOW_AVAILABLE = False
 
 from asset_studio.repair.repair_rules import MISSING_MODEL, MISSING_RECIPE, MISSING_TEXTURE, RepairAction
 
@@ -102,14 +110,21 @@ class RepairEngine:
 
     def _write_placeholder_texture(self, texture_path: Path, texture_name: str) -> None:
         texture_path.parent.mkdir(parents=True, exist_ok=True)
-        image = Image.new("RGBA", (32, 32), (40, 40, 48, 255))
-        draw = ImageDraw.Draw(image)
-        draw.rectangle((2, 2, 29, 29), outline=(255, 64, 64, 255), width=2)
-        draw.line((2, 2, 29, 29), fill=(255, 64, 64, 255), width=2)
-        draw.line((2, 29, 29, 2), fill=(255, 64, 64, 255), width=2)
-        draw.rectangle((9, 20, 24, 30), fill=(20, 20, 24, 200))
-        draw.text((10, 21), texture_name[:3].upper(), fill=(220, 220, 220, 255))
-        image.save(texture_path, format="PNG")
+
+        if _PILLOW_AVAILABLE:
+            image = Image.new("RGBA", (32, 32), (40, 40, 48, 255))
+            draw = ImageDraw.Draw(image)
+            draw.rectangle((2, 2, 29, 29), outline=(255, 64, 64, 255), width=2)
+            draw.line((2, 2, 29, 29), fill=(255, 64, 64, 255), width=2)
+            draw.line((2, 29, 29, 2), fill=(255, 64, 64, 255), width=2)
+            draw.rectangle((9, 20, 24, 30), fill=(20, 20, 24, 200))
+            draw.text((10, 21), texture_name[:3].upper(), fill=(220, 220, 220, 255))
+            image.save(texture_path, format="PNG")
+            return
+
+        # 1x1 transparent PNG fallback for environments without Pillow.
+        tiny_png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=")
+        texture_path.write_bytes(tiny_png)
 
     def _load_json(self, path: Path) -> dict:
         if not path.exists():
