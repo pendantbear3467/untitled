@@ -222,8 +222,8 @@ public final class AbilityEngine {
         }
 
         double reduction = PlayerStatsApi.get(player)
-                .map(stats -> stats.cooldownReduction())
-                .orElse(0.0D);
+            .map(stats -> (double) Math.max(0.0F, stats.equipmentModifier("cooldown_reduction")))
+            .orElse(0.0D);
         reduction = Math.max(0.0D, Math.min(0.80D, reduction));
         return Math.max(0, (int) Math.round(baseCooldown * (1.0D - reduction)));
     }

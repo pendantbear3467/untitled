@@ -9,6 +9,7 @@ import com.extremecraft.network.packet.ActivateAbilityC2SPacket;
 import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
 import com.extremecraft.network.packet.SpellCastPacket;
 import com.extremecraft.progression.classsystem.ability.ClassAbilityClientState;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
@@ -33,6 +34,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class DwClientHooks {
+    private static final String[] DEFAULT_ABILITY_SLOT_IDS = {
+            "firebolt",
+            "blink",
+            "arcane_shield",
+            "meteor"
+    };
+
     private boolean isMining = false;
 
     @SubscribeEvent
@@ -53,7 +61,6 @@ public final class DwClientHooks {
             return;
         }
 
-        // Standard dual-wield behavior: right click on an entity uses offhand attack.
         if (hit instanceof EntityHitResult ehr && isOffhandWeapon(off)) {
             event.setCanceled(true);
             player.swing(InteractionHand.OFF_HAND);
@@ -61,7 +68,6 @@ public final class DwClientHooks {
             return;
         }
 
-        // Advanced override behavior remains opt-in via dedicated keybind.
         if (DwKeybinds.OFFHAND_OVERRIDE == null || !DwKeybinds.OFFHAND_OVERRIDE.isDown()) {
             return;
         }
@@ -125,6 +131,25 @@ public final class DwClientHooks {
         }
     }
 
+    private static void processAbilitySlotKeybinds(Player player) {
+        consumeAbilitySlot(ExtremeCraftKeybinds.ABILITY_SLOT_1, player, 0);
+        consumeAbilitySlot(ExtremeCraftKeybinds.ABILITY_SLOT_2, player, 1);
+        consumeAbilitySlot(ExtremeCraftKeybinds.ABILITY_SLOT_3, player, 2);
+        consumeAbilitySlot(ExtremeCraftKeybinds.ABILITY_SLOT_4, player, 3);
+    }
+
+    private static void consumeAbilitySlot(KeyMapping keyMapping, Player player, int slotIndex) {
+        if (keyMapping == null || !keyMapping.consumeClick()) {
+            return;
+        }
+
+        String abilityId = slotIndex >= 0 && slotIndex < DEFAULT_ABILITY_SLOT_IDS.length
+                ? DEFAULT_ABILITY_SLOT_IDS[slotIndex]
+                : "";
+
+        ModNetwork.CHANNEL.sendToServer(new ActivateAbilityC2SPacket(abilityId, slotIndex, player.getYRot(), player.getXRot()));
+    }
+
     private static boolean isBlacklisted(ItemStack stack) {
         ResourceLocation key = ForgeRegistries.ITEMS.getKey(stack.getItem());
         return getBlacklistedItems().contains(key);
@@ -164,4 +189,3 @@ public final class DwClientHooks {
         return false;
     }
 }
-
