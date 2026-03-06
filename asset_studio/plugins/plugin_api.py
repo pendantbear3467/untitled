@@ -13,6 +13,7 @@ class PluginAPI:
     asset_repairs: dict[str, object] = field(default_factory=dict)
     gui_editors: dict[str, object] = field(default_factory=dict)
     datapack_rules: dict[str, object] = field(default_factory=dict)
+    graph_nodes: dict[str, object] = field(default_factory=dict)
 
     def register_generator(self, name: str, handler: object) -> None:
         self.generators[name] = handler
@@ -31,3 +32,6 @@ class PluginAPI:
 
     def register_datapack_rule(self, name: str, handler: object) -> None:
         self.datapack_rules[name] = handler
+
+    def register_graph_node(self, name: str, handler: object) -> None:
+        self.graph_nodes[name] = handler

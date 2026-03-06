@@ -83,6 +83,9 @@ class WorkspaceManager:
             "modpacks",
             "releases",
             "registry_history",
+            "graphs",
+            "addons",
+            "workspace_plugins",
         ]:
             (self.workspace_root / rel).mkdir(parents=True, exist_ok=True)
 
@@ -118,6 +121,7 @@ class WorkspaceManager:
             plugins.asset_repairs.update(workspace_plugins.asset_repairs)
             plugins.gui_editors.update(workspace_plugins.gui_editors)
             plugins.datapack_rules.update(workspace_plugins.datapack_rules)
+            plugins.graph_nodes.update(workspace_plugins.graph_nodes)
 
         return AssetStudioContext(
             workspace_root=self.workspace_root,

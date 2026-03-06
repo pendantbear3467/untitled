@@ -5,6 +5,7 @@ from pathlib import Path
 
 from asset_studio.blockbench.bbmodel_exporter import export_bbmodel
 from asset_studio.blockbench.bbmodel_importer import import_bbmodel
+from asset_studio.cli.addon_commands import register_addon_commands, run_addon_command
 from asset_studio.cli.build_commands import build_command
 from asset_studio.cli.compile_commands import register_compile_commands, run_compile_command
 from asset_studio.cli.generate_commands import register_generate_commands, run_generate_command
@@ -30,7 +31,8 @@ def register_subcommands(subparsers: argparse._SubParsersAction[argparse.Argumen
     register_project_commands(project)
 
     build = subparsers.add_parser("build", help="Build helper commands")
-    build.add_argument("target", choices=["assets", "resourcepack", "datapack"])
+    build.add_argument("target", choices=["assets", "resourcepack", "datapack", "expansion"])
+    build.add_argument("name", nargs="?", help="Expansion name when target=expansion")
 
     registry = subparsers.add_parser("registry", help="Registry scan/diff/history tools")
     register_registry_commands(registry)
@@ -54,6 +56,9 @@ def register_subcommands(subparsers: argparse._SubParsersAction[argparse.Argumen
 
     modpack = subparsers.add_parser("modpack", help="Build modpack archives")
     register_modpack_commands(modpack)
+
+    addon = subparsers.add_parser("addon", help="Addon install/build/publish")
+    register_addon_commands(addon)
 
     export_cmd = subparsers.add_parser("export", help="Export operations")
     export_sub = export_cmd.add_subparsers(dest="export_target", required=True)
@@ -85,7 +90,7 @@ def run_cli(args: argparse.Namespace, workspace_path: Path) -> int:
         return run_project_command(args, context)
 
     if args.command == "build":
-        return build_command(context, args.target)
+        return build_command(context, args.target, args.name)
 
     if args.command == "registry":
         return run_registry_command(args, context)
@@ -107,6 +112,9 @@ def run_cli(args: argparse.Namespace, workspace_path: Path) -> int:
 
     if args.command == "modpack":
         return run_modpack_command(args, context)
+
+    if args.command == "addon":
+        return run_addon_command(args, context)
 
     if args.command == "export" and args.export_target == "blockbench":
         path = export_bbmodel(args.model_id, context=context, kind=args.kind)
