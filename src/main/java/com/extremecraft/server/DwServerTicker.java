@@ -11,9 +11,9 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.LogicalSide;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DwServerTicker {
     private static final ServerboundPlayerActionPacket.Action CONTINUE_BREAK_ACTION =
@@ -31,7 +31,7 @@ public class DwServerTicker {
         }
     }
 
-    private static final Map<UUID, BreakState> HOLDING = new HashMap<>();
+    private static final Map<UUID, BreakState> HOLDING = new ConcurrentHashMap<>();
 
     public static void startOffhandBreak(ServerPlayer sp, BlockPos pos, Direction face) {
         if (!OffhandActionC2S.withinReach(sp, pos)) return;
@@ -80,3 +80,4 @@ public class DwServerTicker {
         }
     }
 }
+
