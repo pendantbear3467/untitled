@@ -257,7 +257,9 @@ public final class SpellExecutor {
                 int seconds = Math.max(2, context.scaledDurationTicks(spell.durationTicks()) / 20);
                 effects.add(new AbilityEffect("debuff", 0.0D, seconds, 0, "minecraft:weakness", Map.of()));
             }
-        }        if (spell.type() == SpellType.CHANNEL || channelPulse) {
+        }
+
+        if (spell.type() == SpellType.CHANNEL || channelPulse) {
             if (effects.stream().noneMatch(effect -> "damage".equals(effect.type()) || "heal".equals(effect.type()))) {
                 effects.add(new AbilityEffect("damage", context.scaledDamage(Math.max(1.0D, spell.damage() * 0.5D)), 0, 0, "", Map.of()));
             }
@@ -362,5 +364,7 @@ public final class SpellExecutor {
     private record ActiveChannel(String spellId, long endTick, long nextPulseTick, CastSource source) {
     }
 }
+
+
 
 
