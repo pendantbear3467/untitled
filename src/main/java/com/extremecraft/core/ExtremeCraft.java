@@ -1,6 +1,8 @@
 package com.extremecraft.core;
 
+import com.extremecraft.ability.AbilityRegistry;
 import com.extremecraft.api.ExtremeCraftAPI;
+import com.extremecraft.classsystem.ClassRegistry;
 import com.extremecraft.client.DwClientHooks;
 import com.extremecraft.client.DwKeybinds;
 import com.extremecraft.client.gui.machine.TechMachineScreen;
@@ -17,11 +19,15 @@ import com.extremecraft.future.registry.TechMenuTypes;
 import com.extremecraft.future.registry.TechRecipeSerializers;
 import com.extremecraft.gui.PulverizerScreen;
 import com.extremecraft.item.armor.ArmorBonusHandler;
+import com.extremecraft.machine.MachineRegistry;
+import com.extremecraft.magic.SpellRegistry;
+import com.extremecraft.magic.mana.ManaCapabilityEvents;
 import com.extremecraft.modules.loader.ModuleAbilityLoader;
 import com.extremecraft.modules.loader.ModuleDefinitionLoader;
 import com.extremecraft.modules.runtime.ModuleRuntimeEvents;
 import com.extremecraft.net.DwNetwork;
 import com.extremecraft.network.ModNetwork;
+import com.extremecraft.network.sync.RuntimeSyncEvents;
 import com.extremecraft.platform.CompatibilityGate;
 import com.extremecraft.platform.ExtremeCraftApiProviderImpl;
 import com.extremecraft.platform.data.loader.PlatformDataLoaderBootstrap;
@@ -31,6 +37,7 @@ import com.extremecraft.platform.module.ExtremeCraftModuleLoader;
 import com.extremecraft.platform.module.ModuleRegistry;
 import com.extremecraft.progression.ProgressCommands;
 import com.extremecraft.progression.ProgressionEvents;
+import com.extremecraft.progression.ProgressionRegistry;
 import com.extremecraft.progression.StageDataLoader;
 import com.extremecraft.progression.capability.PlayerStatsCapabilityEvents;
 import com.extremecraft.progression.capability.PlayerStatsGameplayEvents;
@@ -52,6 +59,7 @@ import com.extremecraft.research.ResearchManager;
 import com.extremecraft.server.DwServerTicker;
 import com.extremecraft.skills.SkillRegistry;
 import com.extremecraft.skills.SkillsCapabilityEvents;
+import com.extremecraft.worldgen.DimensionHooks;
 import com.extremecraft.worldgen.validation.WorldgenConsistencyValidator;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraftforge.api.distmarker.Dist;
@@ -113,6 +121,7 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new ProgressCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerStatsCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerStatsGameplayEvents());
+            MinecraftForge.EVENT_BUS.register(new ManaCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new StageCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new SkillsCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new ResearchCapabilityEvents());
@@ -129,11 +138,19 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new ModuleAbilityLoader());
             MinecraftForge.EVENT_BUS.register(new ResearchManager());
             MinecraftForge.EVENT_BUS.register(new WorldgenConsistencyValidator());
+            MinecraftForge.EVENT_BUS.register(new DimensionHooks());
             MinecraftForge.EVENT_BUS.register(new DwServerTicker());
             MinecraftForge.EVENT_BUS.register(new ArmorBonusHandler());
             MinecraftForge.EVENT_BUS.register(new PlayerDualWieldEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerSkillTreeEvents());
             MinecraftForge.EVENT_BUS.register(new ModuleRuntimeEvents());
+            MinecraftForge.EVENT_BUS.register(new RuntimeSyncEvents());
+
+            MinecraftForge.EVENT_BUS.register(new AbilityRegistry());
+            MinecraftForge.EVENT_BUS.register(new SpellRegistry());
+            MinecraftForge.EVENT_BUS.register(new ClassRegistry());
+            MinecraftForge.EVENT_BUS.register(new MachineRegistry());
+            MinecraftForge.EVENT_BUS.register(new ProgressionRegistry());
 
             PlatformDataLoaderBootstrap.registerAll();
             MinecraftForge.EVENT_BUS.register(new PlatformDataSyncEvents());

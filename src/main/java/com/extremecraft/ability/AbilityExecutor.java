@@ -2,6 +2,7 @@ package com.extremecraft.ability;
 
 import com.extremecraft.classsystem.ClassAbilityBindings;
 import com.extremecraft.magic.mana.ManaService;
+import com.extremecraft.network.sync.RuntimeSyncService;
 import com.extremecraft.progression.BuffStackingSystem;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -47,6 +48,7 @@ public final class AbilityExecutor {
 
         applyEffects(context, targets.entities(), targets.center());
         AbilityCooldownManager.startCooldown(player, definition.id(), definition.cooldownTicks());
+        RuntimeSyncService.syncAbilities(player);
         return true;
     }
 
@@ -117,7 +119,7 @@ public final class AbilityExecutor {
         }
 
         EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(entityId);
-        if (type == EntityType.PIG || type == null) {
+        if (type == null || type == EntityType.PIG) {
             return;
         }
 
