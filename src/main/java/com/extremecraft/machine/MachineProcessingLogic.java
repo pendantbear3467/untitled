@@ -4,6 +4,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraftforge.items.ItemHandlerHelper;
 
 import java.util.LinkedHashMap;
@@ -123,8 +124,8 @@ public final class MachineProcessingLogic {
 
     private static boolean canAcceptOutputs(MachineBlockEntity machine, Map<String, Integer> outputs) {
         for (Map.Entry<String, Integer> output : outputs.entrySet()) {
-            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(output.getKey()));
-            if (item == null || item == net.minecraft.world.item.Items.AIR) {
+            Item item = resolveItem(output.getKey());
+            if (item == null) {
                 return false;
             }
 
@@ -139,13 +140,27 @@ public final class MachineProcessingLogic {
 
     private static void produceOutputs(MachineBlockEntity machine, Map<String, Integer> outputs) {
         for (Map.Entry<String, Integer> output : outputs.entrySet()) {
-            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(output.getKey()));
-            if (item == null || item == net.minecraft.world.item.Items.AIR) {
+            Item item = resolveItem(output.getKey());
+            if (item == null) {
                 continue;
             }
 
             ItemStack produced = new ItemStack(item, output.getValue());
             ItemHandlerHelper.insertItemStacked(machine.outputInventory(), produced, false);
         }
+    }
+
+    private static Item resolveItem(String id) {
+        ResourceLocation key = ResourceLocation.tryParse(id);
+        if (key == null) {
+            return null;
+        }
+
+        Item item = BuiltInRegistries.ITEM.get(key);
+        if (item == null || item == Items.AIR) {
+            return null;
+        }
+
+        return item;
     }
 }

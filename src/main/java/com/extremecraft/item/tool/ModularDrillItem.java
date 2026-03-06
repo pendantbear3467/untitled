@@ -1,5 +1,6 @@
 package com.extremecraft.item.tool;
 
+import com.extremecraft.config.Config;
 import com.extremecraft.item.module.ItemModuleStorage;
 import com.extremecraft.item.module.ModuleRegistry;
 import net.minecraft.ChatFormatting;
@@ -20,9 +21,6 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 
-/**
- * Example modular tool supporting data-driven modules via ItemStack NBT.
- */
 public class ModularDrillItem extends PickaxeItem {
     public ModularDrillItem(Tier tier, int attackDamageModifier, float attackSpeedModifier, Properties properties) {
         super(tier, attackDamageModifier, attackSpeedModifier, properties);
@@ -47,6 +45,10 @@ public class ModularDrillItem extends PickaxeItem {
             return super.use(level, player, hand);
         }
 
+        if (!Config.COMMON.tools.enableDrillTeleport.get()) {
+            return super.use(level, player, hand);
+        }
+
         int teleportLevel = ItemModuleStorage.levelOf(stack, "teleport_module");
         if (teleportLevel <= 0) {
             return super.use(level, player, hand);
@@ -56,8 +58,15 @@ public class ModularDrillItem extends PickaxeItem {
             return InteractionResultHolder.sidedSuccess(stack, true);
         }
 
+        if (serverPlayer.getCooldowns().isOnCooldown(this)) {
+            return InteractionResultHolder.fail(stack);
+        }
+
+        double baseDistance = Math.max(1.0D, Config.COMMON.tools.drillTeleportBaseDistance.get());
+        double perLevel = Math.max(0.0D, Config.COMMON.tools.drillTeleportDistancePerLevel.get());
+        double distance = baseDistance + (perLevel * teleportLevel);
+
         Vec3 look = serverPlayer.getLookAngle();
-        double distance = 4.0D + (2.0D * teleportLevel);
         Vec3 target = serverPlayer.position().add(look.scale(distance));
 
         if (!level.noCollision(serverPlayer, serverPlayer.getBoundingBox().move(target.x - serverPlayer.getX(), 0, target.z - serverPlayer.getZ()))) {
@@ -65,9 +74,16 @@ public class ModularDrillItem extends PickaxeItem {
         }
 
         serverPlayer.teleportTo(target.x, serverPlayer.getY(), target.z);
-        serverPlayer.getCooldowns().addCooldown(this, Math.max(20, 80 - (teleportLevel * 10)));
-        stack.hurtAndBreak(1, serverPlayer, p -> p.broadcastBreakEvent(hand));
 
+        int baseCooldown = Math.max(0, Config.COMMON.tools.drillTeleportCooldownBaseTicks.get());
+        int reduction = Math.max(0, Config.COMMON.tools.drillTeleportCooldownReductionPerLevel.get()) * teleportLevel;
+        int minimum = Math.max(0, Config.COMMON.tools.drillTeleportMinCooldownTicks.get());
+        int cooldown = Math.max(minimum, baseCooldown - reduction);
+        if (cooldown > 0) {
+            serverPlayer.getCooldowns().addCooldown(this, cooldown);
+        }
+
+        stack.hurtAndBreak(1, serverPlayer, p -> p.broadcastBreakEvent(hand));
         level.playSound(null, target.x, target.y, target.z, SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 0.8F, 1.0F);
         return InteractionResultHolder.success(stack);
     }

@@ -1,5 +1,6 @@
 package com.extremecraft.item.tool;
 
+import com.extremecraft.config.Config;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -21,7 +22,6 @@ import java.util.List;
 
 public class HammerItem extends PickaxeItem {
     private static final ThreadLocal<Boolean> HAMMER_ACTIVE = ThreadLocal.withInitial(() -> Boolean.FALSE);
-    private static final float MAX_MINEABLE_HARDNESS = 50.0F;
 
     public HammerItem(Tier tier, int attackDamageModifier, float attackSpeedModifier, Properties properties) {
         super(tier, attackDamageModifier, attackSpeedModifier, properties);
@@ -29,6 +29,10 @@ public class HammerItem extends PickaxeItem {
 
     @Override
     public boolean onBlockStartBreak(ItemStack stack, BlockPos pos, Player player) {
+        if (!Config.COMMON.tools.enableHammerAoe.get()) {
+            return false;
+        }
+
         if (!(player instanceof ServerPlayer serverPlayer)) {
             return false;
         }
@@ -38,7 +42,6 @@ public class HammerItem extends PickaxeItem {
             return false;
         }
 
-        // Preserve center-block vanilla mining behavior; only break neighbor blocks here.
         if (HAMMER_ACTIVE.get()) {
             return false;
         }
@@ -73,7 +76,6 @@ public class HammerItem extends PickaxeItem {
             HAMMER_ACTIVE.remove();
         }
 
-        // false keeps vanilla behavior for the center block.
         return false;
     }
 
@@ -83,8 +85,9 @@ public class HammerItem extends PickaxeItem {
             return false;
         }
 
+        float maxHardness = (float) Math.max(0.0D, Config.COMMON.tools.hammerMaxMineableHardness.get());
         float hardness = state.getDestroySpeed(level, pos);
-        if (hardness < 0.0F || hardness > MAX_MINEABLE_HARDNESS) {
+        if (hardness < 0.0F || hardness > maxHardness) {
             return false;
         }
 
@@ -96,7 +99,6 @@ public class HammerItem extends PickaxeItem {
     }
 
     private Direction resolveHitFace(ServerPlayer player, BlockPos center) {
-        // This is the break-flow equivalent of context.getClickedFace().
         HitResult hit = player.pick(6.0D, 0.0F, false);
         if (hit instanceof BlockHitResult blockHit
             && hit.getType() == HitResult.Type.BLOCK
@@ -104,20 +106,19 @@ public class HammerItem extends PickaxeItem {
             return blockHit.getDirection();
         }
 
-        // Fallback if the server ray-trace doesn't match due to timing/desync.
         return Direction.getNearest(player.getLookAngle().x, player.getLookAngle().y, player.getLookAngle().z).getOpposite();
     }
 
     public List<BlockPos> getAOEBlocks(BlockPos center, Direction face) {
-        List<BlockPos> result = new ArrayList<>(9);
+        int radius = Math.max(0, Config.COMMON.tools.hammerAoeRadius.get());
+        List<BlockPos> result = new ArrayList<>((radius * 2 + 1) * (radius * 2 + 1));
 
-        // Build a 3x3 plane perpendicular to the block face that was hit.
-        for (int u = -1; u <= 1; u++) {
-            for (int v = -1; v <= 1; v++) {
+        for (int u = -radius; u <= radius; u++) {
+            for (int v = -radius; v <= radius; v++) {
                 BlockPos target = switch (face.getAxis()) {
-                    case X -> center.offset(0, u, v); // YZ plane
-                    case Y -> center.offset(u, 0, v); // XZ plane
-                    case Z -> center.offset(u, v, 0); // XY plane
+                    case X -> center.offset(0, u, v);
+                    case Y -> center.offset(u, 0, v);
+                    case Z -> center.offset(u, v, 0);
                 };
                 result.add(target.immutable());
             }
@@ -142,4 +143,3 @@ public class HammerItem extends PickaxeItem {
         return usedHand == InteractionHand.OFF_HAND ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND;
     }
 }
-

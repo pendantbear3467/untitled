@@ -15,6 +15,7 @@ import com.extremecraft.client.render.entity.ModEntityRenderers;
 import com.extremecraft.combat.CombatEventHandler;
 import com.extremecraft.combat.dualwield.PlayerDualWieldEvents;
 import com.extremecraft.command.ECDevCommands;
+import com.extremecraft.config.Config;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.entity.ModEntities;
 import com.extremecraft.entity.MobAttributes;
@@ -89,6 +90,7 @@ import net.minecraftforge.fml.loading.FMLEnvironment;
 @Mod(ECConstants.MODID)
 public final class ExtremeCraft {
     public ExtremeCraft() {
+        Config.register();
         DwConfig.register();
 
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -216,6 +218,8 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
+
 
 
 

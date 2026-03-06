@@ -1,12 +1,13 @@
 package com.extremecraft.machine.cable;
 
+import com.extremecraft.config.Config;
 import com.extremecraft.energy.EnergyStorageExt;
 import com.extremecraft.future.registry.TechBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
@@ -43,6 +44,15 @@ public class CableBlockEntity extends BlockEntity {
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, CableBlockEntity cable) {
+        if (level.isClientSide || !Config.COMMON.machines.enableMachines.get()) {
+            return;
+        }
+
+        int interval = Math.max(1, Config.COMMON.machines.cableTickInterval.get());
+        if (interval > 1 && ((level.getGameTime() + pos.asLong()) % interval) != 0L) {
+            return;
+        }
+
         CableTier tier = CableTier.COPPER;
         if (state.getBlock() instanceof CableBlock cableBlock) {
             tier = cableBlock.tier();
@@ -60,6 +70,9 @@ public class CableBlockEntity extends BlockEntity {
             }
 
             transferBudget -= cable.pullEnergyFrom(neighbor, direction.getOpposite(), transferBudget);
+            if (transferBudget <= 0) {
+                break;
+            }
             transferBudget -= cable.pushEnergyTo(neighbor, direction.getOpposite(), transferBudget);
         }
     }
@@ -69,12 +82,7 @@ public class CableBlockEntity extends BlockEntity {
             return 0;
         }
 
-        LazyOptional<IEnergyStorage> cap = neighbor.getCapability(ForgeCapabilities.ENERGY, side);
-        if (!cap.isPresent()) {
-            return 0;
-        }
-
-        IEnergyStorage source = cap.orElse(null);
+        IEnergyStorage source = neighbor.getCapability(ForgeCapabilities.ENERGY, side).orElse(null);
         if (source == null || !source.canExtract()) {
             return 0;
         }
@@ -93,12 +101,7 @@ public class CableBlockEntity extends BlockEntity {
             return 0;
         }
 
-        LazyOptional<IEnergyStorage> cap = neighbor.getCapability(ForgeCapabilities.ENERGY, side);
-        if (!cap.isPresent()) {
-            return 0;
-        }
-
-        IEnergyStorage target = cap.orElse(null);
+        IEnergyStorage target = neighbor.getCapability(ForgeCapabilities.ENERGY, side).orElse(null);
         if (target == null || !target.canReceive()) {
             return 0;
         }
@@ -112,4 +115,3 @@ public class CableBlockEntity extends BlockEntity {
         return accepted;
     }
 }
-

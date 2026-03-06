@@ -1,5 +1,6 @@
 package com.extremecraft.machines.pulverizer;
 
+import com.extremecraft.config.Config;
 import com.extremecraft.machines.base.AbstractMachineBlockEntity;
 import com.extremecraft.machines.recipe.ModRecipeTypes;
 import com.extremecraft.machines.recipe.PulverizerRecipe;
@@ -45,6 +46,8 @@ public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements
             switch (index) {
                 case 0 -> progress = value;
                 case 1 -> maxProgress = value;
+                default -> {
+                }
             }
         }
 
@@ -59,42 +62,72 @@ public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, PulverizerBlockEntity be) {
-        if (level.isClientSide) return;
+        if (level.isClientSide || !Config.isMachineEnabled("pulverizer")) {
+            return;
+        }
 
+        int tickInterval = Math.max(1, Config.COMMON.machines.machineTickInterval.get());
+        if (tickInterval > 1 && ((level.getGameTime() + pos.asLong()) % tickInterval) != 0L) {
+            return;
+        }
+
+        boolean changed = false;
         Optional<PulverizerRecipe> recipeOpt = be.getCurrentRecipe();
         if (recipeOpt.isEmpty()) {
-            be.progress = 0;
-            be.setChanged();
+            if (be.progress != 0) {
+                be.progress = 0;
+                changed = true;
+            }
+            if (changed) {
+                be.setChanged();
+            }
             return;
         }
 
         PulverizerRecipe recipe = recipeOpt.get();
-        be.maxProgress = recipe.getProcessTime();
+        int nextMaxProgress = Math.max(1, recipe.getProcessTime());
+        if (be.maxProgress != nextMaxProgress) {
+            be.maxProgress = nextMaxProgress;
+            changed = true;
+        }
 
-        if (be.energyStorage.getEnergyStored() < recipe.getEnergyPerTick()) {
-            be.setChanged();
+        int energyPerTick = Math.max(0, recipe.getEnergyPerTick());
+        if (be.energyStorage.getEnergyStored() < energyPerTick) {
+            if (changed) {
+                be.setChanged();
+            }
             return;
         }
 
         if (!be.canOutput(recipe.getOutput())) {
-            be.progress = 0;
-            be.setChanged();
+            if (be.progress != 0) {
+                be.progress = 0;
+                changed = true;
+            }
+            if (changed) {
+                be.setChanged();
+            }
             return;
         }
 
-        be.energyStorage.extractEnergy(recipe.getEnergyPerTick(), false);
+        be.energyStorage.extractEnergy(energyPerTick, false);
         be.progress++;
+        changed = true;
 
         if (be.progress >= be.maxProgress) {
             be.progress = 0;
             be.craft(recipe);
         }
 
-        be.setChanged();
+        if (changed) {
+            be.setChanged();
+        }
     }
 
     private Optional<PulverizerRecipe> getCurrentRecipe() {
-        if (level == null) return Optional.empty();
+        if (level == null) {
+            return Optional.empty();
+        }
 
         SimpleContainer inv = new SimpleContainer(1);
         inv.setItem(0, itemHandler.getStackInSlot(INPUT_SLOT));
@@ -103,8 +136,12 @@ public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements
 
     private boolean canOutput(ItemStack output) {
         ItemStack out = itemHandler.getStackInSlot(OUTPUT_SLOT);
-        if (out.isEmpty()) return true;
-        if (!ItemStack.isSameItemSameTags(out, output)) return false;
+        if (out.isEmpty()) {
+            return true;
+        }
+        if (!ItemStack.isSameItemSameTags(out, output)) {
+            return false;
+        }
         return out.getCount() + output.getCount() <= out.getMaxStackSize();
     }
 
