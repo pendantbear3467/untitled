@@ -1,0 +1,8 @@
+{
+  "$schema": "https://example.invalid/extremecraft/modpack.schema.json",
+  "difficulty_scaling": 1.0,
+  "xp_multiplier": 1.0,
+  "machine_energy_multiplier": 1.0,
+  "module_slot_multiplier": 1.0,
+  "enable_hardcore_progression": false
+}
