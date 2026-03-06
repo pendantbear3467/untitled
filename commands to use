@@ -1,6 +1,19 @@
 .\.venv\Scripts\python tools/generate_assets.py --materials --export-blockbench --preview
 
 
+----- Asset Studio CLI -----
+python assetstudio.py --help
+python assetstudio.py generate tool mythril_pickaxe
+python assetstudio.py generate material mythril
+python assetstudio.py generate ore mythril
+python assetstudio.py import blockbench workspace\blockbench\mythril_pickaxe.bbmodel
+python assetstudio.py export blockbench mythril_pickaxe --kind item
+python assetstudio.py scan-registry
+python assetstudio.py validate
+python assetstudio.py project init --name extremecraft-assets
+python assetstudio.py project build --target datapack
+
+
 
 ----- Pip stuff ----
 pip install -e .

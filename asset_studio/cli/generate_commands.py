@@ -6,6 +6,7 @@ import json
 from asset_studio.generators.armor_generator import ArmorGenerator
 from asset_studio.generators.block_generator import BlockGenerator
 from asset_studio.generators.datapack_generator import DatapackGenerator
+from asset_studio.generators.item_generator import ItemGenerator
 from asset_studio.generators.machine_generator import MachineGenerator
 from asset_studio.generators.ore_generator import OreGenerator
 from asset_studio.generators.tool_generator import ToolGenerator
@@ -17,6 +18,11 @@ def register_generate_commands(parser: argparse.ArgumentParser) -> None:
 
     material = sub.add_parser("material", help="Generate all content for a material definition")
     material.add_argument("material_name")
+
+    item = sub.add_parser("item", help="Generate item model+texture")
+    item.add_argument("item_name")
+    item.add_argument("--material", default="mythril")
+    item.add_argument("--style", default="metallic")
 
     tool = sub.add_parser("tool", help="Generate a tool asset bundle")
     tool.add_argument("tool_name")
@@ -61,6 +67,13 @@ def run_generate_command(args: argparse.Namespace, context: AssetStudioContext) 
             tier=args.tier,
             texture_style=args.texture_style,
         )
+        return 0
+
+    if gtype == "item":
+        texture = context.texture_engine.generate_ingot_texture(material=args.material, style=args.style)
+        context.write_texture(context.workspace_root / "assets" / "textures" / "item" / f"{args.item_name}.png", texture.image)
+        ItemGenerator(context).write_item_model(args.item_name)
+        context.add_lang_entry("item.extremecraft." + args.item_name, args.item_name.replace("_", " ").title())
         return 0
 
     if gtype == "ore":

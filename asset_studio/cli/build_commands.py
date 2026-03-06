@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-from pathlib import Path
-
-from asset_studio.project.validator import ValidationIssue, validate_assets
-from asset_studio.project.workspace_manager import AssetStudioContext
+from asset_studio.validation.validator import run_validation_pipeline
+from asset_studio.workspace.workspace_manager import AssetStudioContext
 
 
 def validate_command(context: AssetStudioContext, strict: bool = False) -> int:
-    issues = validate_assets(context)
-    if not issues:
+    report = run_validation_pipeline(context)
+    if report.total_issues == 0:
         print("Validation passed: no issues found")
         return 0
 
-    for issue in issues:
-        print(f"[{issue.severity}] {issue.path}: {issue.message}")
+    for issue in report.issues:
+        print(f"[{issue.severity}] {issue.category} :: {issue.path} :: {issue.message}")
 
     if strict:
         return 1

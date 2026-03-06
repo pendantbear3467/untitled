@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from asset_studio.validation.validator import ValidationIssue
+from asset_studio.validation.issue_types import ValidationIssue
 from asset_studio.workspace.workspace_manager import AssetStudioContext
 
 

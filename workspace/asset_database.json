@@ -1,0 +1,15 @@
+{
+  "materials": {},
+  "items": {
+    "mythril_pickaxe": {
+      "material": "mythril",
+      "durability": 1800,
+      "attack_damage": 7.0,
+      "mining_speed": 9.0,
+      "tier": 4,
+      "texture_style": "metallic",
+      "type": "tool"
+    }
+  },
+  "machines": {}
+}

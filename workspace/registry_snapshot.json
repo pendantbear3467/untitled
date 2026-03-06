@@ -1,0 +1,51 @@
+{
+  "files_scanned": 315,
+  "item_ids": [
+    "ancient_rune",
+    "arcane_dust",
+    "arcane_staff",
+    "bronze_dust",
+    "bronze_ingot",
+    "celestial_engine",
+    "chrono_pickaxe",
+    "dimensional_core",
+    "extremecraft",
+    "graviton_hammer",
+    "infinity_ingot",
+    "infinity_sword",
+    "iron_dust",
+    "mana_crystal",
+    "modular_drill",
+    "modular_mining_drill",
+    "pioneer_chestplate",
+    "pulverizer",
+    "quantum_multi_tool",
+    "quantum_pickaxe",
+    "quantum_processor",
+    "raw_",
+    "rune_core",
+    "singularity_core",
+    "steel_dust",
+    "steel_ingot",
+    "void_essence"
+  ],
+  "block_ids": [
+    "pulverizer"
+  ],
+  "machine_ids": [
+    "machine_processing",
+    "tech_machine"
+  ],
+  "cable_ids": [
+    "cable"
+  ],
+  "armor_ids": [
+    "pioneer_chestplate"
+  ],
+  "ore_ids": [],
+  "material_ids": [
+    "bronze",
+    "infinity",
+    "steel"
+  ]
+}

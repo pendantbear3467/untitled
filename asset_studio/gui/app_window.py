@@ -8,15 +8,19 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
+    QHBoxLayout,
     QMainWindow,
-    QPlainTextEdit,
+    QPushButton,
+    QSlider,
     QSplitter,
     QStatusBar,
     QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
 from asset_studio.blockbench.bbmodel_importer import import_bbmodel
-from asset_studio.cli.build_commands import validate_command
+from asset_studio.cli.validate_commands import run_validate_command
 from asset_studio.cli.pack_commands import export_pack_command
 from asset_studio.generators.armor_generator import ArmorGenerator
 from asset_studio.generators.block_generator import BlockGenerator
@@ -24,36 +28,46 @@ from asset_studio.generators.machine_generator import MachineGenerator
 from asset_studio.generators.ore_generator import OreGenerator
 from asset_studio.generators.tool_generator import ToolGenerator
 from asset_studio.gui.asset_wizard import AssetWizardPanel, ToolWizardInput
+from asset_studio.gui.console_panel import ConsolePanel
 from asset_studio.gui.menu_bar import build_menu_bar
 from asset_studio.gui.preview_renderer import PreviewRenderer
-from asset_studio.project.workspace_manager import WorkspaceManager
+from asset_studio.gui.project_browser import ProjectBrowser
+from asset_studio.workspace.workspace_manager import WorkspaceManager
 
 
 class AssetStudioWindow(QMainWindow):
     def __init__(self, workspace_root: Path) -> None:
         super().__init__()
-        self.workspace_manager = WorkspaceManager(workspace_root)
+        self.workspace_manager = WorkspaceManager(workspace_root=workspace_root, repo_root=Path.cwd())
         self.context = self.workspace_manager.load_context()
 
         self.setWindowTitle("EXTREMECRAFT ASSET STUDIO")
         self.resize(1320, 840)
         self.setStatusBar(QStatusBar(self))
 
-        self.log = QPlainTextEdit(self)
-        self.log.setReadOnly(True)
+        self.log = ConsolePanel()
+        self.browser = ProjectBrowser()
+        self.browser.load_workspace(self.context.workspace_root)
 
         self.preview = PreviewRenderer()
         self._last_preview_texture: Path | None = None
         self.wizard = AssetWizardPanel()
         self.wizard.generate_tool_requested.connect(self._on_generate_tool)
 
+        preview_controls = self._build_preview_controls()
+        preview_stack = QWidget()
+        preview_layout = QVBoxLayout(preview_stack)
+        preview_layout.addWidget(self.preview)
+        preview_layout.addWidget(preview_controls)
+
         tabs = QTabWidget()
         tabs.addTab(self.wizard, "Asset Wizard")
-        tabs.addTab(self.log, "Build Log")
+        tabs.addTab(self.browser, "Project Browser")
+        tabs.addTab(self.log, "Console")
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(tabs)
-        splitter.addWidget(self.preview)
+        splitter.addWidget(preview_stack)
         splitter.setSizes([860, 460])
         self.setCentralWidget(splitter)
 
@@ -90,19 +104,21 @@ class AssetStudioWindow(QMainWindow):
         }
 
     def _write_log(self, message: str) -> None:
-        self.log.appendPlainText(message)
+        self.log.append_line(message)
         self.statusBar().showMessage(message, 4000)
 
     def _new_project(self) -> None:
         self.context = self.workspace_manager.initialize_workspace()
+        self.browser.load_workspace(self.context.workspace_root)
         self._write_log("New project initialized")
 
     def _open_project(self) -> None:
         selected = QFileDialog.getExistingDirectory(self, "Open workspace", str(self.context.workspace_root))
         if not selected:
             return
-        self.workspace_manager = WorkspaceManager(Path(selected))
+        self.workspace_manager = WorkspaceManager(workspace_root=Path(selected), repo_root=Path.cwd())
         self.context = self.workspace_manager.load_context()
+        self.browser.load_workspace(self.context.workspace_root)
         self._write_log(f"Opened workspace: {selected}")
 
     def _save_workspace(self) -> None:
@@ -123,7 +139,8 @@ class AssetStudioWindow(QMainWindow):
         self._write_log("Assets exported")
 
     def _validate_assets(self) -> None:
-        code = validate_command(self.context, strict=False)
+        args = type("ValidateArgs", (), {"strict": False})()
+        code = run_validate_command(args, self.context)
         self._write_log("Validation completed" if code == 0 else "Validation completed with issues")
 
     def _on_generate_tool(self, payload: ToolWizardInput) -> None:
@@ -198,12 +215,40 @@ class AssetStudioWindow(QMainWindow):
         if not selected:
             return
         self._set_preview_texture(Path(selected), "texture")
+        candidates = sorted(Path(selected).parent.glob("*.png"))
+        self.preview.set_texture_candidates(candidates)
         self._write_log(f"Texture loaded: {selected}")
 
     def _set_preview_texture(self, texture_path: Path, mode: str) -> None:
         self._last_preview_texture = texture_path
         self.preview.set_mode(mode)
         self.preview.load_texture(texture_path)
+
+    def _build_preview_controls(self) -> QWidget:
+        holder = QWidget()
+        row = QHBoxLayout(holder)
+
+        zoom = QSlider(Qt.Orientation.Horizontal)
+        zoom.setRange(20, 300)
+        zoom.setValue(100)
+        zoom.valueChanged.connect(lambda value: self.preview.set_zoom(value / 100.0))
+
+        lighting = QSlider(Qt.Orientation.Horizontal)
+        lighting.setRange(20, 200)
+        lighting.setValue(100)
+        lighting.valueChanged.connect(lambda value: self.preview.set_lighting(value / 100.0))
+
+        next_texture = QPushButton("Next Texture")
+        next_texture.clicked.connect(lambda: self.preview.switch_texture(1))
+
+        prev_texture = QPushButton("Prev Texture")
+        prev_texture.clicked.connect(lambda: self.preview.switch_texture(-1))
+
+        row.addWidget(prev_texture)
+        row.addWidget(next_texture)
+        row.addWidget(zoom)
+        row.addWidget(lighting)
+        return holder
 
 
 def launch_gui(workspace_root: Path) -> int:

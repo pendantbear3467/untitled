@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from asset_studio.validation.validator import ValidationIssue
+from asset_studio.validation.issue_types import ValidationIssue
 from asset_studio.workspace.workspace_manager import AssetStudioContext
 
 
