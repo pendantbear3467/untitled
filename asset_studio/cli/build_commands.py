@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 
 from compiler.module_builder import ModuleBuilder
@@ -56,6 +57,18 @@ def _build_expansion(context: AssetStudioContext, name: str | None) -> int:
         context=context,
         plugin_api=context.plugins,
     )
+    addon_root = context.workspace_root / "addons" / name
+    if not addon_root.exists():
+        addon_root.mkdir(parents=True, exist_ok=True)
+        (addon_root / "definitions").mkdir(parents=True, exist_ok=True)
+        manifest = {
+            "name": name,
+            "namespace": name,
+            "version": "0.1.0",
+            "dependencies": ["extremecraft-core"],
+        }
+        (addon_root / "addon.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
     result = ModuleBuilder(context=context, sdk=sdk).build_expansion(name)
 
     release_dir = context.workspace_root / "build" / "expansions"

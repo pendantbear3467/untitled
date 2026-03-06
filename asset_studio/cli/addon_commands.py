@@ -28,12 +28,20 @@ def run_addon_command(args: argparse.Namespace, context) -> int:
         return 0
 
     if args.addon_command == "build":
-        result = manager.build(args.addon_name)
+        try:
+            result = manager.build(args.addon_name)
+        except FileNotFoundError as exc:
+            print(str(exc))
+            return 1
         print(f"Addon build: {result.output_path}")
         return 0
 
     if args.addon_command == "publish":
-        published = manager.publish(args.addon_name)
+        try:
+            published = manager.publish(args.addon_name)
+        except FileNotFoundError as exc:
+            print(str(exc))
+            return 1
         print(f"Addon published: {published}")
         return 0
 

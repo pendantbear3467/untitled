@@ -1,0 +1,8 @@
+{
+  "name": "mythril_pack",
+  "namespace": "mythril_pack",
+  "version": "0.1.0",
+  "dependencies": [
+    "extremecraft-core"
+  ]
+}

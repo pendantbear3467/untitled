@@ -1,0 +1,26 @@
+{
+  "templates": {
+    "missing_texture": {
+      "type": "placeholder_texture",
+      "size": 32,
+      "base_color": "#2A2A32",
+      "accent_color": "#FF4040"
+    },
+    "missing_model": {
+      "parent": "minecraft:item/generated",
+      "texture_key": "layer0"
+    },
+    "missing_recipe": {
+      "type": "minecraft:crafting_shaped",
+      "pattern": ["MMM", " S ", " S "],
+      "key": {
+        "M": "extremecraft:{material}_ingot",
+        "S": "minecraft:stick"
+      }
+    },
+    "missing_tag": {
+      "replace": false,
+      "values": []
+    }
+  }
+}

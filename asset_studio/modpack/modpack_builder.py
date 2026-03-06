@@ -29,8 +29,11 @@ class ModpackBuilder:
 
         build_root = self.context.workspace_root / "build" / "modpacks" / modpack_name
         build_root.mkdir(parents=True, exist_ok=True)
+        (build_root / "mods").mkdir(parents=True, exist_ok=True)
+        (build_root / "config").mkdir(parents=True, exist_ok=True)
+        (build_root / "scripts").mkdir(parents=True, exist_ok=True)
 
-        manifest_path = build_root / "modpack_manifest.json"
+        manifest_path = build_root / "manifest.json"
         manifest_path.write_text(json.dumps(manifest.to_dict(), indent=2) + "\n", encoding="utf-8")
 
         archive_path = self.context.workspace_root / "build" / "modpacks" / f"{modpack_name}.zip"
