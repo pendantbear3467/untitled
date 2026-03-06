@@ -1,0 +1,53 @@
+{
+  "name": "cli_demo",
+  "nodes": [
+    {
+      "node_id": "materialnode_1",
+      "node_type": "MaterialNode",
+      "title": "MaterialNode",
+      "x": 0.0,
+      "y": 0.0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "material",
+          "port_type": "material"
+        }
+      ],
+      "parameters": {
+        "material": "mythril",
+        "tier": 4
+      }
+    },
+    {
+      "node_id": "toolnode_2",
+      "node_type": "ToolNode",
+      "title": "ToolNode",
+      "x": 0.0,
+      "y": 0.0,
+      "inputs": [
+        {
+          "name": "material",
+          "port_type": "material"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "tool",
+          "port_type": "item"
+        }
+      ],
+      "parameters": {
+        "tool_name": "mythril_pickaxe"
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "materialnode_1",
+      "to": "toolnode_2",
+      "from_port": "material",
+      "to_port": "material"
+    }
+  ]
+}

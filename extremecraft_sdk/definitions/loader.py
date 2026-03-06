@@ -2,10 +2,19 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 from pathlib import Path
 from types import ModuleType
 
-from extremecraft_sdk.definitions.definition_types import AddonSpec, ContentDefinition
+from extremecraft_sdk.definitions.definition_types import (
+    AddonSpec,
+    ContentDefinition,
+    DependencyGraphSpec,
+    VersionedDependency,
+)
+
+
+_DEPENDENCY_RE = re.compile(r"^(?P<id>[a-zA-Z0-9_.\-/]+)\s*(?:@|\s+)?\s*(?P<version>[<>=~^!].+)?$")
 
 
 class DefinitionLoader:
@@ -21,12 +30,19 @@ class DefinitionLoader:
 
         manifest = self._load_manifest(addon_root)
         definitions = self._load_definitions(addon_root)
+        dependency_graph = self._load_dependency_graph(manifest)
+        dependencies = [dep.id for dep in dependency_graph.addons]
+
         return AddonSpec(
             name=manifest.get("name", addon_name),
             namespace=manifest.get("namespace", addon_name),
             version=manifest.get("version", "0.1.0"),
-            dependencies=list(manifest.get("dependencies", [])),
+            dependencies=dependencies,
+            dependency_graph=dependency_graph,
+            compatible_platform=str(manifest.get("compatible_platform", manifest.get("platform_version", "*"))),
+            compatible_platform_version=str(manifest.get("compatible_platform_version", manifest.get("platform_version", "*"))),
             definitions=definitions,
+            metadata=manifest,
             root=addon_root,
         )
 
@@ -38,8 +54,77 @@ class DefinitionLoader:
                 "namespace": addon_root.name,
                 "version": "0.1.0",
                 "dependencies": [],
+                "dependency_graph": {},
             }
         return json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    def _load_dependency_graph(self, manifest: dict) -> DependencyGraphSpec:
+        payload = manifest.get("dependency_graph")
+        if not isinstance(payload, dict):
+            payload = {}
+
+        addon_deps = self._parse_dependency_entries(payload.get("addons", []))
+        for legacy in manifest.get("dependencies", []):
+            parsed = self._parse_dependency_entry(legacy)
+            if parsed and parsed.id not in {dep.id for dep in addon_deps}:
+                addon_deps.append(parsed)
+
+        api_deps = self._parse_dependency_entries(payload.get("apis", []))
+        return DependencyGraphSpec(
+            materials=self._parse_string_list(payload.get("materials", [])),
+            machines=self._parse_string_list(payload.get("machines", [])),
+            addons=addon_deps,
+            apis=api_deps,
+        )
+
+    def _parse_string_list(self, value: object) -> list[str]:
+        if isinstance(value, str):
+            return [value.strip()] if value.strip() else []
+        if not isinstance(value, list):
+            return []
+        parsed: list[str] = []
+        for entry in value:
+            if isinstance(entry, str) and entry.strip():
+                parsed.append(entry.strip())
+        return parsed
+
+    def _parse_dependency_entries(self, value: object) -> list[VersionedDependency]:
+        if isinstance(value, (str, dict)):
+            value = [value]
+        if not isinstance(value, list):
+            return []
+
+        parsed: list[VersionedDependency] = []
+        for raw in value:
+            dep = self._parse_dependency_entry(raw)
+            if dep:
+                parsed.append(dep)
+        return parsed
+
+    def _parse_dependency_entry(self, value: object) -> VersionedDependency | None:
+        if isinstance(value, dict):
+            dep_id = str(value.get("id", value.get("name", ""))).strip()
+            if not dep_id:
+                return None
+            version = str(value.get("version", value.get("constraint", "*"))).strip() or "*"
+            return VersionedDependency(id=dep_id, version=version)
+
+        if not isinstance(value, str):
+            return None
+
+        token = value.strip()
+        if not token:
+            return None
+
+        match = _DEPENDENCY_RE.match(token)
+        if not match:
+            return VersionedDependency(id=token, version="*")
+
+        dep_id = str(match.group("id") or "").strip()
+        if not dep_id:
+            return None
+        version = str(match.group("version") or "*").strip() or "*"
+        return VersionedDependency(id=dep_id, version=version)
 
     def _load_definitions(self, addon_root: Path) -> list[ContentDefinition]:
         definitions_root = addon_root / "definitions"

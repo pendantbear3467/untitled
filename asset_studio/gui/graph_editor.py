@@ -92,7 +92,7 @@ class GraphEditor(QWidget):
 
         left = QWidget()
         left_layout = QVBoxLayout(left)
-        self.palette = QListWidget()
+        self.node_palette = QListWidget()
         self._refresh_palette()
 
         self.graph_name = QLineEdit(self.engine.name)
@@ -109,7 +109,7 @@ class GraphEditor(QWidget):
         param_form = QFormLayout()
         param_form.addRow("Graph Name", self.graph_name)
         param_form.addRow("Node Type", self.node_type)
-        left_layout.addWidget(self.palette)
+        left_layout.addWidget(self.node_palette)
         left_layout.addLayout(param_form)
         left_layout.addWidget(add_btn)
         left_layout.addWidget(link_btn)
@@ -176,14 +176,14 @@ class GraphEditor(QWidget):
         self._on_selection_changed()
 
     def _refresh_palette(self) -> None:
-        if hasattr(self, "palette"):
-            self.palette.clear()
+        if hasattr(self, "node_palette"):
+            self.node_palette.clear()
         if hasattr(self, "node_type"):
             self.node_type.clear()
 
         for node_name in list(NODE_TYPES.keys()):
-            if hasattr(self, "palette"):
-                self.palette.addItem(node_name)
+            if hasattr(self, "node_palette"):
+                self.node_palette.addItem(node_name)
 
         plugins = getattr(getattr(self, "context", None), "plugins", None)
         if plugins is not None:
@@ -193,8 +193,8 @@ class GraphEditor(QWidget):
                         "inputs": [NodePort("in", "any")],
                         "outputs": [NodePort("out", "any")],
                     }
-                if hasattr(self, "palette"):
-                    self.palette.addItem(node_name)
+                if hasattr(self, "node_palette"):
+                    self.node_palette.addItem(node_name)
 
         if hasattr(self, "node_type"):
             self.node_type.addItems(list(NODE_TYPES.keys()))

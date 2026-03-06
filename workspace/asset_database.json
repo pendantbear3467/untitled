@@ -2,7 +2,8 @@
   "materials": {
     "mythril": {
       "tier": 4,
-      "kind": "material"
+      "texture_style": "metallic",
+      "kind": "ore"
     }
   },
   "items": {
