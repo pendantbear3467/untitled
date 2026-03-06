@@ -112,6 +112,7 @@ def parse_moditems_ids() -> set[str]:
     tech_items = (JAVA / "com" / "extremecraft" / "future" / "registry" / "TechItems.java").read_text(encoding="utf-8")
     ids.update(re.findall(r'ITEMS\.register\("([a-z0-9_]+)"', mod_items))
     ids.update(re.findall(r'ITEMS\.register\("([a-z0-9_]+)"', tech_items))
+    ids = {i for i in ids if not i.endswith("_")}
     return ids
 
 

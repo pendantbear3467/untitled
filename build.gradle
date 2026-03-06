@@ -116,3 +116,36 @@ if (project.hasProperty('curseforgeApiKey') && project.hasProperty('curseforgePr
         dependsOn tasks.jar
     }
 }
+
+tasks.register('validateContentCompleteness') {
+    group = 'verification'
+    description = 'Validates runtime content completeness (recipes, loot, textures, lang).'
+
+    doLast {
+        def attempts = [
+                ['python', 'tools/content_completion.py', 'validate'],
+                ['python3', 'tools/content_completion.py', 'validate']
+        ]
+
+        def validated = false
+        for (def cmd : attempts) {
+            try {
+                exec {
+                    commandLine cmd
+                }
+                validated = true
+                break
+            } catch (Exception ignored) {
+                // Try the next Python executable candidate.
+            }
+        }
+
+        if (!validated) {
+            throw new GradleException('Unable to run content completeness validation. Install python/python3 to run tools/content_completion.py validate.')
+        }
+    }
+}
+
+tasks.named('check').configure {
+    dependsOn tasks.named('validateContentCompleteness')
+}

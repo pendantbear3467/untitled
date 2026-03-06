@@ -636,7 +636,6 @@
     "quantum_multi_tool",
     "quantum_pickaxe",
     "quantum_processor",
-    "raw_",
     "raw_aetherium",
     "raw_aluminum",
     "raw_ardite",
@@ -804,7 +803,6 @@
   ],
   "categories": {
     "raw materials": [
-      "raw_",
       "raw_aetherium",
       "raw_aluminum",
       "raw_ardite",
