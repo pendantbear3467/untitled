@@ -12,7 +12,6 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
@@ -134,11 +133,14 @@ public final class AbilityExecutor {
             return;
         }
 
-        if (EntityType.ARROW.create(context.caster().level()) instanceof Projectile projectile) {
-            projectile.setPos(context.caster().getX(), context.caster().getEyeY() - 0.1D, context.caster().getZ());
-            projectile.shootFromRotation(context.caster(), context.caster().getXRot(), context.caster().getYRot(), 0.0F,
-                    (float) Math.max(0.1D, effect.scalars().getOrDefault("speed", 2.0D)), 0.0F);
-            context.caster().level().addFreshEntity(projectile);
+        var arrow = EntityType.ARROW.create(context.caster().level());
+        if (arrow == null) {
+            return;
         }
+
+        arrow.setPos(context.caster().getX(), context.caster().getEyeY() - 0.1D, context.caster().getZ());
+        arrow.shootFromRotation(context.caster(), context.caster().getXRot(), context.caster().getYRot(), 0.0F,
+                (float) Math.max(0.1D, effect.scalars().getOrDefault("speed", 2.0D)), 0.0F);
+        context.caster().level().addFreshEntity(arrow);
     }
 }
