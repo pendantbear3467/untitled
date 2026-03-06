@@ -1,6 +1,6 @@
 package com.extremecraft.command;
 
-import com.extremecraft.ability.AbilityExecutor;
+import com.extremecraft.ability.AbilityCastResult;`r`nimport com.extremecraft.ability.AbilityEngine;
 import com.extremecraft.api.ExtremeCraftAPI;
 import com.extremecraft.combat.CombatEngine;
 import com.extremecraft.combat.DamageContext;
@@ -110,10 +110,10 @@ public final class ECDevCommands {
                                         .executes(ctx -> {
                                             ServerPlayer player = ctx.getSource().getPlayerOrException();
                                             String abilityId = StringArgumentType.getString(ctx, "ability");
-                                            boolean success = AbilityExecutor.tryActivate(player, abilityId);
+                                            AbilityCastResult result = AbilityEngine.cast(player, abilityId);
                                             RuntimeSyncService.syncAbilities(player);
-                                            if (!success) {
-                                                ctx.getSource().sendFailure(Component.literal("Ability failed: " + abilityId));
+                                            if (!result.succeeded()) {
+                                                ctx.getSource().sendFailure(Component.literal("Ability failed: " + abilityId + " (" + result.status().name().toLowerCase() + ")"));
                                                 return 0;
                                             }
                                             ctx.getSource().sendSuccess(() -> Component.literal("Ability executed: " + abilityId), false);
@@ -246,3 +246,4 @@ public final class ECDevCommands {
         return Math.max(0, Math.round(value));
     }
 }
+

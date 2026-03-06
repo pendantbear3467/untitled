@@ -1,5 +1,6 @@
 package com.extremecraft.core;
 
+import com.extremecraft.ability.AbilityEngine;
 import com.extremecraft.ability.AbilityRegistry;
 import com.extremecraft.api.ExtremeCraftAPI;
 import com.extremecraft.classsystem.ClassRegistry;
@@ -149,6 +150,7 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new RuntimeSyncEvents());
 
             MinecraftForge.EVENT_BUS.register(new AbilityRegistry());
+            AbilityEngine.initialize();
             MinecraftForge.EVENT_BUS.register(new SpellRegistry());
             MinecraftForge.EVENT_BUS.register(new ClassRegistry());
             MinecraftForge.EVENT_BUS.register(new MachineRegistry());
@@ -178,3 +180,5 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
+

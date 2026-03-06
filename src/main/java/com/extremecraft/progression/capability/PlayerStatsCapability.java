@@ -505,3 +505,4 @@ public class PlayerStatsCapability {
         return 100 + (Math.max(1, level) * 25);
     }
 }
+

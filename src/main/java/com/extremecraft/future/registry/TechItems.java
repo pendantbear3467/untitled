@@ -5,6 +5,7 @@ import com.extremecraft.item.armor.ECArmorMaterial;
 import com.extremecraft.item.tool.ECToolTier;
 import com.extremecraft.item.tool.HammerItem;
 import com.extremecraft.item.tool.ModularDrillItem;
+import com.extremecraft.magic.SpellBookItem;
 import com.extremecraft.machine.material.OreMaterialCatalog;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.AxeItem;
@@ -62,6 +63,7 @@ public final class TechItems {
 
         ITEMS.register("mana_crystal", () -> new Item(new Item.Properties()));
         ITEMS.register("arcane_dust", () -> new Item(new Item.Properties()));
+        ITEMS.register("spell_book", () -> new SpellBookItem(new Item.Properties().stacksTo(1)));
         ITEMS.register("ancient_rune", () -> new Item(new Item.Properties()));
         ITEMS.register("void_essence", () -> new Item(new Item.Properties()));
 

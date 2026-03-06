@@ -4,6 +4,7 @@ import com.extremecraft.ability.AbilityCooldownManager;
 import com.extremecraft.machine.MachineBlockEntity;
 import com.extremecraft.magic.mana.ManaService;
 import com.extremecraft.network.ModNetwork;
+import com.extremecraft.network.packet.AbilitySyncPacket;
 import com.extremecraft.progression.StatCalculationEngine;
 import com.extremecraft.progression.capability.PlayerStatsApi;
 import net.minecraft.core.BlockPos;
@@ -40,6 +41,8 @@ public final class RuntimeSyncService {
 
     public static void syncAbilities(ServerPlayer player) {
         CompoundTag payload = AbilityCooldownManager.serializeFor(player);
+        ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new AbilitySyncPacket(payload));
+        // Legacy packet retained for compatibility with existing client listeners.
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncAbilityStateS2CPacket(payload));
     }
 

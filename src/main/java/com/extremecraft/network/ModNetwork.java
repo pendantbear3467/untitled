@@ -1,6 +1,8 @@
 package com.extremecraft.network;
 
 import com.extremecraft.core.ECConstants;
+import com.extremecraft.network.packet.AbilityCastPacket;
+import com.extremecraft.network.packet.AbilitySyncPacket;
 import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
 import com.extremecraft.network.packet.InstallModuleC2SPacket;
 import com.extremecraft.network.packet.OpenExtremeCraftDebugScreenS2CPacket;
@@ -63,6 +65,12 @@ public final class ModNetwork {
                 .encoder(RequestPlayerStatsPacket::encode)
                 .decoder(RequestPlayerStatsPacket::decode)
                 .consumerMainThread(RequestPlayerStatsPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(AbilityCastPacket.class, nextId())
+                .encoder(AbilityCastPacket::encode)
+                .decoder(AbilityCastPacket::decode)
+                .consumerMainThread(AbilityCastPacket::handle)
                 .add();
 
         CHANNEL.messageBuilder(ActivateClassAbilityC2SPacket.class, nextId())
@@ -141,6 +149,12 @@ public final class ModNetwork {
                 .encoder(SyncRuntimeStatsS2CPacket::encode)
                 .decoder(SyncRuntimeStatsS2CPacket::decode)
                 .consumerMainThread(SyncRuntimeStatsS2CPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(AbilitySyncPacket.class, nextId())
+                .encoder(AbilitySyncPacket::encode)
+                .decoder(AbilitySyncPacket::decode)
+                .consumerMainThread(AbilitySyncPacket::handle)
                 .add();
 
         CHANNEL.messageBuilder(SyncAbilityStateS2CPacket.class, nextId())

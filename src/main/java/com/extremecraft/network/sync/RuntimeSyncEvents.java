@@ -1,5 +1,6 @@
 package com.extremecraft.network.sync;
 
+import com.extremecraft.ability.AbilityEngine;
 import com.extremecraft.magic.SpellCastingSystem;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.OnDatapackSyncEvent;
@@ -45,6 +46,7 @@ public class RuntimeSyncEvents {
         }
 
         SpellCastingSystem.tickChanneling(player);
+        AbilityEngine.tickChanneling(player);
 
         if ((player.tickCount % 40) == 0) {
             RuntimeSyncService.syncStats(player);
