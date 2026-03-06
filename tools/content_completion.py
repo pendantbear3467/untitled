@@ -360,3 +360,265 @@ def build_runtime_graph() -> dict:
         "runtime_blocks": sorted(runtime_blocks),
         "categories": {k: sorted(v) for k, v in categories.items()},
     }
+
+def generate_content() -> dict[str, int]:
+    graph = build_runtime_graph()
+    materials = [MaterialDef(**m) for m in graph["materials"]]
+    machines = [MachineDef(**m) for m in graph["machines"]]
+    runtime_items = set(graph["runtime_items"])
+    runtime_blocks = set(graph["runtime_blocks"])
+    machine_by_id = {m.id: m for m in machines}
+    existing_outputs = parse_existing_recipe_outputs()
+
+    created = {
+        "recipes": 0,
+        "machine_recipes": 0,
+        "pulverizing_recipes": 0,
+        "machine_defs": 0,
+        "loot_tables": 0,
+        "worldgen_files": 0,
+        "lang_keys": 0,
+        "item_textures": 0,
+        "ability_icons": 0,
+        "tag_updates": 0,
+        "graph": 0,
+    }
+
+    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    GRAPH_FILE.write_text(json_dump(graph), encoding="utf-8")
+    created["graph"] += 1
+
+    for mat in materials:
+        ore = f"{mat.id}_ore"
+        raw = f"raw_{mat.id}"
+        dust = f"{mat.id}_dust"
+        ingot = f"{mat.id}_ingot"
+        nugget = f"{mat.id}_nugget"
+        block = f"{mat.id}_block"
+
+        if item_id_exists(runtime_items, ingot) and item_id_exists(runtime_items, nugget):
+            created["recipes"] += int(write_shapeless(f"{ingot}_to_nuggets", nugget, [f"extremecraft:{ingot}"], 9))
+            created["recipes"] += int(
+                write_json_missing(
+                    recipe_path(f"{nugget}_to_ingot"),
+                    {
+                        "type": "minecraft:crafting_shaped",
+                        "pattern": ["NNN", "NNN", "NNN"],
+                        "key": {"N": {"item": f"extremecraft:{nugget}"}},
+                        "result": {"item": f"extremecraft:{ingot}", "count": 1},
+                    },
+                )
+            )
+
+        if item_id_exists(runtime_items, ingot) and block in runtime_items:
+            created["recipes"] += int(
+                write_json_missing(
+                    recipe_path(f"{block}_from_ingots"),
+                    {
+                        "type": "minecraft:crafting_shaped",
+                        "pattern": ["III", "III", "III"],
+                        "key": {"I": {"item": f"extremecraft:{ingot}"}},
+                        "result": {"item": f"extremecraft:{block}", "count": 1},
+                    },
+                )
+            )
+            created["recipes"] += int(write_shapeless(f"{block}_to_ingots", ingot, [f"extremecraft:{block}"], 9))
+
+        if item_id_exists(runtime_items, dust) and item_id_exists(runtime_items, ingot):
+            created["recipes"] += int(write_smelting(f"{dust}_smelting", dust, ingot))
+            created["recipes"] += int(write_blasting(f"{dust}_blasting", dust, ingot))
+            if "smelter" in machine_by_id:
+                md = machine_by_id["smelter"]
+                created["machine_recipes"] += int(
+                    write_machine_recipe(
+                        f"smelter_{dust}_to_ingot",
+                        "smelter",
+                        dust,
+                        ingot,
+                        1,
+                        md.process_time,
+                        md.energy_per_tick,
+                    )
+                )
+
+        if item_id_exists(runtime_items, raw) and item_id_exists(runtime_items, dust):
+            created["pulverizing_recipes"] += int(write_pulverizing(f"pulverize_{raw}_to_{dust}", raw, dust, 2, 220, 24))
+
+        if item_id_exists(runtime_items, ore) and item_id_exists(runtime_items, raw) and "crusher" in machine_by_id:
+            md = machine_by_id["crusher"]
+            created["machine_recipes"] += int(
+                write_machine_recipe(
+                    f"crusher_{ore}_to_{raw}",
+                    "crusher",
+                    ore,
+                    raw,
+                    2,
+                    md.process_time,
+                    md.energy_per_tick,
+                )
+            )
+        elif item_id_exists(runtime_items, ore) and item_id_exists(runtime_items, dust) and "crusher" in machine_by_id:
+            md = machine_by_id["crusher"]
+            created["machine_recipes"] += int(
+                write_machine_recipe(
+                    f"crusher_{ore}_to_{dust}",
+                    "crusher",
+                    ore,
+                    dust,
+                    2,
+                    md.process_time,
+                    md.energy_per_tick,
+                )
+            )
+
+    for mat in materials:
+        ingot = f"{mat.id}_ingot"
+        if not item_id_exists(runtime_items, ingot):
+            continue
+        if item_id_exists(runtime_items, f"{mat.id}_pickaxe"):
+            created["recipes"] += int(write_shaped(f"{mat.id}_pickaxe", f"{mat.id}_pickaxe", ["III", " S ", " S "], {"I": f"extremecraft:{ingot}", "S": "minecraft:stick"}))
+        if item_id_exists(runtime_items, f"{mat.id}_sword"):
+            created["recipes"] += int(write_shaped(f"{mat.id}_sword", f"{mat.id}_sword", [" I ", " I ", " S "], {"I": f"extremecraft:{ingot}", "S": "minecraft:stick"}))
+        if item_id_exists(runtime_items, f"{mat.id}_axe"):
+            created["recipes"] += int(write_shaped(f"{mat.id}_axe", f"{mat.id}_axe", ["II ", "IS ", " S "], {"I": f"extremecraft:{ingot}", "S": "minecraft:stick"}))
+        if item_id_exists(runtime_items, f"{mat.id}_shovel"):
+            created["recipes"] += int(write_shaped(f"{mat.id}_shovel", f"{mat.id}_shovel", [" I ", " S ", " S "], {"I": f"extremecraft:{ingot}", "S": "minecraft:stick"}))
+        if item_id_exists(runtime_items, f"{mat.id}_hoe"):
+            created["recipes"] += int(write_shaped(f"{mat.id}_hoe", f"{mat.id}_hoe", ["II ", " S ", " S "], {"I": f"extremecraft:{ingot}", "S": "minecraft:stick"}))
+        if item_id_exists(runtime_items, f"{mat.id}_hammer"):
+            created["recipes"] += int(write_shaped(f"{mat.id}_hammer", f"{mat.id}_hammer", ["III", "ISI", " S "], {"I": f"extremecraft:{ingot}", "S": "minecraft:stick"}))
+
+    for armor_set in ("copper", "titanium", "mythril", "draconium", "void", "aether", "celestial"):
+        ingot = f"{armor_set}_ingot"
+        if armor_set == "void":
+            ingot = "void_crystal_ingot"
+        elif armor_set == "aether":
+            ingot = "aetherium_ingot"
+        if not item_id_exists(runtime_items, ingot):
+            ingot_item = ec_or_vanilla(runtime_items, ["steel_ingot", "titanium_ingot", "minecraft:iron_ingot"])
+        else:
+            ingot_item = f"extremecraft:{ingot}"
+        if item_id_exists(runtime_items, f"{armor_set}_helmet"):
+            created["recipes"] += int(write_shaped(f"{armor_set}_helmet", f"{armor_set}_helmet", ["III", "I I"], {"I": ingot_item}))
+        if item_id_exists(runtime_items, f"{armor_set}_chestplate"):
+            created["recipes"] += int(write_shaped(f"{armor_set}_chestplate", f"{armor_set}_chestplate", ["I I", "III", "III"], {"I": ingot_item}))
+        if item_id_exists(runtime_items, f"{armor_set}_leggings"):
+            created["recipes"] += int(write_shaped(f"{armor_set}_leggings", f"{armor_set}_leggings", ["III", "I I", "I I"], {"I": ingot_item}))
+        if item_id_exists(runtime_items, f"{armor_set}_boots"):
+            created["recipes"] += int(write_shaped(f"{armor_set}_boots", f"{armor_set}_boots", ["I I", "I I"], {"I": ingot_item}))
+
+    explicit_recipes: list[tuple[str, dict]] = [
+        ("mana_crystal", {"pattern": [" A ", "AQA", " A "], "key": {"A": "minecraft:amethyst_shard", "Q": "minecraft:quartz"}}),
+        ("arcane_dust", {"pattern": [" G ", "RMR", " G "], "key": {"G": "minecraft:glowstone_dust", "R": "minecraft:redstone", "M": "extremecraft:mana_crystal"}}),
+        ("spell_book", {"pattern": [" AA", " BM", "BB "], "key": {"A": "extremecraft:arcane_dust", "B": "minecraft:book", "M": "extremecraft:mana_crystal"}}),
+        ("ancient_rune", {"pattern": ["SCS", "RMR", "SCS"], "key": {"S": "minecraft:stone", "C": "minecraft:chiseled_stone_bricks", "R": "extremecraft:arcane_dust", "M": "extremecraft:mana_crystal"}}),
+        ("void_essence", {"pattern": [" O ", "ECE", " O "], "key": {"O": "minecraft:obsidian", "C": "minecraft:crying_obsidian", "E": "minecraft:ender_pearl"}}),
+        ("quantum_processor", {"pattern": ["RGR", "DTD", "RGR"], "key": {"R": "minecraft:redstone", "G": "minecraft:gold_ingot", "D": "minecraft:diamond", "T": "extremecraft:titanium_ingot"}}),
+        ("rune_core", {"pattern": ["ARA", "RMR", "ARA"], "key": {"A": "extremecraft:arcane_dust", "R": "extremecraft:ancient_rune", "M": "extremecraft:mana_crystal"}}),
+        ("dimensional_core", {"pattern": ["VEV", "EQE", "VEV"], "key": {"V": "extremecraft:void_essence", "E": "minecraft:ender_eye", "Q": "extremecraft:quantum_processor"}}),
+        ("singularity_core", {"pattern": ["VDV", "DND", "VDV"], "key": {"V": "extremecraft:void_essence", "D": "minecraft:diamond_block", "N": "minecraft:nether_star"}}),
+        ("celestial_engine", {"pattern": ["AEA", "SCS", "AEA"], "key": {"A": "extremecraft:aetherium_ingot", "E": "extremecraft:dimensional_core", "S": "extremecraft:singularity_core", "C": "extremecraft:quantum_processor"}}),
+        ("infinity_ingot", {"pattern": ["ADA", "DSD", "ADA"], "key": {"A": "extremecraft:aetherium_ingot", "D": "extremecraft:draconium_ingot", "S": "extremecraft:singularity_core"}}),
+        ("pioneer_chestplate", {"pattern": ["I I", "IQI", "III"], "key": {"I": "extremecraft:steel_ingot", "Q": "extremecraft:quantum_processor"}}),
+        ("modular_mining_drill", {"pattern": ["ITI", "RQC", " S "], "key": {"I": "extremecraft:steel_ingot", "T": "extremecraft:titanium_ingot", "R": "minecraft:redstone", "Q": "extremecraft:quantum_processor", "C": "extremecraft:copper_cable", "S": "minecraft:stick"}}),
+        ("modular_drill", {"pattern": ["ITI", "DQC", " S "], "key": {"I": "extremecraft:infinity_ingot", "T": "extremecraft:titanium_ingot", "D": "extremecraft:dimensional_core", "Q": "extremecraft:quantum_processor", "C": "extremecraft:superconductive_cable", "S": "minecraft:stick"}}),
+        ("graviton_hammer", {"pattern": ["III", "IQI", " S "], "key": {"I": "extremecraft:infinity_ingot", "Q": "extremecraft:quantum_processor", "S": "minecraft:stick"}}),
+        ("arcane_staff", {"pattern": ["  R", " S ", "S  "], "key": {"R": "extremecraft:rune_core", "S": "minecraft:blaze_rod"}}),
+        ("chrono_pickaxe", {"pattern": ["III", " Q ", " S "], "key": {"I": "extremecraft:draconium_ingot", "Q": "extremecraft:dimensional_core", "S": "minecraft:stick"}}),
+        ("quantum_multi_tool", {"pattern": ["PAH", "QD ", " S "], "key": {"P": "extremecraft:quantum_pickaxe", "A": "extremecraft:arcane_staff", "H": "extremecraft:graviton_hammer", "Q": "extremecraft:quantum_processor", "D": "extremecraft:modular_drill", "S": "minecraft:stick"}}),
+        ("infinity_sword", {"pattern": [" I ", " I ", " S "], "key": {"I": "extremecraft:infinity_ingot", "S": "extremecraft:void_essence"}}),
+        ("quantum_pickaxe", {"pattern": ["III", " Q ", " S "], "key": {"I": "extremecraft:infinity_ingot", "Q": "extremecraft:quantum_processor", "S": "minecraft:stick"}}),
+    ]
+    for rid, r in explicit_recipes:
+        if rid not in runtime_items:
+            continue
+        missing_ingredients = [v for v in r["key"].values() if v.startswith("extremecraft:") and v.replace("extremecraft:", "") not in runtime_items]
+        if missing_ingredients:
+            continue
+        created["recipes"] += int(write_shaped(f"{rid}_crafted", rid, r["pattern"], r["key"]))
+
+    stage_metals = {
+        "primitive": ["minecraft:iron_ingot"],
+        "industrial": ["steel_ingot", "bronze_ingot", "minecraft:iron_ingot"],
+        "automation": ["steel_ingot", "bronze_ingot", "minecraft:gold_ingot"],
+        "energy": ["steel_ingot", "titanium_ingot", "minecraft:gold_ingot"],
+        "advanced": ["titanium_ingot", "mythril_ingot", "draconium_ingot"],
+        "endgame": ["draconium_ingot", "infinity_ingot", "minecraft:netherite_ingot"],
+    }
+    for machine in machines:
+        if machine.id in existing_outputs:
+            continue
+        metal = ec_or_vanilla(runtime_items, stage_metals.get(machine.stage, ["minecraft:iron_ingot"]))
+        circuit = ec_or_vanilla(runtime_items, ["quantum_processor", "minecraft:redstone", "minecraft:comparator"])
+        core = ec_or_vanilla(runtime_items, ["dimensional_core", "rune_core", "minecraft:furnace"])
+        binder = ec_or_vanilla(runtime_items, ["copper_cable", "gold_cable", "minecraft:redstone"])
+        created["recipes"] += int(write_shaped(f"{machine.id}_machine", machine.id, ["ABA", "CDC", "AEA"], {"A": metal, "B": circuit, "C": binder, "D": core, "E": "minecraft:furnace"}))
+
+    cable_recipes = {
+        "copper_cable": ("extremecraft:copper_ingot", "minecraft:redstone"),
+        "gold_cable": ("minecraft:gold_ingot", "minecraft:redstone"),
+        "superconductive_cable": ("extremecraft:titanium_ingot", "extremecraft:quantum_processor"),
+    }
+    for cable, (a, b) in cable_recipes.items():
+        if cable in runtime_items:
+            created["recipes"] += int(write_shaped(f"{cable}_line", cable, ["ABA"], {"A": a, "B": b}, count=3))
+
+    tier_by_stage = {
+        "primitive": "pioneer",
+        "industrial": "industrial",
+        "automation": "automation",
+        "energy": "energy",
+        "advanced": "advanced",
+        "endgame": "endgame",
+    }
+    for machine in machines:
+        machine_def_file = MACHINE_DEFS / f"{machine.id}.json"
+        created["machine_defs"] += int(write_json_missing(machine_def_file, {
+            "id": machine.id,
+            "display_name": humanize_id(machine.id),
+            "tier": tier_by_stage.get(machine.stage, machine.stage),
+            "energy_per_tick": machine.energy_per_tick,
+            "processing": {
+                "speed": 1.0 if machine.process_time <= 0 else round(max(0.4, 160.0 / max(1, machine.process_time)), 2),
+                "parallel_operations": max(1, machine.output_multiplier),
+            },
+            "recipes": "extremecraft:machine_processing",
+        }))
+        if machine.generation_per_tick <= 0:
+            baseline_input = "copper_ore" if "crusher" in machine.id or "pulverizer" in machine.id else "copper_dust"
+            baseline_output = "raw_copper" if "crusher" in machine.id else "copper_ingot"
+            if "pulverizer" in machine.id:
+                baseline_input = "raw_copper"
+                baseline_output = "copper_dust"
+            if baseline_input in runtime_items and baseline_output in runtime_items:
+                created["machine_recipes"] += int(write_machine_recipe(f"{machine.id}_baseline", machine.id, baseline_input, baseline_output, 1 if baseline_output.endswith("_ingot") else 2, machine.process_time if machine.process_time > 0 else 120, machine.energy_per_tick if machine.energy_per_tick > 0 else 20))
+
+    for block in sorted(runtime_blocks):
+        loot_file = LOOT_BLOCKS / f"{block}.json"
+        if loot_file.exists():
+            continue
+        if block.endswith("_ore"):
+            material = block[: -len("_ore")]
+            raw_item = f"raw_{material}"
+            default_drop = raw_item if raw_item in runtime_items else block
+            loot = {
+                "type": "minecraft:block",
+                "pools": [{
+                    "rolls": 1,
+                    "entries": [{"type": "minecraft:alternatives", "children": [
+                        {"type": "minecraft:item", "name": f"extremecraft:{block}", "conditions": [{"condition": "minecraft:match_tool", "predicate": {"enchantments": [{"enchantment": "minecraft:silk_touch", "levels": {"min": 1}}]}}]},
+                        {"type": "minecraft:item", "name": f"extremecraft:{default_drop}", "functions": [{"function": "minecraft:apply_bonus", "enchantment": "minecraft:fortune", "formula": "minecraft:ore_drops"}, {"function": "minecraft:explosion_decay"}]}
+                    ]}],
+                    "conditions": [{"condition": "minecraft:survives_explosion"}],
+                }],
+            }
+            created["loot_tables"] += int(write_json_missing(loot_file, loot))
+        else:
+            created["loot_tables"] += int(write_json_missing(loot_file, {
+                "type": "minecraft:block",
+                "pools": [{
+                    "rolls": 1,
+                    "entries": [{"type": "minecraft:item", "name": f"extremecraft:{block}"}],
+                    "conditions": [{"condition": "minecraft:survives_explosion"}],
+                }],
+            }))

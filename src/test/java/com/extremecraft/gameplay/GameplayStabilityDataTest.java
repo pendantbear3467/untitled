@@ -46,12 +46,12 @@ class GameplayStabilityDataTest {
     }
 
     @Test
-    void machineProcessingChainHasBaselineRecipes() {
-        Path generatedRecipes = RESOURCES.resolve("data/extremecraft/recipes/generated");
-        assertTrue(Files.exists(generatedRecipes.resolve("machine_crusher.json")), "Missing machine recipe: crusher");
-        assertTrue(Files.exists(generatedRecipes.resolve("machine_smelter.json")), "Missing machine recipe: smelter");
-        assertTrue(Files.exists(generatedRecipes.resolve("machine_quantum_fabricator.json")), "Missing machine recipe: quantum_fabricator");
-        assertTrue(Files.exists(generatedRecipes.resolve("special_quantum_processor.json")), "Missing special recipe: quantum_processor");
+    void machineProcessingChainHasBaselineRecipes() throws IOException {
+        Set<String> outputs = recipeOutputs();
+        assertTrue(outputs.contains("extremecraft:crusher"), "Missing machine recipe output: crusher");
+        assertTrue(outputs.contains("extremecraft:smelter"), "Missing machine recipe output: smelter");
+        assertTrue(outputs.contains("extremecraft:quantum_fabricator"), "Missing machine recipe output: quantum_fabricator");
+        assertTrue(outputs.contains("extremecraft:quantum_processor"), "Missing special recipe output: quantum_processor");
     }
 
     @Test
@@ -143,6 +143,35 @@ class GameplayStabilityDataTest {
             ids.add(matcher.group(1));
         }
         return ids;
+    }
+
+    private static Set<String> recipeOutputs() throws IOException {
+        Path recipesRoot = RESOURCES.resolve("data/extremecraft/recipes");
+        Set<String> outputs = new LinkedHashSet<>();
+        try (var files = Files.walk(recipesRoot)) {
+            files.filter(path -> path.toString().endsWith(".json")).forEach(path -> {
+                try {
+                    JsonObject root = readJson(path);
+                    if (!root.has("result")) {
+                        return;
+                    }
+                    JsonElement result = root.get("result");
+                    if (result.isJsonObject()) {
+                        JsonObject obj = result.getAsJsonObject();
+                        if (obj.has("item") && obj.get("item").isJsonPrimitive()) {
+                            outputs.add(obj.get("item").getAsString());
+                        }
+                        return;
+                    }
+                    if (result.isJsonPrimitive()) {
+                        outputs.add(result.getAsString());
+                    }
+                } catch (IOException exception) {
+                    throw new RuntimeException(exception);
+                }
+            });
+        }
+        return outputs;
     }
 
     private static JsonObject readJson(Path path) throws IOException {
