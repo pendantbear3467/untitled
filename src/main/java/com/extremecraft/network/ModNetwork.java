@@ -16,6 +16,11 @@ import com.extremecraft.network.packet.SyncModuleCatalogS2CPacket;
 import com.extremecraft.network.packet.SyncProgressPacket;
 import com.extremecraft.network.packet.SyncSkillTreesPacket;
 import com.extremecraft.network.packet.UpgradeStatPacket;
+import com.extremecraft.network.sync.SyncAbilityStateS2CPacket;
+import com.extremecraft.network.sync.SyncMachineStateS2CPacket;
+import com.extremecraft.network.sync.SyncManaStateS2CPacket;
+import com.extremecraft.network.sync.SyncRuntimeStatsS2CPacket;
+import com.extremecraft.network.sync.SyncSkillUnlocksS2CPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
@@ -124,6 +129,36 @@ public final class ModNetwork {
                 .encoder(OpenExtremeCraftDebugScreenS2CPacket::encode)
                 .decoder(OpenExtremeCraftDebugScreenS2CPacket::decode)
                 .consumerMainThread(OpenExtremeCraftDebugScreenS2CPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncManaStateS2CPacket.class, nextId())
+                .encoder(SyncManaStateS2CPacket::encode)
+                .decoder(SyncManaStateS2CPacket::decode)
+                .consumerMainThread(SyncManaStateS2CPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncRuntimeStatsS2CPacket.class, nextId())
+                .encoder(SyncRuntimeStatsS2CPacket::encode)
+                .decoder(SyncRuntimeStatsS2CPacket::decode)
+                .consumerMainThread(SyncRuntimeStatsS2CPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncAbilityStateS2CPacket.class, nextId())
+                .encoder(SyncAbilityStateS2CPacket::encode)
+                .decoder(SyncAbilityStateS2CPacket::decode)
+                .consumerMainThread(SyncAbilityStateS2CPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncSkillUnlocksS2CPacket.class, nextId())
+                .encoder(SyncSkillUnlocksS2CPacket::encode)
+                .decoder(SyncSkillUnlocksS2CPacket::decode)
+                .consumerMainThread(SyncSkillUnlocksS2CPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncMachineStateS2CPacket.class, nextId())
+                .encoder(SyncMachineStateS2CPacket::encode)
+                .decoder(SyncMachineStateS2CPacket::decode)
+                .consumerMainThread(SyncMachineStateS2CPacket::handle)
                 .add();
     }
 

@@ -17,7 +17,7 @@ public final class RuntimeSyncClientState {
     public static void applyStats(CompoundTag tag) {
         PLAYER_STATS.clear();
         for (String key : tag.getAllKeys()) {
-            if (tag.contains(key, CompoundTag.TAG_DOUBLE)) {
+            if (tag.contains(key, net.minecraft.nbt.Tag.TAG_DOUBLE)) {
                 PLAYER_STATS.put(key, tag.getDouble(key));
             }
         }
@@ -59,3 +59,4 @@ public final class RuntimeSyncClientState {
         return MACHINE_STATES.copy();
     }
 }
+
