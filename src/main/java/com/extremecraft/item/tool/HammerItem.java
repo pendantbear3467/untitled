@@ -97,7 +97,7 @@ public class HammerItem extends PickaxeItem {
 
     private Direction resolveHitFace(ServerPlayer player, BlockPos center) {
         // This is the break-flow equivalent of context.getClickedFace().
-        HitResult hit = player.pick(player.blockInteractionRange(), 0.0F, false);
+        HitResult hit = player.pick(6.0D, 0.0F, false);
         if (hit instanceof BlockHitResult blockHit
             && hit.getType() == HitResult.Type.BLOCK
             && blockHit.getBlockPos().equals(center)) {
@@ -142,3 +142,4 @@ public class HammerItem extends PickaxeItem {
         return usedHand == InteractionHand.OFF_HAND ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND;
     }
 }
+
