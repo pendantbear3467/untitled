@@ -38,7 +38,7 @@ public class HammerItem extends PickaxeItem {
         }
 
         Level level = player.level();
-        if (!(level instanceof ServerLevel)) {
+        if (!(level instanceof ServerLevel serverLevel)) {
             return false;
         }
 
@@ -61,12 +61,7 @@ public class HammerItem extends PickaxeItem {
                     continue;
                 }
 
-                if (level.destroyBlock(target, true, serverPlayer)) {
-                    if (stack.isEmpty()) {
-                        break;
-                    }
-
-                    stack.hurtAndBreak(1, serverPlayer, p -> p.broadcastBreakEvent(resolveBreakSlot(serverPlayer, stack)));
+                if (breakAoeTarget(serverLevel, target, serverPlayer, stack)) {
                     if (stack.isEmpty()) {
                         break;
                     }
@@ -96,6 +91,17 @@ public class HammerItem extends PickaxeItem {
         }
 
         return !state.requiresCorrectToolForDrops() || hammerStack.isCorrectToolForDrops(state);
+    }
+
+    private boolean breakAoeTarget(ServerLevel level, BlockPos pos, ServerPlayer player, ItemStack hammerStack) {
+        if (!level.destroyBlock(pos, true, player)) {
+            return false;
+        }
+
+        if (!hammerStack.isEmpty()) {
+            hammerStack.hurtAndBreak(1, player, p -> p.broadcastBreakEvent(resolveBreakSlot(player, hammerStack)));
+        }
+        return true;
     }
 
     private Direction resolveHitFace(ServerPlayer player, BlockPos center) {
@@ -143,3 +149,4 @@ public class HammerItem extends PickaxeItem {
         return usedHand == InteractionHand.OFF_HAND ? EquipmentSlot.OFFHAND : EquipmentSlot.MAINHAND;
     }
 }
+
