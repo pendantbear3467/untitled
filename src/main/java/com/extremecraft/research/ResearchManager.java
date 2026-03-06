@@ -22,6 +22,12 @@ import java.util.Map;
 import org.slf4j.Logger;
 
 public class ResearchManager extends SimpleJsonResourceReloadListener {
+    /**
+     * Runtime research definition loader for {@code data/extremecraft/research/*.json}.
+     * <p>
+     * This listener is the gameplay-facing source for staged unlock rules consumed by progression
+     * systems, and now enforces an array-based unlock schema to keep datapack contracts consistent.
+     */
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<String, ResearchDefinition> RESEARCH = new LinkedHashMap<>();
@@ -48,20 +54,19 @@ public class ResearchManager extends SimpleJsonResourceReloadListener {
             List<String> unlocks = new ArrayList<>();
             JsonElement unlocksElement = json.get("unlocks");
             if (unlocksElement != null && !unlocksElement.isJsonNull()) {
-                if (unlocksElement.isJsonArray()) {
+                if (!unlocksElement.isJsonArray()) {
+                    LOGGER.error("Malformed research {} in {}: 'unlocks' must be an array", id, entry.getKey());
+                } else {
                     for (JsonElement unlockValue : unlocksElement.getAsJsonArray()) {
-                        String unlock = unlockValue.getAsString();
+                        if (unlockValue == null || !unlockValue.isJsonPrimitive()) {
+                            LOGGER.error("Malformed research {} in {}: unlock entries must be strings", id, entry.getKey());
+                            continue;
+                        }
+                        String unlock = unlockValue.getAsString().trim();
                         if (!unlock.isBlank()) {
                             unlocks.add(unlock);
                         }
                     }
-                } else if (unlocksElement.isJsonPrimitive()) {
-                    String unlock = unlocksElement.getAsString();
-                    if (!unlock.isBlank()) {
-                        unlocks.add(unlock);
-                    }
-                } else {
-                    LOGGER.warn("Skipping invalid unlocks format in research {} from {}", id, entry.getKey());
                 }
             }
 

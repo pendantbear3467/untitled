@@ -11,6 +11,12 @@ import java.util.List;
 import java.util.Map;
 
 public final class SkillTreeService {
+    /**
+     * Service boundary for skill-tree progression operations.
+     * <p>
+     * Tree topology comes from {@link SkillTreeManager}, unlock requests are applied through
+     * {@link PlayerStatsService}, and client runtime state is synchronized via network sync services.
+     */
     private SkillTreeService() {
     }
 

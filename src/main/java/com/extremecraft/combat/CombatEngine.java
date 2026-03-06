@@ -20,6 +20,13 @@ import org.apache.logging.log4j.Logger;
 import java.util.Collection;
 
 public final class CombatEngine {
+    /**
+     * Central combat pipeline for both vanilla and data-driven ability damage.
+     * <p>
+     * Damage requests from abilities/spells feed into {@link #applyDamage(DamageContext)}, while
+     * vanilla hurt events are reconciled by {@link #processLivingHurtEvent(LivingHurtEvent)} so all
+     * combat modifiers, resistances, and status effects are resolved through one path.
+     */
     private static final Logger LOGGER = LogManager.getLogger();
     private static final ThreadLocal<DamageContext> PENDING_CONTEXT = new ThreadLocal<>();
 

@@ -15,6 +15,12 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class AbilityEngine {
+    /**
+     * Runtime executor for abilities from both built-in registrations and datapack definitions.
+     * <p>
+     * Ability metadata is sourced through {@link AbilityRegistry}, progression gating is delegated to
+     * class bindings, and mana/cooldowns are synchronized through the progression and mana services.
+     */
     private static final Logger LOGGER = LogManager.getLogger();
 
     private static final Map<UUID, ActiveChannel> ACTIVE_CHANNELS = new LinkedHashMap<>();
