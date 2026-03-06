@@ -1,13 +1,16 @@
 package com.extremecraft.api.registration;
 
 import com.extremecraft.api.definition.AbilityDefinition;
+import com.extremecraft.api.definition.ClassDefinition;
 import com.extremecraft.api.definition.MachineDefinition;
 import com.extremecraft.api.definition.MaterialDefinition;
 import com.extremecraft.api.definition.ModuleDefinition;
 import com.extremecraft.api.definition.QuestDefinition;
 import com.extremecraft.api.definition.RecipeDefinition;
 import com.extremecraft.api.definition.SkillTreeDefinition;
+import com.extremecraft.api.definition.SpellDefinition;
 import com.extremecraft.api.definition.TechTreeDefinition;
+import com.extremecraft.api.definition.WorldgenFeatureDefinition;
 
 import java.util.Collection;
 
@@ -24,6 +27,12 @@ public interface ExtremeCraftApiProvider {
 
     void registerAbility(AbilityDefinition definition);
 
+    void registerSpell(SpellDefinition definition);
+
+    void registerClass(ClassDefinition definition);
+
+    void registerWorldgenFeature(WorldgenFeatureDefinition definition);
+
     void registerTechTree(TechTreeDefinition definition);
 
     void registerRecipe(RecipeDefinition definition);
@@ -39,6 +48,12 @@ public interface ExtremeCraftApiProvider {
     Collection<ModuleDefinition> modules();
 
     Collection<AbilityDefinition> abilities();
+
+    Collection<SpellDefinition> spells();
+
+    Collection<ClassDefinition> classes();
+
+    Collection<WorldgenFeatureDefinition> worldgenFeatures();
 
     Collection<TechTreeDefinition> techTrees();
 

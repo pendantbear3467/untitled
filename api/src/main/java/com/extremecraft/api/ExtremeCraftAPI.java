@@ -1,13 +1,16 @@
 package com.extremecraft.api;
 
 import com.extremecraft.api.definition.AbilityDefinition;
+import com.extremecraft.api.definition.ClassDefinition;
 import com.extremecraft.api.definition.MachineDefinition;
 import com.extremecraft.api.definition.MaterialDefinition;
 import com.extremecraft.api.definition.ModuleDefinition;
 import com.extremecraft.api.definition.QuestDefinition;
 import com.extremecraft.api.definition.RecipeDefinition;
 import com.extremecraft.api.definition.SkillTreeDefinition;
+import com.extremecraft.api.definition.SpellDefinition;
 import com.extremecraft.api.definition.TechTreeDefinition;
+import com.extremecraft.api.definition.WorldgenFeatureDefinition;
 import com.extremecraft.api.registration.ExtremeCraftApiProvider;
 
 import java.util.Collection;
@@ -50,6 +53,18 @@ public final class ExtremeCraftAPI {
         requireProvider().registerAbility(definition);
     }
 
+    public static void registerSpell(SpellDefinition definition) {
+        requireProvider().registerSpell(definition);
+    }
+
+    public static void registerClass(ClassDefinition definition) {
+        requireProvider().registerClass(definition);
+    }
+
+    public static void registerWorldgenFeature(WorldgenFeatureDefinition definition) {
+        requireProvider().registerWorldgenFeature(definition);
+    }
+
     public static void registerTechTree(TechTreeDefinition definition) {
         requireProvider().registerTechTree(definition);
     }
@@ -80,6 +95,18 @@ public final class ExtremeCraftAPI {
 
     public static Collection<AbilityDefinition> abilities() {
         return requireProvider().abilities();
+    }
+
+    public static Collection<SpellDefinition> spells() {
+        return requireProvider().spells();
+    }
+
+    public static Collection<ClassDefinition> classes() {
+        return requireProvider().classes();
+    }
+
+    public static Collection<WorldgenFeatureDefinition> worldgenFeatures() {
+        return requireProvider().worldgenFeatures();
     }
 
     public static Collection<TechTreeDefinition> techTrees() {

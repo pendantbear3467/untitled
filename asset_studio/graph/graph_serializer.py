@@ -21,8 +21,22 @@ class GraphSerializer:
                     "title": node.title,
                     "x": node.x,
                     "y": node.y,
-                    "inputs": [{"name": p.name, "port_type": p.port_type} for p in node.inputs],
-                    "outputs": [{"name": p.name, "port_type": p.port_type} for p in node.outputs],
+                    "inputs": [
+                        {
+                            "name": p.name,
+                            "port_type": p.port_type,
+                            "direction": getattr(p, "direction", "input"),
+                        }
+                        for p in node.inputs
+                    ],
+                    "outputs": [
+                        {
+                            "name": p.name,
+                            "port_type": p.port_type,
+                            "direction": getattr(p, "direction", "output"),
+                        }
+                        for p in node.outputs
+                    ],
                     "parameters": node.parameters,
                     "execution_state": node.execution_state,
                     "last_error": node.last_error,

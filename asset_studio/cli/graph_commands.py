@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import zipfile
-from pathlib import Path
 
 from asset_studio.graph.graph_engine import GraphEngine
 from asset_studio.workspace.workspace_manager import AssetStudioContext

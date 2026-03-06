@@ -39,6 +39,11 @@ def run_compile_command(args: argparse.Namespace, context) -> int:
         for source in result.generated_java_sources:
             print(f"- {source}")
 
+    if result.documentation_paths:
+        print("Generated documentation:")
+        for doc in result.documentation_paths:
+            print(f"- {doc}")
+
     if result.conflicts:
         print("Conflicts detected:")
         for conflict in result.conflicts:

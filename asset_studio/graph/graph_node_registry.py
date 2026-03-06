@@ -110,6 +110,20 @@ def _material_from_inputs(node: BaseGraphNode, inputs: dict[str, object]) -> str
     return str(value or "mythril")
 
 
+def _to_int(value: object, default: int) -> int:
+    try:
+        return int(str(value)) if value is not None else default
+    except (TypeError, ValueError):
+        return default
+
+
+def _to_float(value: object, default: float) -> float:
+    try:
+        return float(str(value)) if value is not None else default
+    except (TypeError, ValueError):
+        return default
+
+
 @register_node(
     "MaterialNode",
     category="Materials",
@@ -125,7 +139,7 @@ def exec_material(node: BaseGraphNode, _: dict[str, object], context) -> list[st
     material = str(node.parameters.get("material", "mythril"))
     OreGenerator(context).generate(
         material=material,
-        tier=int(node.parameters.get("tier", 4)),
+        tier=_to_int(node.parameters.get("tier", 4), 4),
         texture_style=str(node.parameters.get("style", "metallic")),
     )
     return [f"material:{material}"]
@@ -151,10 +165,10 @@ def exec_tool(node: BaseGraphNode, inputs: dict[str, object], context) -> list[s
     ToolGenerator(context).generate(
         tool_name=tool_name,
         material=material,
-        durability=int(node.parameters.get("durability", 1800)),
-        attack_damage=float(node.parameters.get("attack_damage", 7.0)),
-        mining_speed=float(node.parameters.get("mining_speed", 9.0)),
-        tier=int(node.parameters.get("tier", 4)),
+        durability=_to_int(node.parameters.get("durability", 1800), 1800),
+        attack_damage=_to_float(node.parameters.get("attack_damage", 7.0), 7.0),
+        mining_speed=_to_float(node.parameters.get("mining_speed", 9.0), 9.0),
+        tier=_to_int(node.parameters.get("tier", 4), 4),
         texture_style=str(node.parameters.get("style", "metallic")),
     )
     return [f"tool:{tool_name}"]
@@ -174,7 +188,7 @@ def exec_armor(node: BaseGraphNode, inputs: dict[str, object], context) -> list[
     material = _material_from_inputs(node, inputs)
     ArmorGenerator(context).generate(
         material=material,
-        tier=int(node.parameters.get("tier", 4)),
+        tier=_to_int(node.parameters.get("tier", 4), 4),
         texture_style=str(node.parameters.get("style", "metallic")),
     )
     return [f"armor:{material}"]
@@ -378,7 +392,7 @@ def exec_skill_modifier(node: BaseGraphNode, inputs: dict[str, object], context)
 def exec_skill_unlock(node: BaseGraphNode, inputs: dict[str, object], context) -> list[str]:
     _ = context
     src = str(inputs.get("input_skill", "skill"))
-    return [f"skill_unlock:{src}:level={int(node.parameters.get('unlock_level', 10))}"]
+    return [f"skill_unlock:{src}:level={_to_int(node.parameters.get('unlock_level', 10), 10)}"]
 
 
 @register_node(
@@ -414,7 +428,7 @@ def exec_machine(node: BaseGraphNode, inputs: dict[str, object], context) -> lis
 def exec_energy_input(node: BaseGraphNode, inputs: dict[str, object], context) -> list[str]:
     _ = context
     machine = str(inputs.get("input_machine", node.parameters.get("machine_name", "machine")))
-    return [f"energy:{machine}:{int(node.parameters.get('energy_per_tick', 80))}"]
+    return [f"energy:{machine}:{_to_int(node.parameters.get('energy_per_tick', 80), 80)}"]
 
 
 @register_node(
@@ -452,7 +466,10 @@ def exec_recipe_machine(node: BaseGraphNode, _: dict[str, object], context) -> l
 )
 def exec_processing(node: BaseGraphNode, _: dict[str, object], context) -> list[str]:
     _ = context
-    return [f"processing:duration={int(node.parameters.get('duration', 200))}:parallel={bool(node.parameters.get('parallel', False))}"]
+    return [
+        f"processing:duration={_to_int(node.parameters.get('duration', 200), 200)}:"
+        f"parallel={bool(node.parameters.get('parallel', False))}"
+    ]
 
 
 def discover_graph_plugins(workspace_root: Path) -> None:

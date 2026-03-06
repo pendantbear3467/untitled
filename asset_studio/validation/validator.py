@@ -6,6 +6,7 @@ from asset_studio.validation.asset_validator import validate_assets
 from asset_studio.validation.datapack_validator import validate_datapack
 from asset_studio.validation.issue_types import ValidationIssue
 from asset_studio.validation.model_validator import validate_models
+from asset_studio.validation.registry_validator import validate_registry_conflicts
 from asset_studio.validation.texture_validator import validate_textures
 from asset_studio.workspace.workspace_manager import AssetStudioContext
 
@@ -33,6 +34,7 @@ def run_validation_pipeline(context: AssetStudioContext) -> ValidationReport:
     issues.extend(validate_models(context))
     issues.extend(validate_textures(context))
     issues.extend(validate_datapack(context))
+    issues.extend(validate_registry_conflicts(context))
 
     for validator in context.plugins.validators.values():
         if callable(validator):

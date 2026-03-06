@@ -10,6 +10,7 @@ from compiler.asset_builder import AssetBuilder
 from compiler.code_generator import CodeGenerator
 from compiler.datapack_builder import DatapackBuilder
 from compiler.dependency_resolver import Conflict, DependencyResolver
+from compiler.documentation_generator import DocumentationGenerator
 from extremecraft_sdk.api.sdk import ExtremeCraftSDK
 
 
@@ -23,6 +24,7 @@ class ModuleBuildResult:
     generated_paths: list[Path] = field(default_factory=list)
     generated_java_sources: list[Path] = field(default_factory=list)
     dependency_load_order: list[str] = field(default_factory=list)
+    documentation_paths: list[Path] = field(default_factory=list)
 
 
 class ModuleBuilder:
@@ -35,6 +37,7 @@ class ModuleBuilder:
         self.asset_builder = AssetBuilder()
         self.datapack_builder = DatapackBuilder()
         self.dependency_resolver = DependencyResolver(workspace_root=context.workspace_root)
+        self.documentation_generator = DocumentationGenerator(repo_root=context.repo_root)
 
     def build_expansion(self, addon_name: str) -> ModuleBuildResult:
         addon = self.sdk.load_addon(addon_name)
@@ -53,6 +56,7 @@ class ModuleBuilder:
         java_source = self.code_generator.generate_registry_code(addon, module_root)
         self.asset_builder.build(self.context.workspace_root, module_root)
         datapack_root = self.datapack_builder.build(self.context.workspace_root, module_root, addon=addon)
+        docs = self.documentation_generator.generate(addon, module_root, resolution)
 
         manifest = {
             "name": addon.name,
@@ -68,6 +72,7 @@ class ModuleBuilder:
             "conflicts": [conflict.__dict__ for conflict in resolution.conflicts],
             "generated_files": [str(path) for path in generated.generated_paths],
             "generated_java_sources": [str(path) for path in self.code_generator.generated_sources],
+            "documentation": [str(path) for path in docs],
             "datapack_root": str(datapack_root),
         }
         manifest_path = module_root / "module_manifest.json"
@@ -83,6 +88,7 @@ class ModuleBuilder:
             generated_paths=generated.generated_paths,
             generated_java_sources=self.code_generator.generated_sources,
             dependency_load_order=resolution.load_order,
+            documentation_paths=docs,
         )
 
     def _package_module(self, module_root: Path, addon_name: str) -> Path:

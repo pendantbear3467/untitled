@@ -6,6 +6,7 @@ from pathlib import Path
 
 from PIL import Image
 
+from asset_studio.plugins.marketplace import PluginMarketplace
 from asset_studio.plugins.plugin_loader import load_plugins
 from asset_studio.textures.procedural_texture_engine import ProceduralTextureEngine
 from asset_studio.workspace.asset_database import AssetDatabase
@@ -86,6 +87,7 @@ class WorkspaceManager:
             "graphs",
             "addons",
             "workspace_plugins",
+            "plugin_marketplace",
         ]:
             (self.workspace_root / rel).mkdir(parents=True, exist_ok=True)
 
@@ -122,6 +124,9 @@ class WorkspaceManager:
             plugins.gui_editors.update(workspace_plugins.gui_editors)
             plugins.datapack_rules.update(workspace_plugins.datapack_rules)
             plugins.graph_nodes.update(workspace_plugins.graph_nodes)
+            plugins.metadata.update(workspace_plugins.metadata)
+
+        PluginMarketplace(self.workspace_root).write_index(plugins.metadata)
 
         return AssetStudioContext(
             workspace_root=self.workspace_root,

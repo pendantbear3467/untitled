@@ -6,6 +6,14 @@ This demonstrates extended plugin registration points.
 from pathlib import Path
 
 
+PLUGIN_METADATA = {
+    "name": "create-compat",
+    "version": "0.1.0",
+    "dependencies": [],
+    "compatible_platform_version": ">=1.0.0",
+}
+
+
 class CreateRecipeTemplateProvider:
     name = "create_compat_recipes"
 
