@@ -58,8 +58,8 @@
   "key.extremecraft.class_ability": "Class Ability",
   "key.extremecraft.cast_spell": "Cast Spell",
   "item.extremecraft.spell_book": "Spell Book",
-  "key.extremecraft.ability_slot_1": "Ability Slot 1",
-  "key.extremecraft.ability_slot_2": "Ability Slot 2",
-  "key.extremecraft.ability_slot_3": "Ability Slot 3",
-  "key.extremecraft.ability_slot_4": "Ability Slot 4"
+  "key.extremecraft.ability_slot_1": "Ability Slot 1 (Q)",
+  "key.extremecraft.ability_slot_2": "Ability Slot 2 (E)",
+  "key.extremecraft.ability_slot_3": "Ability Slot 3 (R)",
+  "key.extremecraft.ability_slot_4": "Ability Slot 4 (F)"
 }
