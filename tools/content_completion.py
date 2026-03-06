@@ -622,3 +622,193 @@ def generate_content() -> dict[str, int]:
                     "conditions": [{"condition": "minecraft:survives_explosion"}],
                 }],
             }))
+
+    pickaxe_tag = RES / "data" / "minecraft" / "tags" / "blocks" / "mineable" / "pickaxe.json"
+    needs_stone_tag = RES / "data" / "minecraft" / "tags" / "blocks" / "needs_stone_tool.json"
+    for tag_path in (pickaxe_tag, needs_stone_tag):
+        data = json.loads(tag_path.read_text(encoding="utf-8"))
+        values = set(data.get("values", []))
+        before = len(values)
+        for block in runtime_blocks:
+            values.add(f"extremecraft:{block}")
+        data["values"] = sorted(values)
+        if len(values) != before:
+            tag_path.write_text(json_dump(data), encoding="utf-8")
+            created["tag_updates"] += 1
+
+    for mat in materials:
+        feature_id = mat.id if mat.id.endswith("_ore") else f"{mat.id}_ore"
+        ore_block = f"{mat.id}_ore"
+        cfg_file = WORLDGEN_CFG / f"{feature_id}.json"
+        placed_file = WORLDGEN_PLACED / f"{feature_id}.json"
+        biome_file = BIOME_MOD / f"add_{feature_id}.json"
+
+        if not cfg_file.exists():
+            if any("the_nether" in b for b in mat.biomes):
+                targets = [{"target": {"predicate_type": "minecraft:tag_match", "tag": "minecraft:base_stone_nether"}, "state": {"Name": f"extremecraft:{ore_block}"}}]
+            elif any("the_end" in b for b in mat.biomes):
+                targets = [{"target": {"predicate_type": "minecraft:block_match", "block": "minecraft:end_stone"}, "state": {"Name": f"extremecraft:{ore_block}"}}]
+            else:
+                targets = [
+                    {"target": {"predicate_type": "minecraft:tag_match", "tag": "minecraft:stone_ore_replaceables"}, "state": {"Name": f"extremecraft:{ore_block}"}},
+                    {"target": {"predicate_type": "minecraft:tag_match", "tag": "minecraft:deepslate_ore_replaceables"}, "state": {"Name": f"extremecraft:{ore_block}"}},
+                ]
+            created["worldgen_files"] += int(write_json_missing(cfg_file, {"type": "minecraft:ore", "config": {"size": mat.vein_size, "discard_chance_on_air_exposure": 0, "targets": targets}}))
+        if not placed_file.exists():
+            created["worldgen_files"] += int(write_json_missing(placed_file, {
+                "feature": f"extremecraft:{feature_id}",
+                "placement": [
+                    {"count": mat.vein_count, "type": "minecraft:count"},
+                    {"type": "minecraft:in_square"},
+                    {"type": "minecraft:height_range", "height": {"type": "minecraft:uniform", "min_inclusive": {"absolute": mat.min_y}, "max_inclusive": {"absolute": mat.max_y}}},
+                    {"type": "minecraft:biome"},
+                ],
+            }))
+        if not biome_file.exists():
+            biome_tag = "#minecraft:is_overworld"
+            if any("the_nether" in b for b in mat.biomes):
+                biome_tag = "#minecraft:is_nether"
+            elif any("the_end" in b for b in mat.biomes):
+                biome_tag = "#minecraft:is_end"
+            created["worldgen_files"] += int(write_json_missing(biome_file, {"type": "forge:add_features", "biomes": biome_tag, "features": [f"extremecraft:{feature_id}"], "step": "underground_ores"}))
+
+    lang = json.loads(LANG_FILE.read_text(encoding="utf-8"))
+    keys_before = len(lang)
+    for item in sorted(runtime_items):
+        key = f"item.extremecraft.{item}"
+        if key not in lang:
+            lang[key] = humanize_id(item)
+    for block in sorted(runtime_blocks):
+        key = f"block.extremecraft.{block}"
+        if key not in lang:
+            lang[key] = humanize_id(block)
+    if len(lang) != keys_before:
+        LANG_FILE.write_text(json_dump(lang), encoding="utf-8")
+    created["lang_keys"] += len(lang) - keys_before
+
+    item_colors = {
+        "magic items": (122, 92, 220, 255),
+        "technology items": (63, 149, 203, 255),
+        "tools": (120, 120, 120, 255),
+        "armor": (144, 144, 144, 255),
+        "components": (97, 164, 120, 255),
+    }
+    category_lookup = {}
+    for cname, ids in graph["categories"].items():
+        for i in ids:
+            category_lookup[i] = cname
+
+    for item in sorted(runtime_items):
+        model_path = ASSETS / "models" / "item" / f"{item}.json"
+        tex_path = ITEM_TEXTURES / f"{item}.png"
+        if not model_path.exists() or tex_path.exists():
+            continue
+        color = item_colors.get(category_lookup.get(item, "components"), (128, 128, 128, 255))
+        write_placeholder_png(tex_path, color)
+        created["item_textures"] += 1
+
+    if ABILITY_DATA.exists():
+        for ability in sorted(p.stem for p in ABILITY_DATA.glob("*.json")):
+            icon = ABILITY_TEXTURES / f"{ability}.png"
+            if icon.exists():
+                continue
+            write_placeholder_png(icon, (80, 130, 240, 255))
+            created["ability_icons"] += 1
+
+    return created
+
+
+def write_placeholder_png(path: Path, rgba: tuple[int, int, int, int], size: int = 16) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    r, g, b, a = rgba
+    pixels = []
+    for y in range(size):
+        row = bytearray([0])
+        for x in range(size):
+            border = x in (0, size - 1) or y in (0, size - 1)
+            diag = x == y or x + y == size - 1
+            if border:
+                row.extend((20, 20, 20, 255))
+            elif diag:
+                row.extend((min(255, r + 40), min(255, g + 40), min(255, b + 40), a))
+            else:
+                row.extend((r, g, b, a))
+        pixels.append(bytes(row))
+    raw = b"".join(pixels)
+    compressed = zlib.compress(raw, level=9)
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+    ihdr = struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0)
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", compressed) + chunk(b"IEND", b"")
+    path.write_bytes(png)
+
+
+def validate_content() -> tuple[bool, list[str]]:
+    graph = build_runtime_graph()
+    runtime_items = set(graph["runtime_items"])
+    runtime_blocks = set(graph["runtime_blocks"])
+    lang = json.loads(LANG_FILE.read_text(encoding="utf-8"))
+    errors: list[str] = []
+
+    for item in sorted(runtime_items):
+        if f"item.extremecraft.{item}" not in lang:
+            errors.append(f"Missing lang key for item: {item}")
+    for block in sorted(runtime_blocks):
+        if f"block.extremecraft.{block}" not in lang:
+            errors.append(f"Missing lang key for block: {block}")
+
+    for block in sorted(runtime_blocks):
+        if not (LOOT_BLOCKS / f"{block}.json").exists():
+            errors.append(f"Missing loot table: {block}")
+
+    for item in sorted(runtime_items):
+        model = ASSETS / "models" / "item" / f"{item}.json"
+        tex = ITEM_TEXTURES / f"{item}.png"
+        if model.exists() and not tex.exists():
+            errors.append(f"Missing item texture: {item}")
+
+    outputs = parse_existing_recipe_outputs()
+    for item in sorted(runtime_items):
+        if item in outputs:
+            continue
+        if item.endswith("_ore") and (LOOT_BLOCKS / f"{item}.json").exists():
+            continue
+        if item.endswith("_block") and (LOOT_BLOCKS / f"{item}.json").exists():
+            continue
+        if item in runtime_blocks and (LOOT_BLOCKS / f"{item}.json").exists():
+            continue
+        errors.append(f"No acquisition path detected: {item}")
+
+    return (len(errors) == 0, errors)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="ExtremeCraft content completion and validation")
+    parser.add_argument("command", choices=("generate", "validate", "graph"))
+    args = parser.parse_args()
+
+    if args.command == "graph":
+        REPORT_DIR.mkdir(parents=True, exist_ok=True)
+        GRAPH_FILE.write_text(json_dump(build_runtime_graph()), encoding="utf-8")
+        print(f"Wrote runtime graph: {GRAPH_FILE}")
+        return 0
+
+    if args.command == "generate":
+        created = generate_content()
+        print(json.dumps(created, indent=2))
+        return 0
+
+    ok, errors = validate_content()
+    if ok:
+        print("Content validation passed.")
+        return 0
+    print("Content validation failed:")
+    for e in errors:
+        print(f" - {e}")
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
