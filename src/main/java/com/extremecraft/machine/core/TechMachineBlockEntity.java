@@ -6,7 +6,8 @@ import com.extremecraft.future.registry.TechBlockEntities;
 import com.extremecraft.machine.menu.TechMachineMenu;
 import com.extremecraft.machine.recipe.MachineProcessingRecipe;
 import com.extremecraft.machine.recipe.ModTechRecipeTypes;
-import com.extremecraft.machine.sync.MachineStateSyncProvider;`r`nimport com.extremecraft.machines.base.AbstractMachineBlockEntity;
+import com.extremecraft.machine.sync.MachineStateSyncProvider;
+import com.extremecraft.machines.base.AbstractMachineBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -29,19 +30,15 @@ import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.items.ItemStackHandler;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.Optional;
 
 public class TechMachineBlockEntity extends AbstractMachineBlockEntity implements MenuProvider, MachineStateSyncProvider {
-    private static final Logger LOGGER = LogManager.getLogger();
-    private static final long DEBUG_LOG_INTERVAL_TICKS = 200L;
-
     public static final int INPUT_SLOT = 0;
     public static final int FUEL_SLOT = 1;
-    public static final int OUTPUT_SLOT = 2;`r`n    private static final int DATA_VERSION = 1;`r`n    private static final int DATA_VERSION = 1;
+    public static final int OUTPUT_SLOT = 2;
+    private static final int DATA_VERSION = 1;
 
     private int progress;
     private int maxProgress = 120;
@@ -50,7 +47,6 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
 
     private String cachedRecipeId = "";
     private long nextRecipeLookupTick;
-    private long nextDebugLogTick;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -192,12 +188,6 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
         produced.setCount(produced.getCount() * Math.max(1, definition.outputMultiplier()));
 
         if (energyStorage.getEnergyStored() < energyPerTick || !canOutput(produced)) {
-            if (energyStorage.getEnergyStored() < energyPerTick) {
-                debugLog("[Machine] {} waiting for energy {}/{}", definition.id(), energyStorage.getEnergyStored(), energyPerTick);
-            } else {
-                debugLog("[Machine] {} output blocked for stack {}", definition.id(), produced.getItem());
-            }
-
             if (!canOutput(produced) && progress != 0) {
                 progress = 0;
                 changed = true;
@@ -216,7 +206,6 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
         if (progress >= maxProgress) {
             progress = 0;
             craft(produced);
-            debugLog("[Machine] {} crafted {}x{}", definition.id(), produced.getCount(), produced.getItem());
         }
 
         return changed;
@@ -268,7 +257,7 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
         ItemStack input = itemHandler.getStackInSlot(INPUT_SLOT);
         if (input.isEmpty()) {
             cachedRecipeId = "";
-            nextRecipeLookupTick = 0L;`r`n        if (dataVersion <= 0) {`r`n            progress = Math.max(0, progress);`r`n            maxProgress = Math.max(1, maxProgress);`r`n        }
+            nextRecipeLookupTick = 0L;
             return Optional.empty();
         }
 
@@ -406,18 +395,17 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
         return data;
     }
 
-    private void debugLog(String format, Object... args) {
-        if (level == null || !LOGGER.isDebugEnabled()) {
-            return;
-        }
-
-        long now = level.getGameTime();
-        if (now < nextDebugLogTick) {
-            return;
-        }
-
-        nextDebugLogTick = now + DEBUG_LOG_INTERVAL_TICKS;
-        LOGGER.debug(format, args);
+    @Override
+    public CompoundTag machineSyncTag() {
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("data_version", DATA_VERSION);
+        tag.putString("machine", getMachineId());
+        tag.putInt("progress", progress);
+        tag.putInt("max_progress", maxProgress);
+        tag.putInt("fuel_burn_time", fuelBurnTime);
+        tag.putInt("fuel_burn_time_total", fuelBurnTimeTotal);
+        tag.putInt("energy", energyStorage.getEnergyStored());
+        return tag;
     }
 
     @Override
@@ -432,7 +420,9 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {`r`n        tag.putInt("data_version", DATA_VERSION);`r`n        tag.putInt("data_version", DATA_VERSION);`r`n        tag.putInt("progress", progress);
+    protected void saveAdditional(CompoundTag tag) {
+        tag.putInt("data_version", DATA_VERSION);
+        tag.putInt("progress", progress);
         tag.putInt("max_progress", maxProgress);
         tag.putInt("fuel_burn_time", fuelBurnTime);
         tag.putInt("fuel_burn_time_total", fuelBurnTimeTotal);
@@ -440,12 +430,20 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
     }
 
     @Override
-    public void load(CompoundTag tag) {`r`n        super.load(tag);`r`n        int dataVersion = tag.getInt("data_version");`r`n        int dataVersion = tag.getInt("data_version");
+    public void load(CompoundTag tag) {
+        super.load(tag);
+        int dataVersion = tag.getInt("data_version");
         progress = tag.getInt("progress");
         maxProgress = Math.max(1, tag.getInt("max_progress"));
         fuelBurnTime = Math.max(0, tag.getInt("fuel_burn_time"));
         fuelBurnTimeTotal = Math.max(0, tag.getInt("fuel_burn_time_total"));
-        cachedRecipeId = "";`r`n        nextRecipeLookupTick = 0L;`r`n        if (dataVersion <= 0) {`r`n            progress = Math.max(0, progress);`r`n            maxProgress = Math.max(1, maxProgress);`r`n        }`r`n`r`n        if (dataVersion <= 0) {`r`n            progress = Math.max(0, progress);`r`n            maxProgress = Math.max(1, maxProgress);`r`n        }
+        cachedRecipeId = "";
+        nextRecipeLookupTick = 0L;
+
+        if (dataVersion <= 0) {
+            progress = Math.max(0, progress);
+            maxProgress = Math.max(1, maxProgress);
+        }
     }
 
     @Override
@@ -465,5 +463,3 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
         return true;
     }
 }
-
-

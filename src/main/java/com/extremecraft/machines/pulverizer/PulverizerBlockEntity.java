@@ -1,6 +1,7 @@
 package com.extremecraft.machines.pulverizer;
 
 import com.extremecraft.config.Config;
+import com.extremecraft.machine.sync.MachineStateSyncProvider;
 import com.extremecraft.machines.base.AbstractMachineBlockEntity;
 import com.extremecraft.machines.recipe.ModRecipeTypes;
 import com.extremecraft.machines.recipe.PulverizerRecipe;
@@ -8,6 +9,7 @@ import com.extremecraft.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -22,12 +24,15 @@ import net.minecraftforge.items.ItemStackHandler;
 import javax.annotation.Nullable;
 import java.util.Optional;
 
-public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements MenuProvider {
+public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements MenuProvider, MachineStateSyncProvider {
     public static final int INPUT_SLOT = 0;
     public static final int OUTPUT_SLOT = 1;
+    private static final int DATA_VERSION = 1;
 
     private int progress = 0;
     private int maxProgress = 120;
+    private String cachedRecipeId = "";
+    private long nextRecipeLookupTick;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -129,9 +134,49 @@ public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements
             return Optional.empty();
         }
 
+        ItemStack input = itemHandler.getStackInSlot(INPUT_SLOT);
+        if (input.isEmpty()) {
+            cachedRecipeId = "";
+            nextRecipeLookupTick = 0L;
+            return Optional.empty();
+        }
+
         SimpleContainer inv = new SimpleContainer(1);
-        inv.setItem(0, itemHandler.getStackInSlot(INPUT_SLOT));
-        return level.getRecipeManager().getRecipeFor(ModRecipeTypes.PULVERIZING, inv, level);
+        inv.setItem(0, input);
+
+        Optional<PulverizerRecipe> cached = lookupCachedRecipe(inv);
+        if (cached.isPresent()) {
+            return cached;
+        }
+
+        long now = level.getGameTime();
+        if (now < nextRecipeLookupTick) {
+            return Optional.empty();
+        }
+
+        int lookupCooldown = Math.max(1, Config.COMMON.machines.recipeLookupIntervalTicks.get());
+        nextRecipeLookupTick = now + lookupCooldown;
+
+        Optional<PulverizerRecipe> found = level.getRecipeManager().getRecipeFor(ModRecipeTypes.PULVERIZING, inv, level);
+        cachedRecipeId = found.map(recipe -> recipe.getId().toString()).orElse("");
+        return found;
+    }
+
+    private Optional<PulverizerRecipe> lookupCachedRecipe(SimpleContainer inv) {
+        if (level == null || cachedRecipeId.isBlank()) {
+            return Optional.empty();
+        }
+
+        ResourceLocation id = ResourceLocation.tryParse(cachedRecipeId);
+        if (id == null) {
+            cachedRecipeId = "";
+            return Optional.empty();
+        }
+
+        return level.getRecipeManager().byKey(id)
+                .filter(raw -> raw instanceof PulverizerRecipe)
+                .map(raw -> (PulverizerRecipe) raw)
+                .filter(recipe -> recipe.matches(inv, level));
     }
 
     private boolean canOutput(ItemStack output) {
@@ -171,6 +216,17 @@ public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements
     }
 
     @Override
+    public CompoundTag machineSyncTag() {
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("data_version", DATA_VERSION);
+        tag.putString("machine", "pulverizer");
+        tag.putInt("progress", progress);
+        tag.putInt("max_progress", maxProgress);
+        tag.putInt("energy", energyStorage.getEnergyStored());
+        return tag;
+    }
+
+    @Override
     public Component getDisplayName() {
         return Component.translatable("block.extremecraft.pulverizer");
     }
@@ -183,6 +239,7 @@ public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements
 
     @Override
     protected void saveAdditional(CompoundTag tag) {
+        tag.putInt("data_version", DATA_VERSION);
         tag.putInt("progress", progress);
         tag.putInt("max_progress", maxProgress);
         super.saveAdditional(tag);
@@ -191,8 +248,16 @@ public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements
     @Override
     public void load(CompoundTag tag) {
         super.load(tag);
-        progress = tag.getInt("progress");
+        int dataVersion = tag.getInt("data_version");
+        progress = Math.max(0, tag.getInt("progress"));
         maxProgress = Math.max(1, tag.getInt("max_progress"));
+        cachedRecipeId = "";
+        nextRecipeLookupTick = 0L;
+
+        if (dataVersion <= 0) {
+            progress = Math.max(0, progress);
+            maxProgress = Math.max(1, maxProgress);
+        }
     }
 
     @Override
