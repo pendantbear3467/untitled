@@ -5,6 +5,7 @@ import com.extremecraft.net.DwNetwork;
 import com.extremecraft.net.OffhandActionC2S;
 import com.extremecraft.net.OffhandActionC2S.Action;
 import com.extremecraft.network.ModNetwork;
+import com.extremecraft.network.packet.ActivateAbilityC2SPacket;
 import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
 import com.extremecraft.network.packet.SpellCastPacket;
 import com.extremecraft.progression.classsystem.ability.ClassAbilityClientState;
@@ -113,6 +114,8 @@ public final class DwClientHooks {
         if (DwKeybinds.CAST_SPELL != null && DwKeybinds.CAST_SPELL.consumeClick()) {
             ModNetwork.CHANNEL.sendToServer(new SpellCastPacket());
         }
+
+        processAbilitySlotKeybinds(mc.player);
     }
 
     @SubscribeEvent
@@ -161,3 +164,4 @@ public final class DwClientHooks {
         return false;
     }
 }
+

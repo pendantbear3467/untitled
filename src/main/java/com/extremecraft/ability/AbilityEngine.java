@@ -2,7 +2,12 @@ package com.extremecraft.ability;
 
 import com.extremecraft.classsystem.ClassAbilityBindings;
 import com.extremecraft.magic.mana.ManaService;
+import com.extremecraft.progression.capability.PlayerStatsApi;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.phys.Vec3;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -20,7 +25,11 @@ public final class AbilityEngine {
             "fireball", 18,
             "dash", 8,
             "shockwave", 20,
-            "heal", 14
+            "heal", 14,
+            "firebolt", 16,
+            "blink", 20,
+            "arcane_shield", 24,
+            "meteor", 42
     );
 
     private static boolean initialized;
@@ -45,6 +54,10 @@ public final class AbilityEngine {
     }
 
     public static AbilityCastResult cast(ServerPlayer player, String requestedAbilityId) {
+        return cast(player, requestedAbilityId, -1);
+    }
+
+    public static AbilityCastResult cast(ServerPlayer player, String requestedAbilityId, int slotIndex) {
         initialize();
         if (player == null) {
             return AbilityCastResult.failure("", AbilityCastResult.Status.INVALID_REQUEST, "player_missing");
@@ -73,18 +86,28 @@ public final class AbilityEngine {
 
         int manaCost = resolveManaCost(abilityId, definition);
         if (manaCost > 0 && !ManaService.tryConsume(player, manaCost)) {
+            AbilityCooldownManager.sync(player);
             return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.INSUFFICIENT_MANA, "insufficient_mana");
         }
 
         AbilityContext context = AbilityContext.of(player, definition).withManaCost(manaCost);
+        AbilityTargetResolver.TargetBundle targets = AbilityTargetResolver.resolve(context);
+        if (!isTargetValid(definition, targets)) {
+            return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.INVALID_TARGET, "invalid_target");
+        }
+
+        AbilityContext resolvedContext = context.withTarget(
+                targets.entities().isEmpty() ? null : targets.entities().get(0),
+                targets.center()
+        );
 
         boolean executed;
         try {
             if (ability != null) {
-                ability.execute(context);
+                ability.execute(resolvedContext);
                 executed = true;
             } else {
-                executed = AbilityExecutor.executeDefinition(context);
+                executed = AbilityExecutor.executeDefinition(resolvedContext);
             }
         } catch (Exception ex) {
             LOGGER.error("[AbilityEngine] Failed to execute ability {}", abilityId, ex);
@@ -95,9 +118,10 @@ public final class AbilityEngine {
             return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.EXECUTION_FAILED, "execution_failed");
         }
 
-        int cooldownTicks = resolveCooldown(ability, definition);
+        int cooldownTicks = resolveCooldown(player, ability, definition);
         AbilityCooldownManager.startCooldown(player, abilityId, cooldownTicks);
         AbilityCooldownManager.sync(player);
+        emitCastFeedback(player, resolvedContext.position(), slotIndex);
         return AbilityCastResult.success(abilityId);
     }
 
@@ -163,12 +187,22 @@ public final class AbilityEngine {
             return true;
         }
 
-        // Existing class gating remains for definition-only abilities.
         if (ability == null || !definition.requiredClass().isBlank()) {
             return ClassAbilityBindings.canUseAbility(player, abilityId, definition.requiredClass());
         }
 
         return true;
+    }
+
+    private static boolean isTargetValid(AbilityDefinition definition, AbilityTargetResolver.TargetBundle targets) {
+        if (definition == null) {
+            return true;
+        }
+
+        return switch (definition.targetType()) {
+            case ENTITY -> !targets.entities().isEmpty();
+            case SELF, AREA, PROJECTILE, NONE -> true;
+        };
     }
 
     private static int resolveManaCost(String abilityId, AbilityDefinition definition) {
@@ -178,11 +212,45 @@ public final class AbilityEngine {
         return BUILTIN_MANA_COSTS.getOrDefault(abilityId, 0);
     }
 
-    private static int resolveCooldown(Ability ability, AbilityDefinition definition) {
-        if (definition != null && definition.cooldownTicks() > 0) {
-            return definition.cooldownTicks();
+    private static int resolveCooldown(ServerPlayer player, Ability ability, AbilityDefinition definition) {
+        int baseCooldown = definition != null && definition.cooldownTicks() > 0
+                ? definition.cooldownTicks()
+                : ability == null ? 0 : Math.max(0, ability.getCooldown());
+
+        if (baseCooldown <= 0) {
+            return 0;
         }
-        return ability == null ? 0 : Math.max(0, ability.getCooldown());
+
+        double reduction = PlayerStatsApi.get(player)
+                .map(stats -> stats.cooldownReduction())
+                .orElse(0.0D);
+        reduction = Math.max(0.0D, Math.min(0.80D, reduction));
+        return Math.max(0, (int) Math.round(baseCooldown * (1.0D - reduction)));
+    }
+
+    private static void emitCastFeedback(ServerPlayer player, Vec3 center, int slotIndex) {
+        Vec3 spawn = center == null ? player.position().add(0.0D, player.getEyeHeight(), 0.0D) : center;
+        player.serverLevel().sendParticles(
+                ParticleTypes.ENCHANT,
+                spawn.x,
+                spawn.y,
+                spawn.z,
+                12,
+                0.25D,
+                0.25D,
+                0.25D,
+                0.02D
+        );
+
+        float pitch = slotIndex >= 0 ? Math.max(0.8F, 1.1F - (slotIndex * 0.05F)) : 1.0F;
+        player.level().playSound(
+                null,
+                player.blockPosition(),
+                SoundEvents.AMETHYST_BLOCK_CHIME,
+                SoundSource.PLAYERS,
+                0.55F,
+                pitch
+        );
     }
 
     private static String normalize(String abilityId) {
@@ -218,5 +286,3 @@ public final class AbilityEngine {
         }
     }
 }
-
-

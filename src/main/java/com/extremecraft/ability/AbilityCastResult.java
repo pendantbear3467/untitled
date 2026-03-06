@@ -8,6 +8,7 @@ public record AbilityCastResult(String abilityId, Status status, String message,
         NOT_UNLOCKED,
         ON_COOLDOWN,
         INSUFFICIENT_MANA,
+        INVALID_TARGET,
         EXECUTION_FAILED,
         ERROR
     }
@@ -28,3 +29,4 @@ public record AbilityCastResult(String abilityId, Status status, String message,
         return status == Status.SUCCESS;
     }
 }
+

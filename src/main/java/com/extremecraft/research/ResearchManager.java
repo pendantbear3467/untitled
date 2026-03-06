@@ -6,6 +6,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
@@ -19,9 +20,11 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
 
 public class ResearchManager extends SimpleJsonResourceReloadListener {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<String, ResearchDefinition> RESEARCH = new LinkedHashMap<>();
 
     public ResearchManager() {
@@ -43,12 +46,23 @@ public class ResearchManager extends SimpleJsonResourceReloadListener {
             ProgressionStage requiredStage = ProgressionStage.byName(GsonHelper.getAsString(json, "required_stage", "PRIMITIVE"))
                     .orElse(ProgressionStage.PRIMITIVE);
 
-            JsonArray unlocksJson = GsonHelper.getAsJsonArray(json, "unlocks", new JsonArray());
             List<String> unlocks = new ArrayList<>();
-            for (JsonElement unlockValue : unlocksJson) {
-                String unlock = unlockValue.getAsString();
-                if (!unlock.isBlank()) {
-                    unlocks.add(unlock);
+            JsonElement unlocksElement = json.get("unlocks");
+            if (unlocksElement != null && !unlocksElement.isJsonNull()) {
+                if (unlocksElement.isJsonArray()) {
+                    for (JsonElement unlockValue : unlocksElement.getAsJsonArray()) {
+                        String unlock = unlockValue.getAsString();
+                        if (!unlock.isBlank()) {
+                            unlocks.add(unlock);
+                        }
+                    }
+                } else if (unlocksElement.isJsonPrimitive()) {
+                    String unlock = unlocksElement.getAsString();
+                    if (!unlock.isBlank()) {
+                        unlocks.add(unlock);
+                    }
+                } else {
+                    LOGGER.warn("Skipping invalid unlocks format in research {} from {}", id, entry.getKey());
                 }
             }
 

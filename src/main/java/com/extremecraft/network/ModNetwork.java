@@ -3,6 +3,7 @@ package com.extremecraft.network;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.network.packet.AbilityCastPacket;
 import com.extremecraft.network.packet.AbilitySyncPacket;
+import com.extremecraft.network.packet.ActivateAbilityC2SPacket;
 import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
 import com.extremecraft.network.packet.InstallModuleC2SPacket;
 import com.extremecraft.network.packet.ManaSyncPacket;
@@ -72,6 +73,12 @@ public final class ModNetwork {
                 .encoder(AbilityCastPacket::encode)
                 .decoder(AbilityCastPacket::decode)
                 .consumerMainThread(AbilityCastPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(ActivateAbilityC2SPacket.class, nextId())
+                .encoder(ActivateAbilityC2SPacket::encode)
+                .decoder(ActivateAbilityC2SPacket::decode)
+                .consumerMainThread(ActivateAbilityC2SPacket::handle)
                 .add();
 
         CHANNEL.messageBuilder(ActivateClassAbilityC2SPacket.class, nextId())
@@ -187,3 +194,4 @@ public final class ModNetwork {
         return index++;
     }
 }
+
