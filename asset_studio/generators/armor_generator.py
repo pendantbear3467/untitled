@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from asset_studio.generators.item_generator import ItemGenerator
-from asset_studio.project.workspace_manager import AssetStudioContext
+from asset_studio.workspace.workspace_manager import AssetStudioContext
 
 
 class ArmorGenerator:

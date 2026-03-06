@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from asset_studio.minecraft.model_templates import block_model_from_blockbench
-from asset_studio.project.workspace_manager import AssetStudioContext
+from asset_studio.blockbench.model_converter import bbmodel_to_minecraft_json
+from asset_studio.workspace.workspace_manager import AssetStudioContext
 
 
 def import_bbmodel(path: Path, context: AssetStudioContext) -> str:
@@ -13,7 +13,7 @@ def import_bbmodel(path: Path, context: AssetStudioContext) -> str:
 
     context.write_json(
         context.workspace_root / "assets" / "models" / "block" / f"{model_name}.json",
-        block_model_from_blockbench(model_name, data),
+        bbmodel_to_minecraft_json(data, model_name),
     )
 
     texture_path = context.workspace_root / "assets" / "textures" / "block" / f"{model_name}.png"

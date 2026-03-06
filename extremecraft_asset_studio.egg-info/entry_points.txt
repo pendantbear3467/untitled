@@ -1,0 +1,2 @@
+[console_scripts]
+assetstudio = asset_studio.main:main

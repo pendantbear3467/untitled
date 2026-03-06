@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from asset_studio.generators.block_generator import BlockGenerator
 from asset_studio.minecraft.loot_templates import simple_self_drop
-from asset_studio.project.workspace_manager import AssetStudioContext
+from asset_studio.workspace.workspace_manager import AssetStudioContext
 
 
 class MachineGenerator:

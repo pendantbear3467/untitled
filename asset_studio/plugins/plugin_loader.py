@@ -1,21 +1,13 @@
 from __future__ import annotations
 
 import importlib.util
-from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
 
+from asset_studio.plugins.plugin_api import PluginAPI
 
-@dataclass
-class PluginRegistry:
-    generators: dict[str, object] = field(default_factory=dict)
-    templates: dict[str, object] = field(default_factory=dict)
-    textures: dict[str, object] = field(default_factory=dict)
-    exporters: dict[str, object] = field(default_factory=dict)
-
-
-def load_plugins(plugins_dir: Path) -> PluginRegistry:
-    registry = PluginRegistry()
+def load_plugins(plugins_dir: Path) -> PluginAPI:
+    registry = PluginAPI()
     if not plugins_dir.exists():
         return registry
 

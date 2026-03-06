@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from asset_studio.minecraft.blockstate_templates import single_variant_blockstate
 from asset_studio.minecraft.model_templates import cube_block_model
-from asset_studio.project.workspace_manager import AssetStudioContext
+from asset_studio.workspace.workspace_manager import AssetStudioContext
 
 
 class BlockGenerator:

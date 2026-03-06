@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from asset_studio.minecraft.model_templates import item_model_template
-from asset_studio.project.workspace_manager import AssetStudioContext
+from asset_studio.workspace.workspace_manager import AssetStudioContext
 
 
 class ItemGenerator:
