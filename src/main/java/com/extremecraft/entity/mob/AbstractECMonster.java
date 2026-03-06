@@ -2,6 +2,10 @@ package com.extremecraft.entity.mob;
 
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -39,6 +43,15 @@ public abstract class AbstractECMonster extends Monster {
         this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, AbstractVillager.class, true));
     }
 
+    @Override
+    public boolean doHurtTarget(Entity entity) {
+        boolean hurt = super.doHurtTarget(entity);
+        if (hurt) {
+            this.playSound(getAttackSoundEvent(), 1.0F, 0.95F + this.random.nextFloat() * 0.1F);
+        }
+        return hurt;
+    }
+
     protected boolean hasTargetInRange(double range) {
         LivingEntity target = this.getTarget();
         return target != null && this.distanceToSqr(target) <= range * range;
@@ -58,6 +71,25 @@ public abstract class AbstractECMonster extends Monster {
             return;
         }
         serverLevel.sendParticles(particle, this.getX(), this.getY(0.55D), this.getZ(), count, spread, spread * 0.6D, spread, speed);
+    }
+
+    protected SoundEvent getAttackSoundEvent() {
+        return SoundEvents.ZOMBIE_ATTACK_WOODEN_DOOR;
+    }
+
+    @Override
+    protected SoundEvent getAmbientSound() {
+        return SoundEvents.ZOMBIE_AMBIENT;
+    }
+
+    @Override
+    protected SoundEvent getHurtSound(DamageSource source) {
+        return SoundEvents.ZOMBIE_HURT;
+    }
+
+    @Override
+    protected SoundEvent getDeathSound() {
+        return SoundEvents.ZOMBIE_DEATH;
     }
 
     @Override

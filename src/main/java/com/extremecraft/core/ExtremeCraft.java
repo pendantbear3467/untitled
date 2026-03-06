@@ -74,6 +74,7 @@ import com.extremecraft.registry.ModBlocks;
 import com.extremecraft.registry.ModItems;
 import com.extremecraft.registry.ModMenuTypes;
 import com.extremecraft.registry.ModRecipeSerializers;
+import com.extremecraft.registry.ModSounds;
 import com.extremecraft.research.ResearchCapabilityEvents;
 import com.extremecraft.research.ResearchManager;
 import com.extremecraft.server.DwServerTicker;
@@ -106,6 +107,7 @@ public final class ExtremeCraft {
         ModBlockEntities.BLOCK_ENTITIES.register(modBus);
         ModMenuTypes.MENUS.register(modBus);
         ModRecipeSerializers.RECIPE_SERIALIZERS.register(modBus);
+        ModSounds.SOUND_EVENTS.register(modBus);
 
         TechBlocks.BLOCKS.register(modBus);
         TechItems.ITEMS.register(modBus);
@@ -223,6 +225,7 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
 
 
 

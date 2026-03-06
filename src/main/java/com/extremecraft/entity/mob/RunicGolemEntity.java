@@ -1,6 +1,9 @@
 package com.extremecraft.entity.mob;
 
+import com.extremecraft.registry.ModSounds;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
@@ -36,6 +39,26 @@ public final class RunicGolemEntity extends AbstractECMonster {
         if (this.tickCount % 180 == 0) {
             shockwave();
         }
+    }
+
+    @Override
+    protected SoundEvent getAttackSoundEvent() {
+        return ModSounds.RUNIC_GOLEM_ATTACK.get();
+    }
+
+    @Override
+    protected SoundEvent getAmbientSound() {
+        return ModSounds.RUNIC_GOLEM_AMBIENT.get();
+    }
+
+    @Override
+    protected SoundEvent getHurtSound(DamageSource source) {
+        return ModSounds.RUNIC_GOLEM_HURT.get();
+    }
+
+    @Override
+    protected SoundEvent getDeathSound() {
+        return ModSounds.RUNIC_GOLEM_DEATH.get();
     }
 
     private void slamAttack() {

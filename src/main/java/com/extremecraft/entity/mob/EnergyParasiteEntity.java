@@ -1,7 +1,10 @@
 package com.extremecraft.entity.mob;
 
+import com.extremecraft.registry.ModSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
@@ -43,6 +46,26 @@ public final class EnergyParasiteEntity extends AbstractECMonster {
                 this.emitAbilityParticles(ParticleTypes.WITCH, 12, 0.35D, 0.02D);
             }
         }
+    }
+
+    @Override
+    protected SoundEvent getAttackSoundEvent() {
+        return ModSounds.ENERGY_PARASITE_ATTACK.get();
+    }
+
+    @Override
+    protected SoundEvent getAmbientSound() {
+        return ModSounds.ENERGY_PARASITE_AMBIENT.get();
+    }
+
+    @Override
+    protected SoundEvent getHurtSound(DamageSource source) {
+        return ModSounds.ENERGY_PARASITE_HURT.get();
+    }
+
+    @Override
+    protected SoundEvent getDeathSound() {
+        return ModSounds.ENERGY_PARASITE_DEATH.get();
     }
 
     private int drainNearbyMachines(int radius, int maxTotalDrain) {

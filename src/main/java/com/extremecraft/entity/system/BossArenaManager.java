@@ -14,6 +14,10 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -32,9 +36,30 @@ public final class BossArenaManager {
     private static final TagKey<Structure> MACHINE_FORTRESS_ARENA = structureTag("machine_fortress_arena");
 
     private static final List<ArenaDefinition> ARENAS = List.of(
-            new ArenaDefinition("ancient_research_lab", ANCIENT_RESEARCH_LAB_ARENA, () -> ModEntities.ANCIENT_CORE_GUARDIAN.get(), 12),
-            new ArenaDefinition("void_temple", VOID_TEMPLE_ARENA, () -> ModEntities.VOID_TITAN.get(), 14),
-            new ArenaDefinition("machine_fortress", MACHINE_FORTRESS_ARENA, () -> ModEntities.OVERCHARGED_MACHINE_GOD.get(), 14)
+            new ArenaDefinition(
+                    "ancient_research_lab",
+                    ANCIENT_RESEARCH_LAB_ARENA,
+                    () -> ModEntities.ANCIENT_CORE_GUARDIAN.get(),
+                    () -> ModEntities.ANCIENT_SENTINEL.get(),
+                    new ResourceLocation(ECConstants.MODID, "chests/ancient_research_lab"),
+                    12
+            ),
+            new ArenaDefinition(
+                    "void_temple",
+                    VOID_TEMPLE_ARENA,
+                    () -> ModEntities.VOID_TITAN.get(),
+                    () -> ModEntities.VOID_STALKER.get(),
+                    new ResourceLocation(ECConstants.MODID, "chests/void_temple"),
+                    14
+            ),
+            new ArenaDefinition(
+                    "machine_fortress",
+                    MACHINE_FORTRESS_ARENA,
+                    () -> ModEntities.OVERCHARGED_MACHINE_GOD.get(),
+                    () -> ModEntities.TECH_CONSTRUCT.get(),
+                    new ResourceLocation(ECConstants.MODID, "chests/machine_fortress"),
+                    14
+            )
     );
 
     @SubscribeEvent
@@ -77,18 +102,20 @@ public final class BossArenaManager {
             return;
         }
 
-        if (spawnBoss(level, start.getBoundingBox(), center, bossType)) {
+        if (spawnBoss(level, start.getBoundingBox(), center, arena)) {
             state.markTriggered(arenaKey);
         }
     }
 
-    private static boolean spawnBoss(ServerLevel level, BoundingBox box, BlockPos center, EntityType<? extends Monster> bossType) {
-        Monster boss = bossType.create(level);
+    private static boolean spawnBoss(ServerLevel level, BoundingBox box, BlockPos center, ArenaDefinition arena) {
+        Monster boss = arena.bossType().get().create(level);
         if (boss == null) {
             return false;
         }
 
         BlockPos spawnPos = chooseSpawnPosition(level, box, center);
+        prepareArenaBlocks(level, spawnPos, arena);
+
         boss.moveTo(spawnPos.getX() + 0.5D, spawnPos.getY(), spawnPos.getZ() + 0.5D, level.random.nextFloat() * 360.0F, 0.0F);
         boss.finalizeSpawn(level, level.getCurrentDifficultyAt(spawnPos), MobSpawnType.STRUCTURE, null, null);
         boss.setPersistenceRequired();
@@ -98,6 +125,31 @@ public final class BossArenaManager {
                 40, 0.8D, 0.9D, 0.8D, 0.04D);
         level.playSound(null, spawnPos, SoundEvents.END_PORTAL_SPAWN, SoundSource.HOSTILE, 1.8F, 0.85F);
         return true;
+    }
+
+    private static void prepareArenaBlocks(ServerLevel level, BlockPos center, ArenaDefinition arena) {
+        BlockPos chestPos = center.offset(2, 0, 0);
+        BlockPos spawnerPos = center.offset(-2, 0, 0);
+
+        if (isOpen(level, chestPos)) {
+            level.setBlock(chestPos, Blocks.CHEST.defaultBlockState(), 3);
+        }
+
+        if (isOpen(level, spawnerPos)) {
+            level.setBlock(spawnerPos, Blocks.SPAWNER.defaultBlockState(), 3);
+        }
+
+        BlockEntity chestEntity = level.getBlockEntity(chestPos);
+        if (chestEntity instanceof ChestBlockEntity chest) {
+            chest.setLootTable(arena.lootTable(), level.random.nextLong());
+            chest.setChanged();
+        }
+
+        BlockEntity spawnerEntity = level.getBlockEntity(spawnerPos);
+        if (spawnerEntity instanceof SpawnerBlockEntity spawner) {
+            spawner.getSpawner().setEntityId(arena.spawnerEntity().get(), level, level.random, spawnerPos);
+            spawner.setChanged();
+        }
     }
 
     private static boolean hasExistingBoss(ServerLevel level, BlockPos center, EntityType<? extends Monster> bossType) {
@@ -126,6 +178,10 @@ public final class BossArenaManager {
                 && !below.getCollisionShape(level, pos.below()).isEmpty();
     }
 
+    private static boolean isOpen(ServerLevel level, BlockPos pos) {
+        return level.getBlockState(pos).getCollisionShape(level, pos).isEmpty();
+    }
+
     private static TagKey<Structure> structureTag(String id) {
         return TagKey.create(Registries.STRUCTURE, new ResourceLocation(ECConstants.MODID, id));
     }
@@ -134,7 +190,13 @@ public final class BossArenaManager {
         return level.dimension().location() + "|" + id + "|" + center.asLong();
     }
 
-    private record ArenaDefinition(String id, TagKey<Structure> structureTag, Supplier<EntityType<? extends Monster>> bossType,
-                                   int triggerRadius) {
+    private record ArenaDefinition(
+            String id,
+            TagKey<Structure> structureTag,
+            Supplier<EntityType<? extends Monster>> bossType,
+            Supplier<EntityType<? extends Monster>> spawnerEntity,
+            ResourceLocation lootTable,
+            int triggerRadius
+    ) {
     }
 }

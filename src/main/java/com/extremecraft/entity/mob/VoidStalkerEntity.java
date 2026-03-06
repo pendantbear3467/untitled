@@ -1,7 +1,10 @@
 package com.extremecraft.entity.mob;
 
+import com.extremecraft.registry.ModSounds;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.util.Mth;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -59,6 +62,26 @@ public final class VoidStalkerEntity extends AbstractECMonster {
         }
 
         return true;
+    }
+
+    @Override
+    protected SoundEvent getAttackSoundEvent() {
+        return ModSounds.VOID_STALKER_ATTACK.get();
+    }
+
+    @Override
+    protected SoundEvent getAmbientSound() {
+        return ModSounds.VOID_STALKER_AMBIENT.get();
+    }
+
+    @Override
+    protected SoundEvent getHurtSound(DamageSource source) {
+        return ModSounds.VOID_STALKER_HURT.get();
+    }
+
+    @Override
+    protected SoundEvent getDeathSound() {
+        return ModSounds.VOID_STALKER_DEATH.get();
     }
 
     private void ambushBehindTarget(LivingEntity target) {

@@ -1,8 +1,11 @@
 package com.extremecraft.entity.mob;
 
+import com.extremecraft.registry.ModSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
@@ -46,6 +49,26 @@ public final class ArcaneWraithEntity extends AbstractECMonster {
             this.setDeltaMovement(this.getDeltaMovement().add(0.0D, 0.14D, 0.0D));
             this.emitAbilityParticles(ParticleTypes.ENCHANT, 24, 0.55D, 0.05D);
         }
+    }
+
+    @Override
+    protected SoundEvent getAttackSoundEvent() {
+        return ModSounds.ARCANE_WRAITH_ATTACK.get();
+    }
+
+    @Override
+    protected SoundEvent getAmbientSound() {
+        return ModSounds.ARCANE_WRAITH_AMBIENT.get();
+    }
+
+    @Override
+    protected SoundEvent getHurtSound(DamageSource source) {
+        return ModSounds.ARCANE_WRAITH_HURT.get();
+    }
+
+    @Override
+    protected SoundEvent getDeathSound() {
+        return ModSounds.ARCANE_WRAITH_DEATH.get();
     }
 
     private void teleportNearTarget(LivingEntity target) {
