@@ -87,6 +87,150 @@ public final class Config {
         }
     }
 
+    private static int safeInt(ForgeConfigSpec.IntValue value, int defaultValue) {
+        try {
+            return value.get();
+        } catch (IllegalStateException ignored) {
+            return defaultValue;
+        }
+    }
+
+    private static double safeDouble(ForgeConfigSpec.DoubleValue value, double defaultValue) {
+        try {
+            return value.get();
+        } catch (IllegalStateException ignored) {
+            return defaultValue;
+        }
+    }
+
+    public static boolean areMachinesEnabled() {
+        return safeBoolean(COMMON.machines.enableMachines, true);
+    }
+
+    public static int machineTickInterval() {
+        return Math.max(1, safeInt(COMMON.machines.machineTickInterval, 1));
+    }
+
+    public static int cableTickInterval() {
+        return Math.max(1, safeInt(COMMON.machines.cableTickInterval, 1));
+    }
+
+    public static int recipeLookupIntervalTicks() {
+        return Math.max(1, safeInt(COMMON.machines.recipeLookupIntervalTicks, 8));
+    }
+
+    public static int neighborEnergyPushPerSide() {
+        return Math.max(0, safeInt(COMMON.machines.neighborEnergyPushPerSide, 1200));
+    }
+
+    public static boolean areFallbackMachineRecipesEnabled() {
+        return safeBoolean(COMMON.machines.enableFallbackRecipes, true);
+    }
+
+    public static boolean isHammerAoeEnabled() {
+        return safeBoolean(COMMON.tools.enableHammerAoe, true);
+    }
+
+    public static int hammerAoeRadius() {
+        return Math.max(0, safeInt(COMMON.tools.hammerAoeRadius, 1));
+    }
+
+    public static double hammerMaxMineableHardness() {
+        return Math.max(0.0D, safeDouble(COMMON.tools.hammerMaxMineableHardness, 50.0D));
+    }
+
+    public static boolean isDrillTeleportEnabled() {
+        return safeBoolean(COMMON.tools.enableDrillTeleport, true);
+    }
+
+    public static double drillTeleportBaseDistance() {
+        return Math.max(1.0D, safeDouble(COMMON.tools.drillTeleportBaseDistance, 4.0D));
+    }
+
+    public static double drillTeleportDistancePerLevel() {
+        return Math.max(0.0D, safeDouble(COMMON.tools.drillTeleportDistancePerLevel, 2.0D));
+    }
+
+    public static int drillTeleportCooldownBaseTicks() {
+        return Math.max(0, safeInt(COMMON.tools.drillTeleportCooldownBaseTicks, 80));
+    }
+
+    public static int drillTeleportCooldownReductionPerLevel() {
+        return Math.max(0, safeInt(COMMON.tools.drillTeleportCooldownReductionPerLevel, 10));
+    }
+
+    public static int drillTeleportMinCooldownTicks() {
+        return Math.max(0, safeInt(COMMON.tools.drillTeleportMinCooldownTicks, 20));
+    }
+
+    public static boolean areAbilitiesEnabled() {
+        return safeBoolean(COMMON.abilities.enableAbilities, true);
+    }
+
+    public static boolean areClassAbilitiesEnabled() {
+        return safeBoolean(COMMON.abilities.enableClassAbilities, true);
+    }
+
+    public static double abilityCooldownScale() {
+        return Math.max(0.1D, safeDouble(COMMON.abilities.cooldownScale, 1.0D));
+    }
+
+    public static double abilityManaCostScale() {
+        return Math.max(0.1D, safeDouble(COMMON.abilities.manaCostScale, 1.0D));
+    }
+
+    public static boolean isBossArenaSpawnsEnabled() {
+        return safeBoolean(COMMON.mobs.enableBossArenaSpawns, true);
+    }
+
+    public static int bossArenaCheckIntervalTicks() {
+        return Math.max(10, safeInt(COMMON.mobs.bossArenaCheckIntervalTicks, 40));
+    }
+
+    public static int maxNearbySameMob() {
+        return Math.max(0, safeInt(COMMON.mobs.maxNearbySameMob, 14));
+    }
+
+    public static double nearbyMobCheckRadius() {
+        return Math.max(4.0D, safeDouble(COMMON.mobs.nearbyMobCheckRadius, 48.0D));
+    }
+
+    public static int energyParasiteDrainIntervalTicks() {
+        return Math.max(10, safeInt(COMMON.mobs.energyParasiteDrainIntervalTicks, 40));
+    }
+
+    public static int energyParasiteDrainRadius() {
+        return Math.max(1, safeInt(COMMON.mobs.energyParasiteDrainRadius, 4));
+    }
+
+    public static int energyParasiteMaxDrainPerPulse() {
+        return Math.max(0, safeInt(COMMON.mobs.energyParasiteMaxDrainPerPulse, 260));
+    }
+
+    public static boolean isMachineHazardEnabled() {
+        return safeBoolean(COMMON.mobs.enableMachineHazard, true);
+    }
+
+    public static int machineHazardScanIntervalTicks() {
+        return Math.max(20, safeInt(COMMON.mobs.machineHazardScanIntervalTicks, 100));
+    }
+
+    public static int machineHazardHorizontalRadius() {
+        return Math.max(1, safeInt(COMMON.mobs.machineHazardHorizontalRadius, 8));
+    }
+
+    public static int machineHazardVerticalRadius() {
+        return Math.max(1, safeInt(COMMON.mobs.machineHazardVerticalRadius, 3));
+    }
+
+    public static int machineHazardRequiredMachines() {
+        return Math.max(1, safeInt(COMMON.mobs.machineHazardRequiredMachines, 4));
+    }
+
+    public static double machineHazardDamage() {
+        return Math.max(0.0D, safeDouble(COMMON.mobs.machineHazardDamage, 2.0D));
+    }
+
     private static Set<String> parseMachineIds(List<? extends String> rawIds) {
         Set<String> parsed = new LinkedHashSet<>();
         for (String raw : rawIds) {
@@ -147,14 +291,36 @@ public final class Config {
     public static final class Common {
         public final Machines machines;
         public final Tools tools;
+        public final Abilities abilities;
         public final Mobs mobs;
 
         private Common(ForgeConfigSpec.Builder builder) {
             this.machines = new Machines(builder);
             this.tools = new Tools(builder);
+            this.abilities = new Abilities(builder);
             this.mobs = new Mobs(builder);
         }
     }
+
+        public static final class Abilities {
+        public final ForgeConfigSpec.BooleanValue enableAbilities;
+        public final ForgeConfigSpec.BooleanValue enableClassAbilities;
+        public final ForgeConfigSpec.DoubleValue cooldownScale;
+        public final ForgeConfigSpec.DoubleValue manaCostScale;
+
+        private Abilities(ForgeConfigSpec.Builder builder) {
+            builder.push("abilities");
+            enableAbilities = builder.comment("Master switch for active ability casting requests.")
+                .define("enableAbilities", true);
+            enableClassAbilities = builder.comment("Allow class ability activation requests.")
+                .define("enableClassAbilities", true);
+            cooldownScale = builder.comment("Global ability cooldown multiplier (1.0 = default).")
+                .defineInRange("cooldownScale", 1.0D, 0.1D, 5.0D);
+            manaCostScale = builder.comment("Global ability mana-cost multiplier (1.0 = default).")
+                .defineInRange("manaCostScale", 1.0D, 0.1D, 5.0D);
+            builder.pop();
+        }
+        }
 
     public static final class Machines {
         public final ForgeConfigSpec.BooleanValue enableMachines;
