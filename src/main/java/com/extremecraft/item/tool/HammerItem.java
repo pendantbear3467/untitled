@@ -29,7 +29,7 @@ public class HammerItem extends PickaxeItem {
 
     @Override
     public boolean onBlockStartBreak(ItemStack stack, BlockPos pos, Player player) {
-        if (!Config.COMMON.tools.enableHammerAoe.get()) {
+        if (!Config.isHammerAoeEnabled()) {
             return false;
         }
 
@@ -80,7 +80,7 @@ public class HammerItem extends PickaxeItem {
             return false;
         }
 
-        float maxHardness = (float) Math.max(0.0D, Config.COMMON.tools.hammerMaxMineableHardness.get());
+        float maxHardness = (float) Config.hammerMaxMineableHardness();
         float hardness = state.getDestroySpeed(level, pos);
         if (hardness < 0.0F || hardness > maxHardness) {
             return false;
@@ -116,7 +116,7 @@ public class HammerItem extends PickaxeItem {
     }
 
     public List<BlockPos> getAOEBlocks(BlockPos center, Direction face) {
-        int radius = Math.max(0, Config.COMMON.tools.hammerAoeRadius.get());
+        int radius = Config.hammerAoeRadius();
         List<BlockPos> result = new ArrayList<>((radius * 2 + 1) * (radius * 2 + 1));
 
         for (int u = -radius; u <= radius; u++) {

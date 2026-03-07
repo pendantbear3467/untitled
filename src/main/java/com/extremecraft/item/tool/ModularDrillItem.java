@@ -45,7 +45,7 @@ public class ModularDrillItem extends PickaxeItem {
             return super.use(level, player, hand);
         }
 
-        if (!Config.COMMON.tools.enableDrillTeleport.get()) {
+        if (!Config.isDrillTeleportEnabled()) {
             return super.use(level, player, hand);
         }
 
@@ -66,8 +66,8 @@ public class ModularDrillItem extends PickaxeItem {
             return InteractionResultHolder.fail(stack);
         }
 
-        double baseDistance = Math.max(1.0D, Config.COMMON.tools.drillTeleportBaseDistance.get());
-        double perLevel = Math.max(0.0D, Config.COMMON.tools.drillTeleportDistancePerLevel.get());
+        double baseDistance = Config.drillTeleportBaseDistance();
+        double perLevel = Config.drillTeleportDistancePerLevel();
         double distance = Math.min(64.0D, baseDistance + (perLevel * teleportLevel));
 
         Vec3 look = serverPlayer.getLookAngle();
@@ -79,9 +79,9 @@ public class ModularDrillItem extends PickaxeItem {
 
         serverPlayer.teleportTo(target.x, serverPlayer.getY(), target.z);
 
-        int baseCooldown = Math.max(0, Config.COMMON.tools.drillTeleportCooldownBaseTicks.get());
-        int reduction = Math.max(0, Config.COMMON.tools.drillTeleportCooldownReductionPerLevel.get()) * teleportLevel;
-        int minimum = Math.max(0, Config.COMMON.tools.drillTeleportMinCooldownTicks.get());
+        int baseCooldown = Config.drillTeleportCooldownBaseTicks();
+        int reduction = Config.drillTeleportCooldownReductionPerLevel() * teleportLevel;
+        int minimum = Config.drillTeleportMinCooldownTicks();
         int cooldown = Math.max(minimum, baseCooldown - reduction);
         if (cooldown > 0) {
             serverPlayer.getCooldowns().addCooldown(this, cooldown);

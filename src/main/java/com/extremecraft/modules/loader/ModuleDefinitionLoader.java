@@ -44,10 +44,13 @@ public class ModuleDefinitionLoader {
         @Override
         protected void apply(Map<ResourceLocation, JsonElement> jsonMap, ResourceManager resourceManager, ProfilerFiller profiler) {
             Map<String, ModuleDefinition> loaded = new LinkedHashMap<>();
+            int malformed = 0;
 
             for (Map.Entry<ResourceLocation, JsonElement> entry : jsonMap.entrySet()) {
                 try {
                     if (!entry.getValue().isJsonObject()) {
+                        malformed++;
+                        LOGGER.warn("[Module] Skipping non-object module definition {}", entry.getKey());
                         continue;
                     }
 
@@ -90,7 +93,9 @@ public class ModuleDefinitionLoader {
                         LOGGER.warn("[Module] Duplicate module id '{}' detected; keeping latest from {}", id, entry.getKey());
                     }
                 } catch (RuntimeException ex) {
-                    LOGGER.warn("[Module] Skipping malformed module definition {}: {}", entry.getKey(), ex.getMessage());
+                    malformed++;
+                    LOGGER.warn("[Module] Skipping malformed module definition {} ({}): {}",
+                            entry.getKey(), ex.getClass().getSimpleName(), ex.getMessage());
                 }
             }
 
@@ -99,6 +104,9 @@ public class ModuleDefinitionLoader {
             } else {
                 ToolModuleRegistry.replaceAll(loaded);
             }
+
+            LOGGER.info("[Module] Reloaded {} module definitions: loaded={}, malformed={}",
+                    type.name().toLowerCase(Locale.ROOT), loaded.size(), malformed);
         }
     }
 }

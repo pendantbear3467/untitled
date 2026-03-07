@@ -37,10 +37,13 @@ public class ModuleAbilityLoader {
         @Override
         protected void apply(Map<ResourceLocation, JsonElement> jsonMap, ResourceManager resourceManager, ProfilerFiller profiler) {
             Map<String, ModuleAbilityDefinition> loaded = new LinkedHashMap<>();
+            int malformed = 0;
 
             for (Map.Entry<ResourceLocation, JsonElement> entry : jsonMap.entrySet()) {
                 try {
                     if (!entry.getValue().isJsonObject()) {
+                        malformed++;
+                        LOGGER.warn("[Module] Skipping non-object module ability {}", entry.getKey());
                         continue;
                     }
 
@@ -74,11 +77,14 @@ public class ModuleAbilityLoader {
                         LOGGER.warn("[Module] Duplicate module ability id '{}' detected; keeping latest from {}", id, entry.getKey());
                     }
                 } catch (RuntimeException ex) {
-                    LOGGER.warn("[Module] Skipping malformed module ability {}: {}", entry.getKey(), ex.getMessage());
+                    malformed++;
+                    LOGGER.warn("[Module] Skipping malformed module ability {} ({}): {}",
+                            entry.getKey(), ex.getClass().getSimpleName(), ex.getMessage());
                 }
             }
 
             ModuleAbilityRegistry.replaceAll(loaded);
+            LOGGER.info("[Module] Reloaded module abilities: loaded={}, malformed={}", loaded.size(), malformed);
         }
     }
 }

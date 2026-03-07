@@ -1,5 +1,6 @@
 package com.extremecraft.network.packet;
 
+import com.extremecraft.config.Config;
 import com.extremecraft.network.security.ServerPacketLimiter;
 import com.extremecraft.progression.classsystem.ability.ClassAbilityService;
 import net.minecraft.network.FriendlyByteBuf;
@@ -42,6 +43,11 @@ public record ActivateClassAbilityC2SPacket(String abilityId) {
 
             if (!ServerPacketLimiter.allow(sender, "ability.class", 1, 4, 20)) {
                 LOGGER.debug("[Network] Rate-limited ActivateClassAbilityC2SPacket from {}", sender.getScoreboardName());
+                return;
+            }
+
+            if (!Config.areClassAbilitiesEnabled()) {
+                LOGGER.debug("[Network] Dropped ActivateClassAbilityC2SPacket because class abilities are disabled in common config");
                 return;
             }
 

@@ -75,12 +75,12 @@ public final class MobSpawns {
             return false;
         }
 
-        int maxNearby = Math.max(0, Config.COMMON.mobs.maxNearbySameMob.get());
+        int maxNearby = Config.maxNearbySameMob();
         if (maxNearby <= 0) {
             return true;
         }
 
-        double radius = Math.max(4.0D, Config.COMMON.mobs.nearbyMobCheckRadius.get());
+        double radius = Config.nearbyMobCheckRadius();
         int nearbyCount = queryNearbyCount(level, entityType, pos, radius);
         return nearbyCount < maxNearby;
     }

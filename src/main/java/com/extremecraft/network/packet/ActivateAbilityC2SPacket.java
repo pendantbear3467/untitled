@@ -2,6 +2,7 @@ package com.extremecraft.network.packet;
 
 import com.extremecraft.ability.AbilityCastResult;
 import com.extremecraft.ability.AbilityEngine;
+import com.extremecraft.config.Config;
 import com.extremecraft.network.security.ServerPacketLimiter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -56,6 +57,11 @@ public record ActivateAbilityC2SPacket(UUID playerUuid, String abilityId, Vec3 t
 
             if (!ServerPacketLimiter.allow(sender, "ability.cast", 1, 6, 20)) {
                 LOGGER.debug("[Network] Rate-limited ActivateAbilityC2SPacket from {}", sender.getScoreboardName());
+                return;
+            }
+
+            if (!Config.areAbilitiesEnabled()) {
+                LOGGER.debug("[Network] Dropped ActivateAbilityC2SPacket because abilities are disabled in common config");
                 return;
             }
 

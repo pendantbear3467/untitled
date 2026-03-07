@@ -69,11 +69,11 @@ public final class BossArenaManager {
             return;
         }
 
-        if (!Config.COMMON.mobs.enableBossArenaSpawns.get() || player.isSpectator()) {
+        if (!Config.isBossArenaSpawnsEnabled() || player.isSpectator()) {
             return;
         }
 
-        int interval = Math.max(10, Config.COMMON.mobs.bossArenaCheckIntervalTicks.get());
+        int interval = Config.bossArenaCheckIntervalTicks();
         int offset = Math.floorMod(player.getUUID().hashCode(), interval);
         if (((player.tickCount + offset) % interval) != 0) {
             return;

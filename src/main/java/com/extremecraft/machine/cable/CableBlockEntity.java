@@ -44,11 +44,11 @@ public class CableBlockEntity extends BlockEntity {
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, CableBlockEntity cable) {
-        if (level.isClientSide || !Config.COMMON.machines.enableMachines.get()) {
+        if (level.isClientSide || !Config.areMachinesEnabled()) {
             return;
         }
 
-        int interval = Math.max(1, Config.COMMON.machines.cableTickInterval.get());
+        int interval = Config.cableTickInterval();
         if (interval > 1 && ((level.getGameTime() + pos.asLong()) % interval) != 0L) {
             return;
         }

@@ -71,7 +71,7 @@ public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements
             return;
         }
 
-        int tickInterval = Math.max(1, Config.COMMON.machines.machineTickInterval.get());
+        int tickInterval = Config.machineTickInterval();
         if (tickInterval > 1 && ((level.getGameTime() + pos.asLong()) % tickInterval) != 0L) {
             return;
         }
@@ -154,7 +154,7 @@ public class PulverizerBlockEntity extends AbstractMachineBlockEntity implements
             return Optional.empty();
         }
 
-        int lookupCooldown = Math.max(1, Config.COMMON.machines.recipeLookupIntervalTicks.get());
+        int lookupCooldown = Config.recipeLookupIntervalTicks();
         nextRecipeLookupTick = now + lookupCooldown;
 
         Optional<PulverizerRecipe> found = level.getRecipeManager().getRecipeFor(ModRecipeTypes.PULVERIZING, inv, level);

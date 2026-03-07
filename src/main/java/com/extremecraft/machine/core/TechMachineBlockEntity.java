@@ -89,7 +89,7 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
             return;
         }
 
-        int tickInterval = Math.max(1, Config.COMMON.machines.machineTickInterval.get());
+        int tickInterval = Config.machineTickInterval();
         if (tickInterval > 1 && ((level.getGameTime() + pos.asLong()) % tickInterval) != 0L) {
             return;
         }
@@ -99,7 +99,7 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
                 ? be.tickGenerator(definition)
                 : be.tickProcessor(definition);
 
-        int transferPerSide = Math.max(0, Config.COMMON.machines.neighborEnergyPushPerSide.get());
+        int transferPerSide = Config.neighborEnergyPushPerSide();
         changed |= be.pushEnergyToNeighbors(transferPerSide);
 
         if (changed) {
@@ -163,7 +163,7 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
             energyPerTick = Math.max(definition.energyPerTick(), current.energyPerTick());
             produced = current.output();
         } else {
-            if (!Config.COMMON.machines.enableFallbackRecipes.get()) {
+            if (!Config.areFallbackMachineRecipesEnabled()) {
                 if (progress != 0) {
                     progress = 0;
                     changed = true;
@@ -274,7 +274,7 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
             return Optional.empty();
         }
 
-        int lookupCooldown = Math.max(1, Config.COMMON.machines.recipeLookupIntervalTicks.get());
+        int lookupCooldown = Config.recipeLookupIntervalTicks();
         nextRecipeLookupTick = now + lookupCooldown;
 
         Optional<MachineProcessingRecipe> found = level.getRecipeManager()

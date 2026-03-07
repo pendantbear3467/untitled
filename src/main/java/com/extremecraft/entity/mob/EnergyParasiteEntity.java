@@ -33,9 +33,9 @@ public final class EnergyParasiteEntity extends AbstractECMonster {
             return;
         }
 
-        int drainInterval = Math.max(10, Config.COMMON.mobs.energyParasiteDrainIntervalTicks.get());
-        int drainRadius = Math.max(1, Config.COMMON.mobs.energyParasiteDrainRadius.get());
-        int maxDrain = Math.max(0, Config.COMMON.mobs.energyParasiteMaxDrainPerPulse.get());
+        int drainInterval = Config.energyParasiteDrainIntervalTicks();
+        int drainRadius = Config.energyParasiteDrainRadius();
+        int maxDrain = Config.energyParasiteMaxDrainPerPulse();
 
         if (maxDrain > 0 && this.tickCount % drainInterval == 0) {
             int drained = drainNearbyMachines(drainRadius, maxDrain);

@@ -16,44 +16,41 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 public final class GameplayMechanicsEvents {
+    private static final long HAZARD_CACHE_TTL_TICKS = 20L;
+    private static final int HAZARD_CACHE_MAX_ENTRIES = 4096;
+    private static final Map<String, HazardSnapshot> HAZARD_SCAN_CACHE = new ConcurrentHashMap<>();
+
     @SubscribeEvent
     public void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide || !(event.player instanceof ServerPlayer player)) {
             return;
         }
 
-        if (!Config.COMMON.mobs.enableMachineHazard.get()) {
+        if (!Config.isMachineHazardEnabled()) {
             return;
         }
 
-        int interval = Math.max(20, Config.COMMON.mobs.machineHazardScanIntervalTicks.get());
+        int interval = Config.machineHazardScanIntervalTicks();
         int offset = Math.floorMod(player.getUUID().hashCode(), interval);
         if (((player.tickCount + offset) % interval) != 0) {
             return;
         }
 
-        int horizontalRadius = Math.max(1, Config.COMMON.mobs.machineHazardHorizontalRadius.get());
-        int verticalRadius = Math.max(1, Config.COMMON.mobs.machineHazardVerticalRadius.get());
+        int horizontalRadius = Config.machineHazardHorizontalRadius();
+        int verticalRadius = Config.machineHazardVerticalRadius();
 
-        int activeMachines = 0;
         BlockPos center = player.blockPosition();
         ServerLevel level = player.serverLevel();
+        int activeMachines = countActiveMachines(level, center, horizontalRadius, verticalRadius);
 
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-horizontalRadius, -verticalRadius, -horizontalRadius),
-                center.offset(horizontalRadius, verticalRadius, horizontalRadius))) {
-            BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof TechMachineBlockEntity machine
-                    && machine.getEnergyStorageExt().getEnergyStored() > machine.getEnergyStorageExt().getMaxEnergyStored() * 0.8F) {
-                activeMachines++;
-            }
-        }
-
-        int requiredMachines = Math.max(1, Config.COMMON.mobs.machineHazardRequiredMachines.get());
+        int requiredMachines = Config.machineHazardRequiredMachines();
         if (activeMachines >= requiredMachines) {
             if (!hasProtection(player)) {
-                float damage = (float) Math.max(0.0D, Config.COMMON.mobs.machineHazardDamage.get());
+                float damage = (float) Config.machineHazardDamage();
                 if (damage > 0.0F) {
                     CombatEngine.applyDamage(DamageContext.builder()
                             .attacker(null)
@@ -69,6 +66,34 @@ public final class GameplayMechanicsEvents {
                 player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 120, 0));
             }
         }
+    }
+
+    private static int countActiveMachines(ServerLevel level, BlockPos center, int horizontalRadius, int verticalRadius) {
+        long now = level.getGameTime();
+        String cacheKey = level.dimension().location() + "|" + (center.getX() >> 4) + "|" + (center.getZ() >> 4)
+                + "|" + horizontalRadius + "|" + verticalRadius;
+
+        HazardSnapshot cached = HAZARD_SCAN_CACHE.get(cacheKey);
+        if (cached != null && (now - cached.tick()) <= HAZARD_CACHE_TTL_TICKS) {
+            return cached.activeMachines();
+        }
+
+        int activeMachines = 0;
+        for (BlockPos pos : BlockPos.betweenClosed(
+                center.offset(-horizontalRadius, -verticalRadius, -horizontalRadius),
+                center.offset(horizontalRadius, verticalRadius, horizontalRadius))) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof TechMachineBlockEntity machine
+                    && machine.getEnergyStorageExt().getEnergyStored() > machine.getEnergyStorageExt().getMaxEnergyStored() * 0.8F) {
+                activeMachines++;
+            }
+        }
+
+        if (HAZARD_SCAN_CACHE.size() > HAZARD_CACHE_MAX_ENTRIES) {
+            HAZARD_SCAN_CACHE.clear();
+        }
+        HAZARD_SCAN_CACHE.put(cacheKey, new HazardSnapshot(now, activeMachines));
+        return activeMachines;
     }
 
     @SubscribeEvent
@@ -87,5 +112,8 @@ public final class GameplayMechanicsEvents {
     private boolean hasProtection(ServerPlayer player) {
         ItemStack chest = player.getInventory().armor.get(2);
         return !chest.isEmpty() && chest.getDescriptionId().contains("pioneer_chestplate");
+    }
+
+    private record HazardSnapshot(long tick, int activeMachines) {
     }
 }

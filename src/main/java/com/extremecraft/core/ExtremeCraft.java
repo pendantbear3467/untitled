@@ -42,6 +42,7 @@ import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.sync.RuntimeSyncEvents;
 import com.extremecraft.platform.CompatibilityGate;
 import com.extremecraft.platform.ExtremeCraftApiProviderImpl;
+import com.extremecraft.platform.OptionalCompatHooks;
 import com.extremecraft.platform.data.loader.PlatformDataLoaderBootstrap;
 import com.extremecraft.platform.data.sync.PlatformDataSyncEvents;
 import com.extremecraft.platform.module.CoreGameplayModule;
@@ -148,6 +149,7 @@ public final class ExtremeCraft {
                 ModuleRegistry.register(coreModule);
             }
             ExtremeCraftModuleLoader.loadAll(apiProvider);
+            OptionalCompatHooks.bootstrap();
 
             MinecraftForge.EVENT_BUS.register(new ProgressCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerStatsCapabilityEvents());
