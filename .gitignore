@@ -47,7 +47,9 @@ logs/
 *.log
 *.log.gz
 crash-reports/
+.env
 
 ### Python ###
 __pycache__/
 *.pyc
+.fake
