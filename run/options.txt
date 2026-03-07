@@ -125,6 +125,7 @@ key_key.extremecraft.ability_slot_1:key.keyboard.q
 key_key.extremecraft.ability_slot_2:key.keyboard.e
 key_key.extremecraft.ability_slot_3:key.keyboard.r
 key_key.extremecraft.ability_slot_4:key.keyboard.f
+key_key.extremecraft.dev_debug_overlay:key.keyboard.f10
 soundCategory_master:1.0
 soundCategory_music:1.0
 soundCategory_record:1.0

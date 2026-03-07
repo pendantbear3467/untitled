@@ -3,6 +3,7 @@ package com.extremecraft.progression.skilltree;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
@@ -12,8 +13,10 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
 
 public final class SkillTreeManager {
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<String, List<SkillNode>> TREES = new LinkedHashMap<>();
     private static final Map<String, SkillNode> NODE_BY_ID = new LinkedHashMap<>();
     private static final Map<String, List<Connection>> CONNECTION_CACHE = new LinkedHashMap<>();
@@ -27,109 +30,150 @@ public final class SkillTreeManager {
         Map<String, List<SkillNode>> loadedTrees = new LinkedHashMap<>();
 
         for (Map.Entry<ResourceLocation, JsonElement> entry : jsonMap.entrySet()) {
-            if (!entry.getValue().isJsonObject()) {
-                continue;
-            }
-
-            JsonObject root = entry.getValue().getAsJsonObject();
-            String treeId = root.has("tree") ? root.get("tree").getAsString() : entry.getKey().getPath();
-            if (treeId.contains("/")) {
-                treeId = treeId.substring(treeId.lastIndexOf('/') + 1);
-            }
-            treeId = treeId.trim().toLowerCase();
-            if (treeId.isBlank()) {
-                continue;
-            }
-
-            JsonArray nodesJson = root.has("nodes") && root.get("nodes").isJsonArray() ? root.getAsJsonArray("nodes") : new JsonArray();
-            List<SkillNode> nodes = new ArrayList<>();
-
-            for (JsonElement nodeElement : nodesJson) {
-                if (!nodeElement.isJsonObject()) {
+            try {
+                if (!entry.getValue().isJsonObject()) {
                     continue;
                 }
 
-                JsonObject node = nodeElement.getAsJsonObject();
-                String id = node.has("id") ? node.get("id").getAsString().trim().toLowerCase() : "";
-                if (id.isBlank()) {
+                JsonObject root = entry.getValue().getAsJsonObject();
+                String treeId;
+                if (root.has("tree")) {
+                    treeId = root.get("tree").getAsString();
+                } else if (root.has("tree_id")) {
+                    treeId = root.get("tree_id").getAsString();
+                } else {
+                    treeId = entry.getKey().getPath();
+                }
+
+                if (treeId.contains("/")) {
+                    treeId = treeId.substring(treeId.lastIndexOf('/') + 1);
+                }
+                treeId = treeId.trim().toLowerCase();
+                if (treeId.isBlank()) {
+                    LOGGER.warn("[SkillTree] Skipping tree with blank id from {}", entry.getKey());
                     continue;
                 }
 
-                int x = node.has("x") ? node.get("x").getAsInt() : 0;
-                int y = node.has("y") ? node.get("y").getAsInt() : 0;
-                int cost = Math.max(1, node.has("cost") ? node.get("cost").getAsInt() : 1);
-                int requiredLevel = Math.max(1, node.has("requiredLevel") ? node.get("requiredLevel").getAsInt() : 1);
+                JsonArray nodesJson = root.has("nodes") && root.get("nodes").isJsonArray() ? root.getAsJsonArray("nodes") : new JsonArray();
+                List<SkillNode> nodes = new ArrayList<>();
 
-                List<String> requires = new ArrayList<>();
-                if (node.has("requires") && node.get("requires").isJsonArray()) {
-                    for (JsonElement req : node.getAsJsonArray("requires")) {
-                        String reqId = req.getAsString().trim().toLowerCase();
-                        if (!reqId.isBlank()) {
-                            requires.add(reqId);
+                for (JsonElement nodeElement : nodesJson) {
+                    try {
+                        if (!nodeElement.isJsonObject()) {
+                            continue;
                         }
+
+                        JsonObject node = nodeElement.getAsJsonObject();
+                        String id = node.has("id") ? node.get("id").getAsString().trim().toLowerCase() : "";
+                        if (id.isBlank()) {
+                            continue;
+                        }
+
+                        int x = node.has("x") ? node.get("x").getAsInt() : 0;
+                        int y = node.has("y") ? node.get("y").getAsInt() : 0;
+                        int cost = Math.max(1, node.has("cost") ? node.get("cost").getAsInt() : 1);
+                        int requiredLevel = Math.max(1, node.has("requiredLevel") ? node.get("requiredLevel").getAsInt() : 1);
+
+                        List<String> requires = new ArrayList<>();
+                        if (node.has("requires") && node.get("requires").isJsonArray()) {
+                            for (JsonElement req : node.getAsJsonArray("requires")) {
+                                String reqId = req.getAsString().trim().toLowerCase();
+                                if (!reqId.isBlank()) {
+                                    requires.add(reqId);
+                                }
+                            }
+                        }
+                        if (node.has("requiredNodes") && node.get("requiredNodes").isJsonArray()) {
+                            for (JsonElement req : node.getAsJsonArray("requiredNodes")) {
+                                String reqId = req.getAsString().trim().toLowerCase();
+                                if (!reqId.isBlank() && !requires.contains(reqId)) {
+                                    requires.add(reqId);
+                                }
+                            }
+                        }
+                        if (node.has("required_nodes") && node.get("required_nodes").isJsonArray()) {
+                            for (JsonElement req : node.getAsJsonArray("required_nodes")) {
+                                String reqId = req.getAsString().trim().toLowerCase();
+                                if (!reqId.isBlank() && !requires.contains(reqId)) {
+                                    requires.add(reqId);
+                                }
+                            }
+                        }
+
+                        List<SkillModifier> modifiers = new ArrayList<>();
+                        if (node.has("modifiers") && node.get("modifiers").isJsonArray()) {
+                            for (JsonElement modElement : node.getAsJsonArray("modifiers")) {
+                                if (!modElement.isJsonObject()) {
+                                    continue;
+                                }
+
+                                JsonObject mod = modElement.getAsJsonObject();
+                                String modifierId = mod.has("type") ? mod.get("type").getAsString().trim().toLowerCase() : "";
+                                double value = mod.has("value") ? mod.get("value").getAsDouble() : 0.0D;
+                                String operation = mod.has("operation") ? mod.get("operation").getAsString() : "ADD";
+
+                                if (!modifierId.isBlank()) {
+                                    modifiers.add(new SkillModifier(modifierId, value, SkillModifier.Operation.byName(operation)));
+                                }
+                            }
+                        } else if (node.has("modifiers") && node.get("modifiers").isJsonObject()) {
+                            JsonObject modsObject = node.getAsJsonObject("modifiers");
+                            for (Map.Entry<String, JsonElement> modEntry : modsObject.entrySet()) {
+                                String modifierId = modEntry.getKey() == null ? "" : modEntry.getKey().trim().toLowerCase();
+                                if (modifierId.isBlank()) {
+                                    continue;
+                                }
+
+                                JsonElement valueElement = modEntry.getValue();
+                                if (valueElement == null || valueElement.isJsonNull()) {
+                                    continue;
+                                }
+
+                                if (valueElement.isJsonPrimitive() && valueElement.getAsJsonPrimitive().isNumber()) {
+                                    modifiers.add(new SkillModifier(modifierId, valueElement.getAsDouble(), SkillModifier.Operation.ADD));
+                                    continue;
+                                }
+
+                                if (valueElement.isJsonObject()) {
+                                    JsonObject modObject = valueElement.getAsJsonObject();
+                                    double value = modObject.has("value") ? modObject.get("value").getAsDouble() : 0.0D;
+                                    String operation = modObject.has("operation") ? modObject.get("operation").getAsString() : "ADD";
+                                    modifiers.add(new SkillModifier(modifierId, value, SkillModifier.Operation.byName(operation)));
+                                }
+                            }
+                        }
+
+                        // Legacy support: older trees used statModifiers object instead of modifiers.
+                        if (modifiers.isEmpty() && node.has("statModifiers") && node.get("statModifiers").isJsonObject()) {
+                            JsonObject legacyMods = node.getAsJsonObject("statModifiers");
+                            for (Map.Entry<String, JsonElement> modEntry : legacyMods.entrySet()) {
+                                String modifierId = modEntry.getKey() == null ? "" : modEntry.getKey().trim().toLowerCase();
+                                JsonElement valueElement = modEntry.getValue();
+                                if (modifierId.isBlank() || valueElement == null || valueElement.isJsonNull()) {
+                                    continue;
+                                }
+
+                                if (valueElement.isJsonPrimitive() && valueElement.getAsJsonPrimitive().isNumber()) {
+                                    modifiers.add(new SkillModifier(modifierId, valueElement.getAsDouble(), SkillModifier.Operation.ADD));
+                                }
+                            }
+                        }
+
+                        String displayName = node.has("displayName") ? node.get("displayName").getAsString() : id.replace('_', ' ');
+                        String description = node.has("description") ? node.get("description").getAsString()
+                                : (node.has("bonus") ? node.get("bonus").getAsString() : "");
+                        String icon = node.has("icon") ? node.get("icon").getAsString() : "";
+                        nodes.add(new SkillNode(id, x, y, cost, requiredLevel, List.copyOf(requires), List.copyOf(modifiers), displayName, description, icon));
+                    } catch (RuntimeException nodeEx) {
+                        LOGGER.warn("[SkillTree] Skipping malformed node in {}: {}", entry.getKey(), nodeEx.getMessage());
                     }
                 }
-                if (node.has("requiredNodes") && node.get("requiredNodes").isJsonArray()) {
-                    for (JsonElement req : node.getAsJsonArray("requiredNodes")) {
-                        String reqId = req.getAsString().trim().toLowerCase();
-                        if (!reqId.isBlank() && !requires.contains(reqId)) {
-                            requires.add(reqId);
-                        }
-                    }
+
+                if (!nodes.isEmpty()) {
+                    loadedTrees.put(treeId, List.copyOf(nodes));
                 }
-
-                List<SkillModifier> modifiers = new ArrayList<>();
-                if (node.has("modifiers") && node.get("modifiers").isJsonArray()) {
-                    for (JsonElement modElement : node.getAsJsonArray("modifiers")) {
-                        if (!modElement.isJsonObject()) {
-                            continue;
-                        }
-
-                        JsonObject mod = modElement.getAsJsonObject();
-                        String modifierId = mod.has("type") ? mod.get("type").getAsString().trim().toLowerCase() : "";
-                        double value = mod.has("value") ? mod.get("value").getAsDouble() : 0.0D;
-                        String operation = mod.has("operation") ? mod.get("operation").getAsString() : "ADD";
-
-                        if (!modifierId.isBlank()) {
-                            modifiers.add(new SkillModifier(modifierId, value, SkillModifier.Operation.byName(operation)));
-                        }
-                    }
-                } else if (node.has("modifiers") && node.get("modifiers").isJsonObject()) {
-                    JsonObject modsObject = node.getAsJsonObject("modifiers");
-                    for (Map.Entry<String, JsonElement> modEntry : modsObject.entrySet()) {
-                        String modifierId = modEntry.getKey() == null ? "" : modEntry.getKey().trim().toLowerCase();
-                        if (modifierId.isBlank()) {
-                            continue;
-                        }
-
-                        JsonElement valueElement = modEntry.getValue();
-                        if (valueElement == null || valueElement.isJsonNull()) {
-                            continue;
-                        }
-
-                        if (valueElement.isJsonPrimitive() && valueElement.getAsJsonPrimitive().isNumber()) {
-                            modifiers.add(new SkillModifier(modifierId, valueElement.getAsDouble(), SkillModifier.Operation.ADD));
-                            continue;
-                        }
-
-                        if (valueElement.isJsonObject()) {
-                            JsonObject modObject = valueElement.getAsJsonObject();
-                            double value = modObject.has("value") ? modObject.get("value").getAsDouble() : 0.0D;
-                            String operation = modObject.has("operation") ? modObject.get("operation").getAsString() : "ADD";
-                            modifiers.add(new SkillModifier(modifierId, value, SkillModifier.Operation.byName(operation)));
-                        }
-                    }
-                }
-
-                String displayName = node.has("displayName") ? node.get("displayName").getAsString() : id.replace('_', ' ');
-                String description = node.has("description") ? node.get("description").getAsString()
-                        : (node.has("bonus") ? node.get("bonus").getAsString() : "");
-                String icon = node.has("icon") ? node.get("icon").getAsString() : "";
-                nodes.add(new SkillNode(id, x, y, cost, requiredLevel, List.copyOf(requires), List.copyOf(modifiers), displayName, description, icon));
-            }
-
-            if (!nodes.isEmpty()) {
-                loadedTrees.put(treeId, List.copyOf(nodes));
+            } catch (RuntimeException ex) {
+                LOGGER.warn("[SkillTree] Skipping malformed tree {}: {}", entry.getKey(), ex.getMessage());
             }
         }
 
@@ -246,3 +290,4 @@ public final class SkillTreeManager {
     private SkillTreeManager() {
     }
 }
+
