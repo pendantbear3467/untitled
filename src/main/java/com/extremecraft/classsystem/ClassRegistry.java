@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
@@ -12,14 +13,18 @@ import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public final class ClassRegistry {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     private static final Map<String, PlayerClass> DEFINITIONS = new LinkedHashMap<>();
     private static List<PlayerClass> CACHE = List.of();
 
@@ -29,7 +34,7 @@ public final class ClassRegistry {
     }
 
     public static synchronized PlayerClass get(String id) {
-        return id == null ? null : DEFINITIONS.get(id.trim().toLowerCase());
+        return id == null ? null : DEFINITIONS.get(id.trim().toLowerCase(Locale.ROOT));
     }
 
     public static synchronized Collection<PlayerClass> all() {
@@ -58,36 +63,47 @@ public final class ClassRegistry {
             Map<String, PlayerClass> loaded = new LinkedHashMap<>();
 
             for (Map.Entry<ResourceLocation, JsonElement> entry : jsonMap.entrySet()) {
-                if (!entry.getValue().isJsonObject()) {
-                    continue;
+                try {
+                    if (!entry.getValue().isJsonObject()) {
+                        continue;
+                    }
+
+                    JsonObject root = entry.getValue().getAsJsonObject();
+                    String id = GsonHelper.getAsString(root, "id", entry.getKey().getPath()).trim().toLowerCase(Locale.ROOT);
+                    if (id.isBlank()) {
+                        LOGGER.warn("[Class] Skipping class with blank id from {}", entry.getKey());
+                        continue;
+                    }
+
+                    Map<String, Double> statScaling = readNumberMap(root, "stat_scaling", 1.0D);
+                    Map<String, Double> combatModifiers = readNumberMap(root, "combat_modifiers", 0.0D);
+                    Map<String, Double> passives = readNumberMap(root, "passive_bonuses", 0.0D);
+                    double manaRegenModifier = GsonHelper.getAsDouble(root, "mana_regen_modifier", passives.getOrDefault("mana_regen", 0.0D));
+
+                    List<String> abilityAccess = readStringList(root, "active_abilities");
+                    List<String> spellAccess = readStringList(root, "spells");
+
+                    int requiredLevel = 1;
+                    if (root.has("requirements") && root.get("requirements").isJsonObject()) {
+                        requiredLevel = Math.max(1, GsonHelper.getAsInt(root.getAsJsonObject("requirements"), "level", 1));
+                    }
+
+                    PlayerClass previous = loaded.put(id, new PlayerClass(
+                            id,
+                            statScaling,
+                            manaRegenModifier,
+                            combatModifiers,
+                            passives,
+                            abilityAccess,
+                            spellAccess,
+                            requiredLevel
+                    ));
+                    if (previous != null) {
+                        LOGGER.warn("[Class] Duplicate class id '{}' detected; keeping latest from {}", id, entry.getKey());
+                    }
+                } catch (RuntimeException ex) {
+                    LOGGER.warn("[Class] Skipping malformed class definition {}: {}", entry.getKey(), ex.getMessage());
                 }
-
-                JsonObject root = entry.getValue().getAsJsonObject();
-                String id = GsonHelper.getAsString(root, "id", entry.getKey().getPath()).trim().toLowerCase();
-
-                Map<String, Double> statScaling = readNumberMap(root, "stat_scaling", 1.0D);
-                Map<String, Double> combatModifiers = readNumberMap(root, "combat_modifiers", 0.0D);
-                Map<String, Double> passives = readNumberMap(root, "passive_bonuses", 0.0D);
-                double manaRegenModifier = GsonHelper.getAsDouble(root, "mana_regen_modifier", passives.getOrDefault("mana_regen", 0.0D));
-
-                List<String> abilityAccess = readStringList(root, "active_abilities");
-                List<String> spellAccess = readStringList(root, "spells");
-
-                int requiredLevel = 1;
-                if (root.has("requirements") && root.get("requirements").isJsonObject()) {
-                    requiredLevel = Math.max(1, GsonHelper.getAsInt(root.getAsJsonObject("requirements"), "level", 1));
-                }
-
-                loaded.put(id, new PlayerClass(
-                        id,
-                        statScaling,
-                        manaRegenModifier,
-                        combatModifiers,
-                        passives,
-                        abilityAccess,
-                        spellAccess,
-                        requiredLevel
-                ));
             }
 
             ExtremeCraftAPI.classes().forEach(klass -> loaded.putIfAbsent(klass.id(),
@@ -114,7 +130,7 @@ public final class ClassRegistry {
             JsonObject section = root.getAsJsonObject(key);
             for (Map.Entry<String, JsonElement> entry : section.entrySet()) {
                 if (entry.getValue().isJsonPrimitive() && entry.getValue().getAsJsonPrimitive().isNumber()) {
-                    map.put(entry.getKey().trim().toLowerCase(), entry.getValue().getAsDouble());
+                    map.put(entry.getKey().trim().toLowerCase(Locale.ROOT), entry.getValue().getAsDouble());
                 }
             }
 
@@ -129,7 +145,7 @@ public final class ClassRegistry {
             List<String> list = new ArrayList<>();
             JsonArray json = GsonHelper.getAsJsonArray(root, key, new JsonArray());
             for (JsonElement entry : json) {
-                String value = entry.getAsString().trim().toLowerCase();
+                String value = entry.getAsString().trim().toLowerCase(Locale.ROOT);
                 if (!value.isBlank()) {
                     list.add(value);
                 }

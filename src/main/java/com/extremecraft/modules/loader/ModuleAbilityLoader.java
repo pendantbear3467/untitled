@@ -6,6 +6,7 @@ import com.extremecraft.modules.registry.ModuleAbilityRegistry;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
@@ -13,12 +14,15 @@ import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import org.slf4j.Logger;
 
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class ModuleAbilityLoader {
     private static final Gson GSON = new Gson();
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     @SubscribeEvent
     public void onAddReloadListeners(AddReloadListenerEvent event) {
@@ -35,34 +39,43 @@ public class ModuleAbilityLoader {
             Map<String, ModuleAbilityDefinition> loaded = new LinkedHashMap<>();
 
             for (Map.Entry<ResourceLocation, JsonElement> entry : jsonMap.entrySet()) {
-                if (!entry.getValue().isJsonObject()) {
-                    continue;
-                }
+                try {
+                    if (!entry.getValue().isJsonObject()) {
+                        continue;
+                    }
 
-                JsonObject root = entry.getValue().getAsJsonObject();
-                String id = GsonHelper.getAsString(root, "id", entry.getKey().getPath()).trim().toLowerCase();
-                if (id.contains("/")) {
-                    id = id.substring(id.lastIndexOf('/') + 1);
-                }
-                if (id.isBlank()) {
-                    continue;
-                }
+                    JsonObject root = entry.getValue().getAsJsonObject();
+                    String id = GsonHelper.getAsString(root, "id", entry.getKey().getPath()).trim().toLowerCase(Locale.ROOT);
+                    if (id.contains("/")) {
+                        id = id.substring(id.lastIndexOf('/') + 1);
+                    }
+                    if (id.isBlank()) {
+                        LOGGER.warn("[Module] Skipping module ability with blank id from {}", entry.getKey());
+                        continue;
+                    }
 
-                ModuleTrigger trigger = ModuleTrigger.byName(GsonHelper.getAsString(root, "trigger", "passive"));
-                int cooldownTicks = Math.max(0, GsonHelper.getAsInt(root, "cooldown_ticks", 0));
-                int manaCost = Math.max(0, GsonHelper.getAsInt(root, "mana_cost", 0));
+                    ModuleTrigger trigger = ModuleTrigger.byName(GsonHelper.getAsString(root, "trigger", "passive"));
+                    int cooldownTicks = Math.max(0, GsonHelper.getAsInt(root, "cooldown_ticks", 0));
+                    int manaCost = Math.max(0, GsonHelper.getAsInt(root, "mana_cost", 0));
 
-                Map<String, Double> scaling = new LinkedHashMap<>();
-                if (root.has("scaling") && root.get("scaling").isJsonObject()) {
-                    JsonObject scalingJson = root.getAsJsonObject("scaling");
-                    for (Map.Entry<String, JsonElement> scalingEntry : scalingJson.entrySet()) {
-                        if (scalingEntry.getValue().isJsonPrimitive() && scalingEntry.getValue().getAsJsonPrimitive().isNumber()) {
-                            scaling.put(scalingEntry.getKey(), scalingEntry.getValue().getAsDouble());
+                    Map<String, Double> scaling = new LinkedHashMap<>();
+                    if (root.has("scaling") && root.get("scaling").isJsonObject()) {
+                        JsonObject scalingJson = root.getAsJsonObject("scaling");
+                        for (Map.Entry<String, JsonElement> scalingEntry : scalingJson.entrySet()) {
+                            if (scalingEntry.getValue().isJsonPrimitive() && scalingEntry.getValue().getAsJsonPrimitive().isNumber()) {
+                                scaling.put(scalingEntry.getKey().trim().toLowerCase(Locale.ROOT), scalingEntry.getValue().getAsDouble());
+                            }
                         }
                     }
-                }
 
-                loaded.put(id, new ModuleAbilityDefinition(id, trigger, cooldownTicks, manaCost, Map.copyOf(scaling)));
+                    ModuleAbilityDefinition previous = loaded.put(id,
+                            new ModuleAbilityDefinition(id, trigger, cooldownTicks, manaCost, Map.copyOf(scaling)));
+                    if (previous != null) {
+                        LOGGER.warn("[Module] Duplicate module ability id '{}' detected; keeping latest from {}", id, entry.getKey());
+                    }
+                } catch (RuntimeException ex) {
+                    LOGGER.warn("[Module] Skipping malformed module ability {}: {}", entry.getKey(), ex.getMessage());
+                }
             }
 
             ModuleAbilityRegistry.replaceAll(loaded);

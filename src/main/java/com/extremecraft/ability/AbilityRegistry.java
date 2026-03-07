@@ -4,12 +4,14 @@ import com.extremecraft.api.ExtremeCraftAPI;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -26,6 +28,8 @@ import java.util.Map;
  * Java effect execution code.</p>
  */
 public final class AbilityRegistry {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     private static final Map<String, AbilityDefinition> DEFINITIONS = new LinkedHashMap<>();
     private static List<AbilityDefinition> CACHED_LIST = List.of();
 
@@ -107,17 +111,25 @@ public final class AbilityRegistry {
             Map<String, AbilityDefinition> loaded = new LinkedHashMap<>();
 
             for (Map.Entry<ResourceLocation, JsonElement> entry : jsonMap.entrySet()) {
-                if (!entry.getValue().isJsonObject()) {
-                    continue;
-                }
+                try {
+                    if (!entry.getValue().isJsonObject()) {
+                        continue;
+                    }
 
-                JsonObject root = entry.getValue().getAsJsonObject();
-                AbilityDefinition definition = AbilityDefinition.fromJson(entry.getKey(), root);
-                if (definition.id().isBlank()) {
-                    continue;
-                }
+                    JsonObject root = entry.getValue().getAsJsonObject();
+                    AbilityDefinition definition = AbilityDefinition.fromJson(entry.getKey(), root);
+                    if (definition.id().isBlank()) {
+                        LOGGER.warn("[Ability] Skipping ability with blank id from {}", entry.getKey());
+                        continue;
+                    }
 
-                loaded.put(definition.id(), definition);
+                    AbilityDefinition previous = loaded.put(definition.id(), definition);
+                    if (previous != null) {
+                        LOGGER.warn("[Ability] Duplicate ability id '{}' detected; keeping latest from {}", definition.id(), entry.getKey());
+                    }
+                } catch (RuntimeException ex) {
+                    LOGGER.warn("[Ability] Skipping malformed ability {}: {}", entry.getKey(), ex.getMessage());
+                }
             }
 
             // Modules can still register API-level abilities; bridge them into runtime defaults.
@@ -137,4 +149,3 @@ public final class AbilityRegistry {
         }
     }
 }
-

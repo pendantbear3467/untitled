@@ -3,6 +3,7 @@ package com.extremecraft.modules.runtime;
 import com.extremecraft.combat.event.DamagePreCalculateEvent;
 import com.extremecraft.modules.data.ModuleTrigger;
 import com.extremecraft.modules.service.ModuleCatalogSyncService;
+import com.extremecraft.server.task.ServerDeferredWorkQueue;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.OnDatapackSyncEvent;
@@ -31,10 +32,15 @@ public class ModuleRuntimeEvents {
             return;
         }
 
+        int delay = 0;
         for (ServerPlayer player : event.getPlayerList().getPlayers()) {
-            ModuleCatalogSyncService.sync(player);
-            ModuleRuntimeService.refreshPassiveModifiers(player);
-            ModuleRuntimeService.syncState(player);
+            int taskDelay = delay;
+            ServerDeferredWorkQueue.schedule(player, taskDelay, () -> {
+                ModuleCatalogSyncService.sync(player);
+                ModuleRuntimeService.refreshPassiveModifiers(player);
+                ModuleRuntimeService.syncState(player);
+            });
+            delay = Math.min(delay + 1, 40);
         }
     }
 
