@@ -10,6 +10,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ArmorMaterial;
 import net.minecraft.world.item.Item;
@@ -24,8 +25,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -39,6 +40,7 @@ public final class ECValidationService {
     private static final Gson GSON = new Gson();
     private static final Set<String> CRAFTING_CATEGORIES = Set.of("building", "redstone", "equipment", "misc");
     private static final Set<String> COOKING_CATEGORIES = Set.of("food", "blocks", "misc");
+    private static final String VALIDATION_LOG_PREFIX = "[ExtremeCraft Validation]";
 
     private ECValidationService() {
     }
@@ -55,6 +57,7 @@ public final class ECValidationService {
         } else {
             validateAssets(resourcesRoot.get(), reporter);
             validateRecipeJson(resourcesRoot.get(), reporter);
+            validateMachineDefinitionFiles(resourcesRoot.get(), reporter);
             validateDatapackLayout(resourcesRoot.get(), reporter);
         }
 
@@ -128,7 +131,12 @@ public final class ECValidationService {
             String path = id.getPath();
             Path blockstate = assetsRoot.resolve("blockstates").resolve(path + ".json");
             if (!Files.exists(blockstate)) {
-                reporter.warn("Missing blockstate file: " + relativeToResources(resourcesRoot, blockstate));
+                reporter.warn("Missing blockstate for " + id + " (file: " + relativeToResources(resourcesRoot, blockstate) + ")");
+            }
+
+            Path blockModel = assetsRoot.resolve("models").resolve("block").resolve(path + ".json");
+            if (!Files.exists(blockModel)) {
+                reporter.warn("Missing block model for " + id + " (file: " + relativeToResources(resourcesRoot, blockModel) + ")");
             }
 
             Path lootTable = resourcesRoot
@@ -138,13 +146,15 @@ public final class ECValidationService {
                     .resolve("blocks")
                     .resolve(path + ".json");
             if (!Files.exists(lootTable)) {
-                reporter.warn("Missing block loot table: " + relativeToResources(resourcesRoot, lootTable));
+                reporter.warn("Missing block loot table for " + id + " (file: " + relativeToResources(resourcesRoot, lootTable) + ")");
             }
 
             String key = "block." + ECConstants.MODID + "." + path;
             if (!langKeys.contains(key)) {
-                reporter.warn("Missing lang key: " + key);
+                reporter.warn("Missing lang key for " + id + " (key: " + key + ")");
             }
+
+            validateBlockstateModelReferences(resourcesRoot, assetsRoot, id, blockstate, reporter);
         }
 
         for (ResourceLocation id : ForgeRegistries.ITEMS.getKeys()) {
@@ -155,12 +165,12 @@ public final class ECValidationService {
             String path = id.getPath();
             Path itemModel = assetsRoot.resolve("models").resolve("item").resolve(path + ".json");
             if (!Files.exists(itemModel)) {
-                reporter.warn("Missing item model file: " + relativeToResources(resourcesRoot, itemModel));
+                reporter.warn("Missing item model for " + id + " (file: " + relativeToResources(resourcesRoot, itemModel) + ")");
             }
 
             String key = "item." + ECConstants.MODID + "." + path;
             if (!langKeys.contains(key)) {
-                reporter.warn("Missing lang key: " + key);
+                reporter.warn("Missing lang key for " + id + " (key: " + key + ")");
             }
         }
 
@@ -187,22 +197,88 @@ public final class ECValidationService {
             if (!materialId.isEmpty()) {
                 materialIds.add(materialId);
                 boolean hasLeggings = armorItem.getType() == ArmorItem.Type.LEGGINGS;
-                materialHasLeggings.merge(materialId, hasLeggings, Boolean::logicalOr);
+                materialHasLeggings.merge(materialId, hasLeggings, (existing, incoming) -> existing || incoming);
             }
         }
 
         for (String materialId : materialIds) {
             Path layer1 = armorRoot.resolve(materialId + "_layer_1.png");
             if (!Files.exists(layer1)) {
-                reporter.warn("Missing armor layer texture: " + relativeToResources(resourcesRoot, layer1));
+                reporter.warn("Missing armor texture " + ECConstants.MODID + ":" + materialId + "_layer_1"
+                        + " (file: " + relativeToResources(resourcesRoot, layer1) + ")");
             }
 
             if (materialHasLeggings.getOrDefault(materialId, false)) {
                 Path layer2 = armorRoot.resolve(materialId + "_layer_2.png");
                 if (!Files.exists(layer2)) {
-                    reporter.warn("Missing armor layer texture: " + relativeToResources(resourcesRoot, layer2));
+                    reporter.warn("Missing armor texture " + ECConstants.MODID + ":" + materialId + "_layer_2"
+                            + " (file: " + relativeToResources(resourcesRoot, layer2) + ")");
                 }
             }
+        }
+    }
+
+    private static void validateBlockstateModelReferences(Path resourcesRoot,
+                                                          Path assetsRoot,
+                                                          ResourceLocation blockId,
+                                                          Path blockstatePath,
+                                                          ValidationReporter reporter) {
+        if (!Files.exists(blockstatePath)) {
+            return;
+        }
+
+        try {
+            JsonObject json = GSON.fromJson(Files.readString(blockstatePath, StandardCharsets.UTF_8), JsonObject.class);
+            if (json == null) {
+                return;
+            }
+
+            collectModelRefs(json, resourcesRoot, assetsRoot, blockId, blockstatePath, reporter);
+        } catch (Exception ex) {
+            reporter.warn("Invalid blockstate JSON for " + blockId + " (file: "
+                    + relativeToResources(resourcesRoot, blockstatePath) + "): " + ex.getMessage());
+        }
+    }
+
+    private static void collectModelRefs(JsonElement element,
+                                         Path resourcesRoot,
+                                         Path assetsRoot,
+                                         ResourceLocation blockId,
+                                         Path blockstatePath,
+                                         ValidationReporter reporter) {
+        if (element == null || element.isJsonNull()) {
+            return;
+        }
+
+        if (element.isJsonObject()) {
+            JsonObject object = element.getAsJsonObject();
+
+            if (object.has("model") && object.get("model").isJsonPrimitive()) {
+                String modelRef = object.get("model").getAsString().trim();
+                if (modelRef.startsWith(ECConstants.MODID + ":")) {
+                    modelRef = modelRef.substring((ECConstants.MODID + ":").length());
+                }
+
+                if (!modelRef.isBlank() && !modelRef.startsWith("minecraft:")) {
+                    Path modelPath = assetsRoot.resolve("models").resolve(modelRef + ".json");
+                    if (!Files.exists(modelPath)) {
+                        reporter.warn("Blockstate for " + blockId + " references missing model "
+                                + ECConstants.MODID + ":" + modelRef
+                                + " (blockstate: " + relativeToResources(resourcesRoot, blockstatePath)
+                                + ", model file: " + relativeToResources(resourcesRoot, modelPath) + ")");
+                    }
+                }
+            }
+
+            for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
+                collectModelRefs(entry.getValue(), resourcesRoot, assetsRoot, blockId, blockstatePath, reporter);
+            }
+            return;
+        }
+
+        if (element.isJsonArray()) {
+            element.getAsJsonArray().forEach(child ->
+                    collectModelRefs(child, resourcesRoot, assetsRoot, blockId, blockstatePath, reporter));
         }
     }
 
@@ -287,8 +363,102 @@ public final class ECValidationService {
     }
 
 
+    private static void validateMachineDefinitionFiles(Path resourcesRoot, ValidationReporter reporter) {
+        Path machineRoot = resourcesRoot.resolve("data").resolve(ECConstants.MODID).resolve("machines");
+        if (!Files.isDirectory(machineRoot)) {
+            return;
+        }
+
+        Path assetsRoot = resourcesRoot.resolve("assets").resolve(ECConstants.MODID);
+        Path recipesRoot = resourcesRoot.resolve("data").resolve(ECConstants.MODID).resolve("recipes");
+
+        try (Stream<Path> files = Files.walk(machineRoot)) {
+            files.filter(path -> path.toString().endsWith(".json"))
+                    .forEach(path -> validateMachineDefinitionFile(resourcesRoot, assetsRoot, recipesRoot, path, reporter));
+        } catch (IOException ex) {
+            reporter.warn("Failed to scan machine definitions: " + ex.getMessage());
+        }
+    }
+
+    private static void validateMachineDefinitionFile(Path resourcesRoot,
+                                                      Path assetsRoot,
+                                                      Path recipesRoot,
+                                                      Path machineFile,
+                                                      ValidationReporter reporter) {
+        try {
+            JsonObject json = GSON.fromJson(Files.readString(machineFile, StandardCharsets.UTF_8), JsonObject.class);
+            if (json == null) {
+                reporter.warn("Empty machine definition file: " + relativeToResources(resourcesRoot, machineFile));
+                return;
+            }
+
+            String fallbackId = stripJsonExtension(machineFile.getFileName().toString());
+            String machineId = GsonHelper.getAsString(json, "id", fallbackId).trim().toLowerCase();
+            if (machineId.isBlank()) {
+                reporter.warn("Machine definition has blank id (file: " + relativeToResources(resourcesRoot, machineFile) + ")");
+                return;
+            }
+
+            Path blockstatePath = assetsRoot.resolve("blockstates").resolve(machineId + ".json");
+            if (!Files.exists(blockstatePath)) {
+                reporter.warn("Machine " + ECConstants.MODID + ":" + machineId
+                        + " missing blockstate (file: " + relativeToResources(resourcesRoot, blockstatePath)
+                        + ", source: " + relativeToResources(resourcesRoot, machineFile) + ")");
+            }
+
+            Path blockModelPath = assetsRoot.resolve("models").resolve("block").resolve(machineId + ".json");
+            if (!Files.exists(blockModelPath)) {
+                reporter.warn("Machine " + ECConstants.MODID + ":" + machineId
+                        + " missing block model (file: " + relativeToResources(resourcesRoot, blockModelPath)
+                        + ", source: " + relativeToResources(resourcesRoot, machineFile) + ")");
+            }
+
+            Path itemModelPath = assetsRoot.resolve("models").resolve("item").resolve(machineId + ".json");
+            if (!Files.exists(itemModelPath)) {
+                reporter.warn("Machine " + ECConstants.MODID + ":" + machineId
+                        + " missing item model (file: " + relativeToResources(resourcesRoot, itemModelPath)
+                        + ", source: " + relativeToResources(resourcesRoot, machineFile) + ")");
+            }
+
+            String recipesRef = GsonHelper.getAsString(json, "recipes", "").trim().toLowerCase();
+            if (!recipesRef.isBlank()) {
+                ResourceLocation recipeId = parseRecipeId(recipesRef);
+                if (recipeId == null) {
+                    reporter.warn("Machine " + ECConstants.MODID + ":" + machineId
+                            + " has invalid recipe reference '" + recipesRef + "'"
+                            + " (source: " + relativeToResources(resourcesRoot, machineFile) + ")");
+                } else if (ECConstants.MODID.equals(recipeId.getNamespace())) {
+                    Path recipePath = recipesRoot.resolve(recipeId.getPath() + ".json");
+                    if (!Files.exists(recipePath)) {
+                        reporter.warn("Machine " + ECConstants.MODID + ":" + machineId
+                                + " references missing recipe " + recipeId
+                                + " (expected file: " + relativeToResources(resourcesRoot, recipePath)
+                                + ", source: " + relativeToResources(resourcesRoot, machineFile) + ")");
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            reporter.warn("Invalid machine definition JSON " + relativeToResources(resourcesRoot, machineFile) + ": " + ex.getMessage());
+        }
+    }
+
+    private static String stripJsonExtension(String fileName) {
+        return fileName.endsWith(".json") ? fileName.substring(0, fileName.length() - 5) : fileName;
+    }
+
+    private static ResourceLocation parseRecipeId(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        String normalized = value.contains(":") ? value : ECConstants.MODID + ":" + value;
+        return ResourceLocation.tryParse(normalized);
+    }
+
+
     private static void validateDatapackLayout(Path resourcesRoot, ValidationReporter reporter) {
         Path dataRoot = resourcesRoot.resolve("data").resolve(ECConstants.MODID);
+        // TODO(alpha): keep this compatibility warning until legacy datapack roots are fully retired.
         warnIfLegacyDirectoryPopulated(dataRoot, "skill_trees", "skilltrees", reporter);
         warnIfLegacyDirectoryPopulated(dataRoot, "machines", "machine", reporter);
     }
@@ -486,7 +656,7 @@ public final class ECValidationService {
 
         private void warn(String message) {
             warnings++;
-            LOGGER.warn("[ecvalidate] {}", message);
+            LOGGER.warn("{} {}", VALIDATION_LOG_PREFIX, message);
             if (emitted < MAX_CHAT_WARNINGS) {
                 emitted++;
                 source.sendFailure(Component.literal("[ecvalidate] " + message));

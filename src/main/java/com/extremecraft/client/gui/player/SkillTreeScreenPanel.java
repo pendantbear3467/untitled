@@ -2,10 +2,9 @@ package com.extremecraft.client.gui.player;
 
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.core.ECConstants;
-import com.extremecraft.network.ModNetwork;
-import com.extremecraft.network.packet.UpgradeStatPacket;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
 import com.extremecraft.progression.skilltree.SkillNode;
+import com.extremecraft.progression.skilltree.SkillTreeClientActions;
 import com.extremecraft.progression.skilltree.SkillTreeManager;
 import com.extremecraft.progression.skilltree.service.SkillNodeStateService;
 import net.minecraft.client.Minecraft;
@@ -93,7 +92,7 @@ public class SkillTreeScreenPanel {
 
             if (mouseX >= x && mouseX <= x + NODE_SIZE && mouseY >= y && mouseY <= y + NODE_SIZE
                     && nodeState(node) == SkillNodeStateService.NodeState.UNLOCKABLE) {
-                ModNetwork.CHANNEL.sendToServer(new UpgradeStatPacket("skill:" + node.id()));
+                SkillTreeClientActions.requestUnlock(activeTreeId, node.id());
                 return true;
             }
         }
@@ -182,3 +181,4 @@ public class SkillTreeScreenPanel {
     ) {
     }
 }
+

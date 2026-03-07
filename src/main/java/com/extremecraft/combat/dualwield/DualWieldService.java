@@ -1,6 +1,6 @@
 package com.extremecraft.combat.dualwield;
 
-import com.extremecraft.net.DwNetwork;
+import com.extremecraft.network.ModNetwork;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
 
@@ -25,6 +25,7 @@ public final class DualWieldService {
     }
 
     public static void sync(ServerPlayer player, PlayerDualWieldData data) {
-        DwNetwork.CH.send(PacketDistributor.PLAYER.with(() -> player), new SyncDualWieldDataS2C(data.serializeNBT()));
+        ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncDualWieldDataS2C(data.serializeNBT()));
     }
 }
+

@@ -25,6 +25,13 @@ public class RuntimeSyncEvents {
     }
 
     @SubscribeEvent
+    public void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            RuntimeSyncService.clearPlayer(player);
+        }
+    }
+
+    @SubscribeEvent
     public void onDatapackSync(OnDatapackSyncEvent event) {
         if (event.getPlayer() != null) {
             RuntimeSyncService.syncAll(event.getPlayer());
@@ -60,3 +67,4 @@ public class RuntimeSyncEvents {
         }
     }
 }
+

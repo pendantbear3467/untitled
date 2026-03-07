@@ -2,7 +2,7 @@ package com.extremecraft.progression.skilltree;
 
 import com.extremecraft.client.gui.BaseExtremeScreen;
 import com.extremecraft.core.ECConstants;
-import com.extremecraft.net.DwNetwork;
+
 import com.extremecraft.progression.capability.ProgressApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -61,7 +61,7 @@ public class SkillTreeScreen extends BaseExtremeScreen {
 
         unlockButton = addRenderableWidget(Button.builder(Component.literal("Unlock Node"), button -> {
             if (hoveredNode != null) {
-                DwNetwork.sendToServer(new UnlockSkillNodeC2S(activeTreeId, hoveredNode.id()));
+                SkillTreeClientActions.requestUnlock(activeTreeId, hoveredNode.id());
             }
         }).bounds(panelLeft + panelWidth - 110, panelTop + 24, 94, 18).build());
     }
@@ -215,7 +215,7 @@ public class SkillTreeScreen extends BaseExtremeScreen {
                     int x = toScreenX(node.x());
                     int y = toScreenY(node.y());
                     if (mouseX >= x && mouseX <= x + NODE_SIZE && mouseY >= y && mouseY <= y + NODE_SIZE) {
-                        DwNetwork.sendToServer(new UnlockSkillNodeC2S(activeTreeId, node.id()));
+                        SkillTreeClientActions.requestUnlock(activeTreeId, node.id());
                         return true;
                     }
                 }
@@ -346,3 +346,4 @@ public class SkillTreeScreen extends BaseExtremeScreen {
         ACTIVE
     }
 }
+

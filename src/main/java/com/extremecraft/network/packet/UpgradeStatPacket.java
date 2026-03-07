@@ -2,6 +2,7 @@ package com.extremecraft.network.packet;
 
 import com.extremecraft.network.security.ServerPacketLimiter;
 import com.extremecraft.progression.PlayerStatsService;
+import com.extremecraft.progression.skilltree.SkillTreeService;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
@@ -9,6 +10,7 @@ import net.minecraftforge.network.NetworkEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Locale;
 import java.util.function.Supplier;
 
 public record UpgradeStatPacket(String upgradeId) {
@@ -48,8 +50,21 @@ public record UpgradeStatPacket(String upgradeId) {
                 return;
             }
 
+            // Compatibility shim: route legacy skill upgrades through canonical skill-tree authority checks.
+            if (upgradeId.startsWith("skill:")) {
+                String nodeId = upgradeId.substring("skill:".length()).trim().toLowerCase(Locale.ROOT);
+                if (nodeId.isEmpty()) {
+                    LOGGER.debug("[Network] Dropped UpgradeStatPacket with blank legacy skill node id from {}", sender.getScoreboardName());
+                    return;
+                }
+
+                SkillTreeService.tryUnlockByNodeId(sender, nodeId);
+                return;
+            }
+
             PlayerStatsService.applyUpgradeRequest(sender, upgradeId);
         });
         context.setPacketHandled(true);
     }
 }
+

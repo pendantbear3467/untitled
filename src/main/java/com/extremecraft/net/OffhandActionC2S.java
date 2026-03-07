@@ -11,19 +11,28 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.function.Supplier;
 
 public record OffhandActionC2S(Action action, int entityId, BlockPos pos, Direction face) {
+    private static final Logger LOGGER = LogManager.getLogger();
+
     public enum Action {ATTACK_ENTITY, USE_ITEM, USE_ON_BLOCK, TAP_BREAK, HOLD_START_BREAK, HOLD_ABORT_BREAK}
 
     public static void encode(OffhandActionC2S msg, FriendlyByteBuf buf) {
-        buf.writeEnum(msg.action);
-        buf.writeInt(msg.entityId);
-        buf.writeBoolean(msg.pos != null);
-        if (msg.pos != null) {
-            buf.writeBlockPos(msg.pos);
-            buf.writeEnum(msg.face);
+        Action action = msg == null || msg.action == null ? Action.USE_ITEM : msg.action;
+        buf.writeEnum(action);
+        int entityId = msg == null ? -1 : msg.entityId;
+        buf.writeInt(entityId);
+
+        BlockPos pos = msg == null ? null : msg.pos;
+        Direction face = msg == null || msg.face == null ? Direction.UP : msg.face;
+        buf.writeBoolean(pos != null);
+        if (pos != null) {
+            buf.writeBlockPos(pos);
+            buf.writeEnum(face);
         }
     }
 
@@ -42,6 +51,7 @@ public record OffhandActionC2S(Action action, int entityId, BlockPos pos, Direct
     public static void handle(OffhandActionC2S msg, Supplier<NetworkEvent.Context> ctx) {
         var context = ctx.get();
         if (context.getDirection() != NetworkDirection.PLAY_TO_SERVER) {
+            LOGGER.debug("[Network] Dropped OffhandActionC2S from invalid direction {}", context.getDirection());
             context.setPacketHandled(true);
             return;
         }
@@ -49,15 +59,40 @@ public record OffhandActionC2S(Action action, int entityId, BlockPos pos, Direct
         context.enqueueWork(() -> {
             ServerPlayer sp = context.getSender();
             if (sp == null || sp.isSpectator()) {
+                LOGGER.debug("[Network] Dropped OffhandActionC2S due to missing sender or spectator state");
                 return;
             }
             ServerLevel level = sp.serverLevel();
 
             if (!ServerPacketLimiter.allow(sp, "dualwield.offhand", 1, 10, 20)) {
+                LOGGER.debug("[Network] Rate-limited OffhandActionC2S from {}", sp.getScoreboardName());
+                return;
+            }
+
+            if (msg == null || msg.action == null) {
+                LOGGER.debug("[Network] Dropped OffhandActionC2S with null action from {}", sp.getScoreboardName());
+                return;
+            }
+
+            if ((msg.action == Action.USE_ON_BLOCK
+                    || msg.action == Action.TAP_BREAK
+                    || msg.action == Action.HOLD_START_BREAK
+                    || msg.action == Action.HOLD_ABORT_BREAK)
+                    && (msg.pos == null || msg.face == null)) {
+                LOGGER.debug("[Network] Dropped OffhandActionC2S action={} with missing block context from {}",
+                        msg.action, sp.getScoreboardName());
+                return;
+            }
+
+            if (msg.action == Action.ATTACK_ENTITY && msg.entityId <= 0) {
+                LOGGER.debug("[Network] Dropped OffhandActionC2S ATTACK_ENTITY with invalid entityId={} from {}",
+                        msg.entityId, sp.getScoreboardName());
                 return;
             }
 
             if (!OffhandActionValidator.canHandle(sp, msg)) {
+                LOGGER.debug("[Network] Dropped OffhandActionC2S failing validator action={} from {}",
+                        msg.action, sp.getScoreboardName());
                 return;
             }
 

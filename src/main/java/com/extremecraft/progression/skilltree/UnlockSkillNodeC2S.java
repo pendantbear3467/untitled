@@ -14,8 +14,8 @@ public record UnlockSkillNodeC2S(String treeId, String nodeId) {
     private static final Logger LOGGER = LogManager.getLogger();
 
     public static void encode(UnlockSkillNodeC2S packet, FriendlyByteBuf buf) {
-        buf.writeUtf(packet.treeId, 64);
-        buf.writeUtf(packet.nodeId, 128);
+        buf.writeUtf(packet.treeId == null ? "" : packet.treeId, 64);
+        buf.writeUtf(packet.nodeId == null ? "" : packet.nodeId, 128);
     }
 
     public static UnlockSkillNodeC2S decode(FriendlyByteBuf buf) {
@@ -33,6 +33,7 @@ public record UnlockSkillNodeC2S(String treeId, String nodeId) {
         context.enqueueWork(() -> {
             ServerPlayer sender = context.getSender();
             if (sender == null || sender.isSpectator()) {
+                LOGGER.debug("[Network] Dropped UnlockSkillNodeC2S due to missing sender or spectator state");
                 return;
             }
 
@@ -48,6 +49,7 @@ public record UnlockSkillNodeC2S(String treeId, String nodeId) {
                 return;
             }
 
+            // Server-authoritative unlock path: keep all checks above to avoid malformed client unlock attempts.
             SkillTreeService.tryUnlock(sender, treeId, nodeId);
         });
         context.setPacketHandled(true);

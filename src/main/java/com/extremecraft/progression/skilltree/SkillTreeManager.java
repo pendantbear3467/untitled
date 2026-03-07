@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ public final class SkillTreeManager {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<String, List<SkillNode>> TREES = new LinkedHashMap<>();
     private static final Map<String, SkillNode> NODE_BY_ID = new LinkedHashMap<>();
+    private static final Map<String, String> NODE_TREE_BY_ID = new LinkedHashMap<>();
     private static final Map<String, List<Connection>> CONNECTION_CACHE = new LinkedHashMap<>();
     private static final Set<String> TREE_IDS = new LinkedHashSet<>();
 
@@ -201,6 +203,14 @@ public final class SkillTreeManager {
         return NODE_BY_ID.get(nodeId);
     }
 
+    public static synchronized String treeIdForNode(String nodeId) {
+        if (nodeId == null || nodeId.isBlank()) {
+            return "";
+        }
+        String normalizedNodeId = nodeId.trim().toLowerCase(Locale.ROOT);
+        return NODE_TREE_BY_ID.getOrDefault(normalizedNodeId, "");
+    }
+
     public static synchronized Map<String, List<SkillNode>> allTrees() {
         return Collections.unmodifiableMap(TREES);
     }
@@ -246,17 +256,44 @@ public final class SkillTreeManager {
     private static void replaceAll(Map<String, List<SkillNode>> trees) {
         TREES.clear();
         NODE_BY_ID.clear();
+        NODE_TREE_BY_ID.clear();
         CONNECTION_CACHE.clear();
         TREE_IDS.clear();
 
         for (Map.Entry<String, List<SkillNode>> entry : trees.entrySet()) {
             String treeId = entry.getKey();
-            List<SkillNode> nodes = List.copyOf(entry.getValue());
-            TREES.put(treeId, nodes);
-            TREE_IDS.add(treeId);
+            if (treeId == null || treeId.isBlank()) {
+                continue;
+            }
 
-            for (SkillNode node : nodes) {
-                NODE_BY_ID.put(node.id(), node);
+            Map<String, SkillNode> uniqueNodes = new LinkedHashMap<>();
+            for (SkillNode node : entry.getValue()) {
+                if (node == null || node.id() == null || node.id().isBlank()) {
+                    continue;
+                }
+
+                String nodeId = node.id();
+                if (uniqueNodes.containsKey(nodeId)) {
+                    LOGGER.warn("[SkillTree] Duplicate node id '{}' in tree '{}' - keeping first definition", nodeId, treeId);
+                    continue;
+                }
+
+                String ownerTree = NODE_TREE_BY_ID.get(nodeId);
+                if (ownerTree != null && !ownerTree.equals(treeId)) {
+                    LOGGER.warn("[SkillTree] Node id '{}' is defined in both '{}' and '{}' - skipping duplicate in '{}'",
+                            nodeId, ownerTree, treeId, treeId);
+                    continue;
+                }
+
+                uniqueNodes.put(nodeId, node);
+                NODE_TREE_BY_ID.put(nodeId, treeId);
+                NODE_BY_ID.put(nodeId, node);
+            }
+
+            if (!uniqueNodes.isEmpty()) {
+                List<SkillNode> nodes = List.copyOf(uniqueNodes.values());
+                TREES.put(treeId, nodes);
+                TREE_IDS.add(treeId);
             }
         }
 
@@ -276,7 +313,11 @@ public final class SkillTreeManager {
                     SkillNode source = localNodes.get(required);
                     if (source != null) {
                         connections.add(new Connection(source.id(), node.id()));
+                        continue;
                     }
+
+                    LOGGER.warn("[SkillTree] Node '{}' in tree '{}' references missing requirement '{}'",
+                            node.id(), treeId, required);
                 }
             }
 

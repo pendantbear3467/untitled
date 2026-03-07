@@ -1,6 +1,9 @@
 package com.extremecraft.network;
 
+import com.extremecraft.combat.dualwield.CycleLoadoutC2S;
+import com.extremecraft.combat.dualwield.SyncDualWieldDataS2C;
 import com.extremecraft.core.ECConstants;
+import com.extremecraft.net.OffhandActionC2S;
 import com.extremecraft.network.packet.AbilityCastPacket;
 import com.extremecraft.network.packet.AbilitySyncPacket;
 import com.extremecraft.network.packet.ActivateAbilityC2SPacket;
@@ -26,6 +29,8 @@ import com.extremecraft.network.sync.SyncAbilityStateS2CPacket;
 import com.extremecraft.network.sync.SyncMachineStateS2CPacket;
 import com.extremecraft.network.sync.SyncRuntimeStatsS2CPacket;
 import com.extremecraft.network.sync.SyncSkillUnlocksS2CPacket;
+import com.extremecraft.progression.skilltree.SyncSkillTreeDataS2C;
+import com.extremecraft.progression.skilltree.UnlockSkillNodeC2S;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
@@ -195,9 +200,40 @@ public final class ModNetwork {
                 .decoder(SyncMachineStateS2CPacket::decode)
                 .consumerMainThread(SyncMachineStateS2CPacket::handle)
                 .add();
+
+        CHANNEL.messageBuilder(OffhandActionC2S.class, nextId())
+                .encoder(OffhandActionC2S::encode)
+                .decoder(OffhandActionC2S::decode)
+                .consumerMainThread(OffhandActionC2S::handle)
+                .add();
+
+        CHANNEL.messageBuilder(CycleLoadoutC2S.class, nextId())
+                .encoder(CycleLoadoutC2S::encode)
+                .decoder(CycleLoadoutC2S::decode)
+                .consumerMainThread(CycleLoadoutC2S::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncDualWieldDataS2C.class, nextId())
+                .encoder(SyncDualWieldDataS2C::encode)
+                .decoder(SyncDualWieldDataS2C::decode)
+                .consumerMainThread(SyncDualWieldDataS2C::handle)
+                .add();
+
+        CHANNEL.messageBuilder(UnlockSkillNodeC2S.class, nextId())
+                .encoder(UnlockSkillNodeC2S::encode)
+                .decoder(UnlockSkillNodeC2S::decode)
+                .consumerMainThread(UnlockSkillNodeC2S::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncSkillTreeDataS2C.class, nextId())
+                .encoder(SyncSkillTreeDataS2C::encode)
+                .decoder(SyncSkillTreeDataS2C::decode)
+                .consumerMainThread(SyncSkillTreeDataS2C::handle)
+                .add();
     }
 
     private static int nextId() {
         return index++;
     }
 }
+

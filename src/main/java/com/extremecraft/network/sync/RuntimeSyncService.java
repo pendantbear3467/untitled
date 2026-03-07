@@ -19,36 +19,80 @@ import net.minecraftforge.network.PacketDistributor;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class RuntimeSyncService {
+    private static final Map<UUID, Integer> LAST_STATS_HASH = new ConcurrentHashMap<>();
+    private static final Map<UUID, Integer> LAST_ABILITIES_HASH = new ConcurrentHashMap<>();
+    private static final Map<UUID, Integer> LAST_SKILLS_HASH = new ConcurrentHashMap<>();
+    private static final Map<UUID, Integer> LAST_MACHINES_HASH = new ConcurrentHashMap<>();
+
     private RuntimeSyncService() {
     }
 
     public static void syncAll(ServerPlayer player) {
-        syncStats(player);
-        syncAbilities(player);
-        syncSkillUnlocks(player);
-        syncMachineStates(player);
+        syncStats(player, true);
+        syncAbilities(player, true);
+        syncSkillUnlocks(player, true);
+        syncMachineStates(player, true);
         ManaService.sync(player);
     }
 
     public static void syncStats(ServerPlayer player) {
+        syncStats(player, false);
+    }
+
+    public static void syncAbilities(ServerPlayer player) {
+        syncAbilities(player, false);
+    }
+
+    public static void syncSkillUnlocks(ServerPlayer player) {
+        syncSkillUnlocks(player, false);
+    }
+
+    public static void syncMachineStates(ServerPlayer player) {
+        syncMachineStates(player, false);
+    }
+
+    public static void clearPlayer(ServerPlayer player) {
+        if (player == null) {
+            return;
+        }
+
+        UUID playerId = player.getUUID();
+        LAST_STATS_HASH.remove(playerId);
+        LAST_ABILITIES_HASH.remove(playerId);
+        LAST_SKILLS_HASH.remove(playerId);
+        LAST_MACHINES_HASH.remove(playerId);
+    }
+
+    private static void syncStats(ServerPlayer player, boolean force) {
         StatCalculationEngine.PlayerStatSnapshot snapshot = StatCalculationEngine.calculate(player);
         CompoundTag payload = new CompoundTag();
         for (Map.Entry<String, Double> entry : snapshot.values().entrySet()) {
             payload.putDouble(entry.getKey(), entry.getValue());
         }
 
+        if (!force && !shouldSend(player, payload, LAST_STATS_HASH)) {
+            return;
+        }
+
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncRuntimeStatsS2CPacket(payload));
     }
 
-    public static void syncAbilities(ServerPlayer player) {
+    private static void syncAbilities(ServerPlayer player, boolean force) {
         CompoundTag payload = AbilityCooldownManager.serializeFor(player);
+
+        if (!force && !shouldSend(player, payload, LAST_ABILITIES_HASH)) {
+            return;
+        }
+
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new AbilitySyncPacket(payload));
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncAbilityStateS2CPacket(payload));
     }
 
-    public static void syncSkillUnlocks(ServerPlayer player) {
+    private static void syncSkillUnlocks(ServerPlayer player, boolean force) {
         CompoundTag payload = new CompoundTag();
         ListTag skills = new ListTag();
         PlayerStatsApi.get(player).ifPresent(stats -> {
@@ -57,10 +101,15 @@ public final class RuntimeSyncService {
             }
         });
         payload.put("skills", skills);
+
+        if (!force && !shouldSend(player, payload, LAST_SKILLS_HASH)) {
+            return;
+        }
+
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncSkillUnlocksS2CPacket(payload));
     }
 
-    public static void syncMachineStates(ServerPlayer player) {
+    private static void syncMachineStates(ServerPlayer player, boolean force) {
         CompoundTag payload = new CompoundTag();
         CompoundTag machines = new CompoundTag();
 
@@ -84,7 +133,19 @@ public final class RuntimeSyncService {
         }
 
         payload.put("machines", machines);
+
+        if (!force && !shouldSend(player, payload, LAST_MACHINES_HASH)) {
+            return;
+        }
+
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncMachineStateS2CPacket(payload));
+    }
+
+    private static boolean shouldSend(ServerPlayer player, CompoundTag payload, Map<UUID, Integer> hashCache) {
+        int nextHash = payload.hashCode();
+        UUID playerId = player.getUUID();
+        Integer previousHash = hashCache.put(playerId, nextHash);
+        return previousHash == null || previousHash != nextHash;
     }
 
     private static CompoundTag extractMachineState(BlockEntity blockEntity) {
@@ -98,3 +159,4 @@ public final class RuntimeSyncService {
         return new CompoundTag();
     }
 }
+

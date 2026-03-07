@@ -1,13 +1,16 @@
 package com.extremecraft.progression.skilltree;
 
+import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.sync.RuntimeSyncService;
 import com.extremecraft.progression.PlayerStatsService;
 import com.extremecraft.progression.capability.PlayerStatsApi;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
 import com.extremecraft.progression.level.PlayerLevelApi;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.network.PacketDistributor;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public final class SkillTreeService {
@@ -24,18 +27,35 @@ public final class SkillTreeService {
         return SkillTreeManager.allTrees();
     }
 
+    public static boolean tryUnlockByNodeId(ServerPlayer player, String nodeId) {
+        if (player == null || nodeId == null || nodeId.isBlank()) {
+            return false;
+        }
+
+        String normalizedNodeId = nodeId.trim().toLowerCase(Locale.ROOT);
+        String resolvedTreeId = SkillTreeManager.treeIdForNode(normalizedNodeId);
+        if (resolvedTreeId.isBlank()) {
+            return false;
+        }
+
+        return tryUnlock(player, resolvedTreeId, normalizedNodeId);
+    }
+
     public static boolean tryUnlock(ServerPlayer player, String treeId, String nodeId) {
         if (player == null || treeId == null || treeId.isBlank() || nodeId == null || nodeId.isBlank()) {
             return false;
         }
 
-        SkillNode node = SkillTreeManager.getNode(nodeId);
+        String normalizedTreeId = treeId.trim().toLowerCase(Locale.ROOT);
+        String normalizedNodeId = nodeId.trim().toLowerCase(Locale.ROOT);
+
+        SkillNode node = SkillTreeManager.getNode(normalizedNodeId);
         if (node == null) {
             return false;
         }
 
-        boolean inTree = SkillTreeManager.nodesForTree(treeId).stream().anyMatch(n -> n.id().equals(nodeId));
-        if (!inTree) {
+        String ownerTreeId = SkillTreeManager.treeIdForNode(normalizedNodeId);
+        if (!normalizedTreeId.equals(ownerTreeId)) {
             return false;
         }
 
@@ -48,7 +68,7 @@ public final class SkillTreeService {
             return false;
         }
 
-        boolean changed = PlayerStatsService.applyUpgradeRequest(player, "skill:" + nodeId);
+        boolean changed = PlayerStatsService.applyUpgradeRequest(player, "skill:" + normalizedNodeId);
         if (!changed) {
             return false;
         }
@@ -56,7 +76,7 @@ public final class SkillTreeService {
         applyModifiers(player);
 
         PlayerSkillTreeApi.get(player).ifPresent(data -> {
-            data.unlock(treeId, nodeId);
+            data.unlock(normalizedTreeId, normalizedNodeId);
             sync(player, data);
         });
 
@@ -107,6 +127,7 @@ public final class SkillTreeService {
     }
 
     public static void sync(ServerPlayer player, PlayerSkillData data) {
-        com.extremecraft.net.DwNetwork.CH.send(net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player), new SyncSkillTreeDataS2C(data.serializeNBT()));
+        ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncSkillTreeDataS2C(data.serializeNBT()));
     }
 }
+
