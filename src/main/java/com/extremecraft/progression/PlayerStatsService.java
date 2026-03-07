@@ -39,11 +39,34 @@ public final class PlayerStatsService {
     }
 
     public static boolean addExperience(ServerPlayer player, int amount) {
+        return addExperience(player, amount, true);
+    }
+
+    public static boolean addExperience(ServerPlayer player, int amount, boolean syncImmediately) {
         return PlayerStatsApi.get(player).map(stats -> {
             boolean leveled = stats.addExperience(amount);
-            sync(player, stats);
+            if (syncImmediately) {
+                sync(player, stats);
+            }
             return leveled;
         }).orElse(false);
+    }
+
+    public static void setLevel(ServerPlayer player, int level) {
+        setLevel(player, level, true);
+    }
+
+    public static void setLevel(ServerPlayer player, int level, boolean syncImmediately) {
+        if (player == null) {
+            return;
+        }
+
+        PlayerStatsApi.get(player).ifPresent(stats -> {
+            stats.setLevel(level);
+            if (syncImmediately) {
+                sync(player, stats);
+            }
+        });
     }
 
     public static void tickResources(ServerPlayer player) {
@@ -89,3 +112,4 @@ public final class PlayerStatsService {
         return stats.unlockSkillNode(node.id(), node.cost());
     }
 }
+

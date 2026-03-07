@@ -33,10 +33,14 @@ import com.extremecraft.progression.skilltree.SyncSkillTreeDataS2C;
 import com.extremecraft.progression.skilltree.UnlockSkillNodeC2S;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.simple.SimpleChannel;`r`nimport org.apache.logging.log4j.LogManager;`r`nimport org.apache.logging.log4j.Logger;
+import net.minecraftforge.network.simple.SimpleChannel;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public final class ModNetwork {
+    private static final Logger LOGGER = LogManager.getLogger();
     private static int index = 0;
+    private static boolean initialized = false;
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(ECConstants.MODID, "main"),
@@ -48,7 +52,11 @@ public final class ModNetwork {
     private ModNetwork() {
     }
 
-    public static void init() {
+    public static synchronized void init() {
+        if (initialized) {
+            LOGGER.warn("[Network] ModNetwork.init() called more than once; skipping duplicate packet registration");
+            return;
+        }
         index = 0;
 
         CHANNEL.messageBuilder(SyncProgressPacket.class, nextId())
@@ -230,11 +238,19 @@ public final class ModNetwork {
                 .decoder(SyncSkillTreeDataS2C::decode)
                 .consumerMainThread(SyncSkillTreeDataS2C::handle)
                 .add();
+
+        initialized = true;
     }
 
     private static int nextId() {
         return index++;
     }
+
+    public static synchronized boolean isInitialized() {
+        return initialized;
+    }
 }
+
+
 
 

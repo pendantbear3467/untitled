@@ -60,6 +60,12 @@ public class PlayerProgressData {
         }
     }
 
+    public void setLevel(int level) {
+        this.level = Math.max(1, level);
+        this.xp = 0;
+        markAttributesDirty();
+        markSyncDirty();
+    }
     public void addXp(int amount) {
         if (amount <= 0) return;
         xp += amount;
@@ -249,5 +255,7 @@ public class PlayerProgressData {
         markSyncDirty();
     }
 }
+
+
 
 

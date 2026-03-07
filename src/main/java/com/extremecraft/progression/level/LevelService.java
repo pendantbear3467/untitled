@@ -2,8 +2,7 @@ package com.extremecraft.progression.level;
 
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.SyncPlayerLevelS2CPacket;
-import com.extremecraft.progression.PlayerStatsService;
-import com.extremecraft.progression.capability.PlayerStatsApi;
+import com.extremecraft.progression.ProgressionMutationService;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
 
@@ -12,6 +11,10 @@ public final class LevelService {
     }
 
     public static int grantXp(ServerPlayer player, int amount) {
+        return ProgressionMutationService.grantXp(player, amount);
+    }
+
+    public static int grantLegacyXp(ServerPlayer player, int amount, boolean syncImmediately) {
         if (player == null || amount <= 0) {
             return 0;
         }
@@ -19,26 +22,28 @@ public final class LevelService {
         int[] levelUps = new int[]{0};
         PlayerLevelApi.get(player).ifPresent(levelData -> {
             levelUps[0] = levelData.grantXp(amount);
-            sync(player, levelData);
+            if (syncImmediately) {
+                sync(player, levelData);
+            }
         });
 
-        PlayerStatsService.addExperience(player, amount);
         return levelUps[0];
     }
 
     public static void setLevel(ServerPlayer player, int level) {
+        ProgressionMutationService.setLevel(player, level);
+    }
+
+    public static void setLegacyLevel(ServerPlayer player, int level, boolean syncImmediately) {
         if (player == null) {
             return;
         }
 
         PlayerLevelApi.get(player).ifPresent(levelData -> {
             levelData.setLevel(level);
-            sync(player, levelData);
-        });
-
-        PlayerStatsApi.get(player).ifPresent(stats -> {
-            stats.setLevel(level);
-            PlayerStatsService.sync(player, stats);
+            if (syncImmediately) {
+                sync(player, levelData);
+            }
         });
     }
 

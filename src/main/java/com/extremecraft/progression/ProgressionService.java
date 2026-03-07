@@ -26,6 +26,10 @@ public final class ProgressionService {
         flushDirty(player);
     }
 
+    public static void setLevel(ServerPlayer player, int level) {
+        ProgressApi.get(player).ifPresent(data -> data.setLevel(level));
+        flushDirty(player);
+    }
     public static void addPlayerSkillPoints(ServerPlayer player, int amount) {
         ProgressApi.get(player).ifPresent(data -> data.addPlayerSkillPoints(amount));
         flushDirty(player);
@@ -100,3 +104,4 @@ public final class ProgressionService {
         attr.addTransientModifier(new AttributeModifier(id, name, amount, AttributeModifier.Operation.ADDITION));
     }
 }
+
