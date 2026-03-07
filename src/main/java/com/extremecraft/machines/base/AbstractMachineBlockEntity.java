@@ -1,6 +1,8 @@
 package com.extremecraft.machines.base;
 
 import com.extremecraft.energy.ECPowerStorage;
+import com.extremecraft.machine.sync.MachineStateSyncProvider;
+import com.extremecraft.machine.sync.MachineSyncIndex;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -49,13 +51,27 @@ public abstract class AbstractMachineBlockEntity extends BlockEntity {
         super.onLoad();
         itemCap = LazyOptional.of(() -> itemHandler);
         energyCap = LazyOptional.of(() -> energyStorage);
+        if (this instanceof MachineStateSyncProvider) {
+            MachineSyncIndex.register(level, worldPosition);
+        }
     }
 
     @Override
     public void invalidateCaps() {
+        if (this instanceof MachineStateSyncProvider) {
+            MachineSyncIndex.unregister(level, worldPosition);
+        }
         super.invalidateCaps();
         itemCap.invalidate();
         energyCap.invalidate();
+    }
+
+    @Override
+    public void setRemoved() {
+        if (this instanceof MachineStateSyncProvider) {
+            MachineSyncIndex.unregister(level, worldPosition);
+        }
+        super.setRemoved();
     }
 
     @Override

@@ -4,6 +4,7 @@ import com.extremecraft.energy.EnergyStorageExt;
 import com.extremecraft.machine.core.ECEStorageAdapter;
 import com.extremecraft.machine.core.IECEStorage;
 import com.extremecraft.machine.sync.MachineStateSyncProvider;
+import com.extremecraft.machine.sync.MachineSyncIndex;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -101,13 +102,21 @@ public class MachineBlockEntity extends BlockEntity implements MachineStateSyncP
         super.onLoad();
         itemCap = LazyOptional.of(() -> combinedInventory);
         energyCap = LazyOptional.of(() -> energyStorage);
+        MachineSyncIndex.register(level, worldPosition);
     }
 
     @Override
     public void invalidateCaps() {
+        MachineSyncIndex.unregister(level, worldPosition);
         super.invalidateCaps();
         itemCap.invalidate();
         energyCap.invalidate();
+    }
+
+    @Override
+    public void setRemoved() {
+        MachineSyncIndex.unregister(level, worldPosition);
+        super.setRemoved();
     }
 
     @Override
