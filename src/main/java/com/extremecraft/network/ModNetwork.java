@@ -33,7 +33,7 @@ import com.extremecraft.progression.skilltree.SyncSkillTreeDataS2C;
 import com.extremecraft.progression.skilltree.UnlockSkillNodeC2S;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.simple.SimpleChannel;
+import net.minecraftforge.network.simple.SimpleChannel;`r`nimport org.apache.logging.log4j.LogManager;`r`nimport org.apache.logging.log4j.Logger;
 
 public final class ModNetwork {
     private static int index = 0;
@@ -236,4 +236,5 @@ public final class ModNetwork {
         return index++;
     }
 }
+
 

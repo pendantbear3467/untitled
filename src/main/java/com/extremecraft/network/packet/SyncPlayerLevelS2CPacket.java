@@ -1,9 +1,11 @@
 package com.extremecraft.network.packet;
 
 import com.extremecraft.progression.level.PlayerLevelProvider;
-import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
@@ -20,15 +22,24 @@ public record SyncPlayerLevelS2CPacket(CompoundTag data) {
 
     public static void handle(SyncPlayerLevelS2CPacket packet, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context context = ctx.get();
-        context.enqueueWork(() -> {
-            Minecraft minecraft = Minecraft.getInstance();
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> ClientHandler.apply(packet.data())));
+        context.setPacketHandled(true);
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private static final class ClientHandler {
+        private ClientHandler() {
+        }
+
+        private static void apply(CompoundTag data) {
+            net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
             if (minecraft.player == null) {
                 return;
             }
 
             minecraft.player.getCapability(PlayerLevelProvider.PLAYER_LEVEL)
-                    .ifPresent(level -> level.deserializeNBT(packet.data));
-        });
-        context.setPacketHandled(true);
+                    .ifPresent(level -> level.deserializeNBT(data));
+        }
     }
 }

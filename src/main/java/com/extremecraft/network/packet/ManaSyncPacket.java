@@ -1,9 +1,11 @@
 package com.extremecraft.network.packet;
 
 import com.extremecraft.magic.mana.ManaCapabilityProvider;
-import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
@@ -19,15 +21,25 @@ public record ManaSyncPacket(CompoundTag payload) {
     }
 
     public static void handle(ManaSyncPacket packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            Minecraft minecraft = Minecraft.getInstance();
+        NetworkEvent.Context context = ctx.get();
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> ClientHandler.apply(packet.payload())));
+        context.setPacketHandled(true);
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private static final class ClientHandler {
+        private ClientHandler() {
+        }
+
+        private static void apply(CompoundTag payload) {
+            net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
             if (minecraft.player == null) {
                 return;
             }
 
             minecraft.player.getCapability(ManaCapabilityProvider.MANA_CAPABILITY)
-                    .ifPresent(mana -> mana.deserializeNBT(packet.payload()));
-        });
-        ctx.get().setPacketHandled(true);
+                    .ifPresent(mana -> mana.deserializeNBT(payload));
+        }
     }
 }
