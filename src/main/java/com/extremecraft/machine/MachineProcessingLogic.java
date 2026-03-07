@@ -12,6 +12,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Stateless machine tick processor.
+ *
+ * <p>This class owns the server-side machine execution loop: it resolves a valid recipe,
+ * checks energy channels, advances progress, and commits inventory mutations atomically at
+ * recipe completion. Keeping this logic centralized prevents drift between different machine
+ * block entity implementations.</p>
+ */
 public final class MachineProcessingLogic {
     private MachineProcessingLogic() {
     }
@@ -163,3 +171,4 @@ public final class MachineProcessingLogic {
         return item;
     }
 }
+

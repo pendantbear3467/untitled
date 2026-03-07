@@ -17,6 +17,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Central ability registry combining data-driven definitions and executable runtime handlers.
+ *
+ * <p>Datapack JSON definitions are reloaded through Forge resource reload events, while
+ * runtime ability executors are registered programmatically at startup or by integrations.
+ * The two layers intentionally coexist so balancing data can evolve independently from
+ * Java effect execution code.</p>
+ */
 public final class AbilityRegistry {
     private static final Map<String, AbilityDefinition> DEFINITIONS = new LinkedHashMap<>();
     private static List<AbilityDefinition> CACHED_LIST = List.of();
@@ -129,3 +137,4 @@ public final class AbilityRegistry {
         }
     }
 }
+

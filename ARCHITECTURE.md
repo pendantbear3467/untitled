@@ -1,0 +1,102 @@
+# ARCHITECTURE
+
+This document summarizes the runtime architecture used by the Forge mod in `src/main/java` and `src/main/resources`.
+
+## Game Engine Systems
+
+Primary bootstrap: `com.extremecraft.core.ExtremeCraft`.
+
+Core responsibilities:
+
+- Registers blocks, items, menus, entities, recipes, sounds.
+- Boots API/provider wiring (`ExtremeCraftAPI`, provider impl, module loader).
+- Registers gameplay systems to Forge event bus.
+- Registers client-only overlays/screens/renderers during client setup.
+
+Design intent:
+
+- Keep startup orchestration centralized in `ExtremeCraft`.
+- Keep gameplay domain logic in dedicated subsystem packages.
+
+## Machine Systems
+
+Primary components:
+
+- `MachineRegistry`: runtime machine and machine-recipe catalog.
+- `MachineProcessingLogic`: per-tick processing execution for machine block entities.
+- `MachineBlockEntity` + machine menu/screen classes for inventory/UI state.
+
+Data flow:
+
+1. Machine definitions/recipes are loaded from datapack resources.
+2. Registries expose immutable snapshots for hot-path reads.
+3. Tick logic resolves recipe, consumes energy, mutates inventories on completion.
+
+Why it exists:
+
+- Keeps machine balancing/data in JSON.
+- Keeps execution semantics in one deterministic server-side loop.
+
+## Ability System
+
+Primary components:
+
+- `AbilityRegistry`: data definitions + runtime executors.
+- `AbilityEngine`: validation, target resolution, mana/cooldown checks, execution.
+- `AbilityExecutor` and effect types for data-defined behavior.
+
+Data flow:
+
+1. Ability JSON is loaded into definitions.
+2. Runtime abilities can be registered programmatically.
+3. Cast requests pass through cooldown/mana/class/target validation.
+4. Effects execute and sync services update client state.
+
+Why it exists:
+
+- Supports both built-in Java abilities and datapack-driven abilities.
+- Keeps gating/security checks in one execution path.
+
+## Packet Security
+
+Primary component: `com.extremecraft.network.security.ServerPacketLimiter`.
+
+Responsibilities:
+
+- Per-player, per-key request limiting.
+- Tick delta throttling.
+- Fixed request-window caps.
+
+Why it exists:
+
+- Prevents abusive packet spam from overwhelming server handlers.
+- Lets each handler apply tailored limits without duplicating limiter logic.
+
+## Tick Scheduling
+
+Primary components:
+
+- `DwServerTicker` (server-side offhand break replay loop).
+- `ServerDeferredWorkEvents`/`ServerDeferredWorkQueue` (deferred task processing with tick budgets).
+- `PlayerRuntimeCleanupEvents` (state cleanup).
+
+Why it exists:
+
+- Moves delayed gameplay actions onto deterministic server ticks.
+- Avoids doing expensive or timing-sensitive work directly inside packet/event callbacks.
+
+## Datapack Loading
+
+Bootstrap: `PlatformDataLoaderBootstrap.registerAll()`.
+
+Loader pattern:
+
+- Domain loader per content type (`MachineDataLoader`, `AbilityDataLoader`, `SkillTreeDataLoader`, etc.).
+- Loaders parse JSON and populate domain registries.
+- Validation services run after load to report schema/reference issues.
+
+Runtime behavior:
+
+- Reload listeners are registered on Forge event bus.
+- Content is reloaded from datapacks/resource packs without code changes.
+- Systems read from registries, not directly from disk.

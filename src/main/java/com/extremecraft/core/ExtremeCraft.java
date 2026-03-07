@@ -90,6 +90,13 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 
+/**
+ * Primary Forge mod bootstrap for ExtremeCraft.
+ *
+ * <p>This class wires gameplay subsystems into Forge lifecycle phases and event buses.
+ * Keep orchestration logic here and place domain behavior in dedicated system classes
+ * so startup ordering remains explicit and reviewable.</p>
+ */
 @Mod(ECConstants.MODID)
 public final class ExtremeCraft {
     public ExtremeCraft() {
@@ -164,6 +171,8 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new ResearchManager());
             MinecraftForge.EVENT_BUS.register(new WorldgenConsistencyValidator());
             MinecraftForge.EVENT_BUS.register(new DimensionHooks());
+            // Tick-scheduled server systems: offhand break replay, deferred queue draining, and stale state cleanup.
+
             MinecraftForge.EVENT_BUS.register(new DwServerTicker());
             MinecraftForge.EVENT_BUS.register(new PlayerRuntimeCleanupEvents());
             MinecraftForge.EVENT_BUS.register(new ServerDeferredWorkEvents());
@@ -185,6 +194,8 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new ProgressionRegistry());
 
             MobSpawns.bootstrap();
+            // Register datapack reload listeners after gameplay registries are initialized.
+
             PlatformDataLoaderBootstrap.registerAll();
             MinecraftForge.EVENT_BUS.register(new PlatformDataSyncEvents());
         });
@@ -224,6 +235,10 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
+
+
+
 
 
 

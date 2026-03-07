@@ -1,115 +1,65 @@
-# EXTREMECRAFT PLATFORM + ASSET STUDIO
+# ExtremeCraft
 
-ExtremeCraft now includes a full ecosystem toolchain for large Minecraft mod development:
+ExtremeCraft is a large-scale Minecraft Forge mod for 1.20.1 focused on technology progression, magic abilities, machine automation, and data-driven gameplay systems.
 
-- `extremecraft_sdk/` for addon/content-pack authoring
-- `compiler/` for module compilation to distributable JAR artifacts
-- Asset Studio CLI + GUI for generation, validation, repair, release, and modpack assembly
+## Repository Layout
 
-## Platform Capabilities
+- `src/main/java`: Gameplay/runtime Java code loaded by Forge.
+- `src/main/resources`: Runtime assets and built-in datapack content (`assets/`, `data/`, `META-INF/`).
+- `api/`: Public Java API module consumed by integrations.
+- `tools/python`: Python platform tooling (Asset Studio, SDK, compiler, plugin pipeline).
+- `tools/`: Build/validation utility scripts used by Gradle checks.
+- `datapacks/`: Contributor-facing external datapack workspace and examples.
+- `docs/`: Reference docs and generated validation/report artifacts.
+- `examples/`: Example addon/template projects.
+- `scripts/`: Optional helper scripts for contributor workflows.
 
-- Forge registry code generation (`GeneratedItems`, `GeneratedBlocks`, `GeneratedMachines`, `GeneratedRecipes`, `GeneratedWorldgen`)
-- Graph-based dependency resolver with material/machine/addon/API dependencies and version checks
-- Datapack compilation pipeline (recipes, loot tables, tags, advancements, worldgen features)
-- Procedural texture styles: `industrial`, `ancient`, `arcane`, `mechanical`, `crystalline`
-- Blockbench import/export with animation bundle support, texture baking, and blockstate generation
-- Plugin metadata + marketplace index architecture (`workspace/plugin_marketplace/index.json`)
-- Dynamic runtime module jar loader (`<game-dir>/extremecraft/modules/*.jar`)
-- Automated validation for registry conflicts, missing assets, and invalid datapacks
-- Auto-generated addon/API documentation inside module build output
+## What ExtremeCraft Includes
 
-## Install
+- Data-driven machine definitions and processing recipes.
+- Ability runtime with cooldown/mana/class requirements.
+- Progression, quests, research, classes, and skill trees.
+- Entity extension hooks for custom mob/boss behavior.
+- Validation and generation tooling for large content sets.
 
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-pip install -e .[all]
+## Development Environment
+
+Prerequisites:
+
+- Java 17 (Forge 1.20.1 toolchain).
+- Python 3.10+ (optional but recommended for tooling and content validation).
+
+Run the mod in a Forge client dev session:
+
+```powershell
+.\gradlew.bat runClient
 ```
 
-## Runtime Config (Modpacks)
+Run verification checks:
 
-Server config now lives in `config/extremecraft-common.toml` and is grouped for pack tuning:
-
-- `[machines]`: tick intervals, recipe lookup cooldown, fallback recipe toggle, and `disabledMachineIds`
-- `[tools]`: hammer AOE toggles/radius/hardness and drill teleport tuning
-- `[mobs]`: natural spawn switch, mob density cap, `disabledMobIds`, boss arena scan interval, and machine hazard settings
-
-Examples:
-
-```toml
-[machines]
-disabledMachineIds = ["extremecraft:quantum_fabricator"]
-
-[mobs]
-disabledMobIds = ["extremecraft:arcane_wraith"]
-maxNearbySameMob = 8
-```
-## Core Commands
-
-```bash
-# SDK scaffold + validation + generation
-assetstudio sdk init-addon mythril_expansion
-assetstudio sdk validate mythril_expansion
-assetstudio sdk generate mythril_expansion
-
-# Compile addon to module artifact (registry code + datapack + docs)
-assetstudio compile expansion mythril_expansion
-
-# Addon lifecycle
-assetstudio addon list
-assetstudio addon build-all
-assetstudio addon install workspace/addons/mythril_expansion
-assetstudio addon remove mythril_expansion
-
-# Batch content generation
-assetstudio generate material_set mythril --tier 5 --style industrial
-
-# Validation + repair
-assetstudio validate --strict
-assetstudio repair run
-
-# Registry tools
-assetstudio registry scan --source src/main/java --save-history snapshot_a
-assetstudio registry diff snapshot_a snapshot_b
-assetstudio registry history list
-
-# Release automation
-assetstudio release build --name extremecraft-v0.2.0
-assetstudio release publish --name extremecraft-v0.2.0
-
-# Modpack build
-assetstudio modpack build extreme_adventure_pack
+```powershell
+.\gradlew.bat check
 ```
 
-## SDK Structure
+## Build The Mod
 
-```text
-extremecraft_sdk/
-  api/
-  definitions/
-  generators/
-  validators/
-  plugins/
-  templates/
+Compile Java sources:
+
+```powershell
+.\gradlew.bat compileJava
 ```
 
-## Compiler Structure
+Build distributable artifacts:
 
-```text
-compiler/
-  module_builder.py
-  code_generator.py
-  datapack_builder.py
-  documentation_generator.py
-  asset_builder.py
-  dependency_resolver.py
+```powershell
+.\gradlew.bat build
 ```
 
-## GUI
+## How Datapacks Extend ExtremeCraft
 
-```bash
-assetstudio --gui
-```
+ExtremeCraft loads JSON content from built-in resources and external datapacks at reload/startup.
 
-The GUI includes the asset wizard, visual definition editors, project browser, console, and animated preview controls.
+- Built-in content: `src/main/resources/data/extremecraft/...`
+- External content workspace: `datapacks/`
 
+Supported extension domains include machines, abilities, skills, quests, tech trees, recipes, and related progression content. See `DATAPACK_FORMAT.md` for schema details and examples.

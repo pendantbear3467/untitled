@@ -19,6 +19,12 @@ public final class ServerPacketLimiter {
     private ServerPacketLimiter() {
     }
 
+    /**
+     * Enforces per-player packet pacing for sensitive C2S handlers.
+     *
+     * <p>The limiter is intentionally stateless from a gameplay perspective: callers decide
+     * keys and thresholds, while this guard only tracks timing windows and request counts.</p>
+     */
     public static boolean allow(ServerPlayer player, String key, int minTickDelta, int maxPerWindow, int windowTicks) {
         if (player == null) {
             return false;
@@ -79,3 +85,4 @@ public final class ServerPacketLimiter {
         private int usedInWindow;
     }
 }
+

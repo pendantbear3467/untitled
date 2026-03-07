@@ -19,6 +19,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Runtime machine catalog backed by datapack reloads and API extension hooks.
+ *
+ * <p>This registry is read by machine block entities every server tick, so it keeps
+ * immutable cached views for fast reads while still allowing full replacement when
+ * datapacks reload. API and module integrations append definitions through the
+ * registration methods and are merged with datapack content.</p>
+ */
 public final class MachineRegistry {
     private static final Map<String, MachineDefinition> MACHINES = new LinkedHashMap<>();
     private static final Map<String, MachineRecipe> RECIPES = new LinkedHashMap<>();
@@ -194,6 +202,7 @@ public final class MachineRegistry {
         }
     }
 }
+
 
 
 

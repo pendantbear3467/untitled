@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import json
 import shutil
+import sys
 import unittest
 import uuid
 from pathlib import Path
+
+TOOLS_PYTHON = Path(__file__).resolve().parents[1] / "tools" / "python"
+if str(TOOLS_PYTHON) not in sys.path:
+    sys.path.insert(0, str(TOOLS_PYTHON))
 
 from asset_studio.validation.datapack_validator import validate_datapack
 from asset_studio.validation.texture_validator import validate_textures

@@ -61,6 +61,16 @@ class WorkspaceManager:
         self.workspace_root = workspace_root
         self.repo_root = repo_root
 
+    def _resolve_repo_plugins_dir(self) -> Path:
+        candidates = [
+            self.repo_root / "tools" / "python" / "plugins",
+            self.repo_root / "plugins",
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        return candidates[0]
+
     def initialize_workspace(self) -> AssetStudioContext:
         for rel in [
             "assets/textures/item",
@@ -115,7 +125,7 @@ class WorkspaceManager:
         if not snapshot_path.exists():
             snapshot_path.write_text(json.dumps({"files_scanned": 0}, indent=2) + "\n", encoding="utf-8")
 
-        plugins = load_plugins(self.repo_root / "plugins")
+        plugins = load_plugins(self._resolve_repo_plugins_dir())
         workspace_plugins_dir = self.workspace_root / "plugins"
         if workspace_plugins_dir.exists():
             workspace_plugins = load_plugins(workspace_plugins_dir)

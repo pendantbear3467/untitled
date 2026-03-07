@@ -473,7 +473,11 @@ def exec_processing(node: BaseGraphNode, _: dict[str, object], context) -> list[
 
 
 def discover_graph_plugins(workspace_root: Path) -> None:
-    repo_graph_nodes = Path.cwd() / "asset_studio" / "plugins" / "graph_nodes"
+    repo_candidates = [
+        Path.cwd() / "tools" / "python" / "asset_studio" / "plugins" / "graph_nodes",
+        Path.cwd() / "asset_studio" / "plugins" / "graph_nodes",
+    ]
+    repo_graph_nodes = next((candidate for candidate in repo_candidates if candidate.exists()), repo_candidates[0])
     workspace_graph_nodes = workspace_root / "plugins" / "graph_nodes"
     _GLOBAL_REGISTRY.discover_plugin_nodes([repo_graph_nodes, workspace_graph_nodes])
 
@@ -508,3 +512,4 @@ def _load_module(path: Path) -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
