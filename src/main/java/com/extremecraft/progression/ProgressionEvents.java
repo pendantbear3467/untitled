@@ -54,10 +54,10 @@ public class ProgressionEvents {
             String regionKey = player.level().dimension().location() + "|" + rx + "|" + rz;
             ProgressApi.get(player).ifPresent(data -> {
                 if (data.discoverRegion(regionKey)) {
-                    data.addXp(8);
+                    ProgressionMutationService.grantXp(player, 8);
                     incrementQuest(player, QuestType.EXPLORATION, 1);
                     SkillsApi.get(player).ifPresent(skills -> skills.addSkillLevel("engineering", 1));
-                    ProgressionService.flushDirty(player);
+
                 }
             });
         }
@@ -69,7 +69,7 @@ public class ProgressionEvents {
         if (!(event.getSource().getEntity() instanceof ServerPlayer player)) return;
 
         int xp = Math.max(5, (int) (event.getEntity().getMaxHealth() * 2.0D));
-        ProgressionService.addXp(player, xp);
+        ProgressionMutationService.grantXp(player, xp);
         SkillsApi.get(player).ifPresent(skills -> skills.addSkillLevel("combat", 1));
 
         incrementQuest(player, QuestType.KILL, 1);
@@ -82,7 +82,7 @@ public class ProgressionEvents {
     public void onCraft(PlayerEvent.ItemCraftedEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         int count = Math.max(1, event.getCrafting().getCount());
-        ProgressionService.addXp(player, count * 2);
+        ProgressionMutationService.grantXp(player, count * 2);
         incrementQuest(player, QuestType.CRAFTING, count);
 
         ItemStack crafted = event.getCrafting();
@@ -137,6 +137,7 @@ public class ProgressionEvents {
         }
     }
 }
+
 
 
 
