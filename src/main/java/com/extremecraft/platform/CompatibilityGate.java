@@ -12,3 +12,4 @@ public final class CompatibilityGate {
                 && module.protocolVersion() == ExtremeCraftApiVersions.EXTREMECRAFT_PROTOCOL_VERSION;
     }
 }
+

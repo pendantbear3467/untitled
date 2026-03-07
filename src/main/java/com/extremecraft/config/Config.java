@@ -231,6 +231,18 @@ public final class Config {
         return Math.max(0.0D, safeDouble(COMMON.mobs.machineHazardDamage, 2.0D));
     }
 
+    public static boolean isCuriosCompatEnabled() {
+        return safeBoolean(COMMON.compatibility.enableCuriosHooks, true);
+    }
+
+    public static boolean isJeiCompatEnabled() {
+        return safeBoolean(COMMON.compatibility.enableJeiHooks, true);
+    }
+
+    public static boolean isGeckoLibCompatEnabled() {
+        return safeBoolean(COMMON.compatibility.enableGeckoLibHooks, true);
+    }
+
     private static Set<String> parseMachineIds(List<? extends String> rawIds) {
         Set<String> parsed = new LinkedHashSet<>();
         for (String raw : rawIds) {
@@ -293,12 +305,14 @@ public final class Config {
         public final Tools tools;
         public final Abilities abilities;
         public final Mobs mobs;
+        public final Compatibility compatibility;
 
         private Common(ForgeConfigSpec.Builder builder) {
             this.machines = new Machines(builder);
             this.tools = new Tools(builder);
             this.abilities = new Abilities(builder);
             this.mobs = new Mobs(builder);
+            this.compatibility = new Compatibility(builder);
         }
     }
 
@@ -455,6 +469,23 @@ public final class Config {
         }
     }
 
+    public static final class Compatibility {
+        public final ForgeConfigSpec.BooleanValue enableCuriosHooks;
+        public final ForgeConfigSpec.BooleanValue enableJeiHooks;
+        public final ForgeConfigSpec.BooleanValue enableGeckoLibHooks;
+
+        private Compatibility(ForgeConfigSpec.Builder builder) {
+            builder.push("compatibility");
+            enableCuriosHooks = builder.comment("Enable optional Curios integration hooks when Curios is present.")
+                    .define("enableCuriosHooks", true);
+            enableJeiHooks = builder.comment("Enable optional JEI integration hooks when JEI is present.")
+                    .define("enableJeiHooks", true);
+            enableGeckoLibHooks = builder.comment("Enable optional GeckoLib integration hooks when GeckoLib is present.")
+                    .define("enableGeckoLibHooks", true);
+            builder.pop();
+        }
+    }
+
     private static boolean isMachineIdLike(Object value) {
         if (!(value instanceof String raw)) {
             return false;
@@ -493,3 +524,5 @@ public final class Config {
         }
     }
 }
+
+

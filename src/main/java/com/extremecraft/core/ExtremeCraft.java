@@ -4,14 +4,6 @@ import com.extremecraft.ability.AbilityEngine;
 import com.extremecraft.ability.AbilityRegistry;
 import com.extremecraft.api.ExtremeCraftAPI;
 import com.extremecraft.classsystem.ClassRegistry;
-import com.extremecraft.client.DwClientHooks;
-import com.extremecraft.client.DwKeybinds;
-import com.extremecraft.client.gui.player.AbilityBarOverlay;
-import com.extremecraft.client.gui.machine.TechMachineScreen;
-import com.extremecraft.client.gui.player.InventoryButtonInjector;
-import com.extremecraft.client.gui.player.InventoryXpOverlay;
-import com.extremecraft.client.ExtremeCraftKeybinds;
-import com.extremecraft.client.render.entity.ModEntityRenderers;
 import com.extremecraft.combat.CombatEventHandler;
 import com.extremecraft.combat.dualwield.PlayerDualWieldEvents;
 import com.extremecraft.command.ECDevCommands;
@@ -29,7 +21,6 @@ import com.extremecraft.future.registry.TechCreativeTabs;
 import com.extremecraft.future.registry.TechItems;
 import com.extremecraft.future.registry.TechMenuTypes;
 import com.extremecraft.future.registry.TechRecipeSerializers;
-import com.extremecraft.gui.PulverizerScreen;
 import com.extremecraft.item.armor.ArmorBonusHandler;
 import com.extremecraft.machine.MachineRegistry;
 import com.extremecraft.magic.SpellRegistry;
@@ -78,7 +69,6 @@ import com.extremecraft.skills.SkillRegistry;
 import com.extremecraft.skills.SkillsCapabilityEvents;
 import com.extremecraft.worldgen.DimensionHooks;
 import com.extremecraft.worldgen.validation.WorldgenConsistencyValidator;
-import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -86,7 +76,6 @@ import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
 import net.minecraftforge.event.entity.EntityAttributeModificationEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLEnvironment;
@@ -122,14 +111,10 @@ public final class ExtremeCraft {
         ModEntities.ENTITY_TYPES.register(modBus);
 
         modBus.addListener(this::commonSetup);
-        modBus.addListener(this::clientSetup);
         modBus.addListener(this::onEntityAttributeModification);
         modBus.addListener(this::onEntityAttributeCreation);
         if (FMLEnvironment.dist == Dist.CLIENT) {
-            modBus.addListener(DwKeybinds::onRegisterKeyMappings);
-            modBus.addListener(ExtremeCraftKeybinds::onRegisterKeyMappings);
-            modBus.addListener(ModEntityRenderers::registerRenderers);
-            modBus.addListener(ModEntityRenderers::registerLayerDefinitions);
+            registerClientLifecycle(modBus);
         }
 
         MinecraftForge.EVENT_BUS.addListener(this::registerCommands);
@@ -203,15 +188,13 @@ public final class ExtremeCraft {
         });
     }
 
-    private void clientSetup(final FMLClientSetupEvent event) {
-        event.enqueueWork(() -> {
-            MenuScreens.register(ModMenuTypes.PULVERIZER_MENU.get(), PulverizerScreen::new);
-            MenuScreens.register(TechMenuTypes.TECH_MACHINE.get(), TechMachineScreen::new);
-            MinecraftForge.EVENT_BUS.register(new DwClientHooks());
-            MinecraftForge.EVENT_BUS.register(new InventoryButtonInjector());
-            MinecraftForge.EVENT_BUS.register(new InventoryXpOverlay());
-            MinecraftForge.EVENT_BUS.register(new AbilityBarOverlay());
-        });
+    private static void registerClientLifecycle(IEventBus modBus) {
+        try {
+            Class<?> bridgeClass = Class.forName("com.extremecraft.client.ClientLifecycleBridge");
+            bridgeClass.getMethod("register", IEventBus.class).invoke(null, modBus);
+        } catch (ReflectiveOperationException ex) {
+            throw new IllegalStateException("Failed to initialize client lifecycle bridge", ex);
+        }
     }
 
     private void registerCommands(RegisterCommandsEvent event) {
@@ -237,6 +220,7 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
 
 
 
