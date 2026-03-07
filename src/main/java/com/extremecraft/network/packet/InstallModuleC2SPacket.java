@@ -17,8 +17,8 @@ public record InstallModuleC2SPacket(String moduleId, String targetSlot) {
     private static final Logger LOGGER = LogManager.getLogger();
 
     public static void encode(InstallModuleC2SPacket packet, FriendlyByteBuf buf) {
-        buf.writeUtf(packet.moduleId, 128);
-        buf.writeUtf(packet.targetSlot, 32);
+        buf.writeUtf(packet.moduleId == null ? "" : packet.moduleId, 128);
+        buf.writeUtf(packet.targetSlot == null ? "" : packet.targetSlot, 32);
     }
 
     public static InstallModuleC2SPacket decode(FriendlyByteBuf buf) {

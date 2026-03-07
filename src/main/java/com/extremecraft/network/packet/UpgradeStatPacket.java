@@ -15,7 +15,7 @@ public record UpgradeStatPacket(String upgradeId) {
     private static final Logger LOGGER = LogManager.getLogger();
 
     public static void encode(UpgradeStatPacket packet, FriendlyByteBuf buf) {
-        buf.writeUtf(packet.upgradeId(), 128);
+        buf.writeUtf(packet.upgradeId() == null ? "" : packet.upgradeId(), 128);
     }
 
     public static UpgradeStatPacket decode(FriendlyByteBuf buf) {
@@ -33,6 +33,7 @@ public record UpgradeStatPacket(String upgradeId) {
         context.enqueueWork(() -> {
             ServerPlayer sender = context.getSender();
             if (sender == null || sender.isSpectator()) {
+                LOGGER.debug("[Network] Dropped UpgradeStatPacket due to missing sender or spectator state");
                 return;
             }
 

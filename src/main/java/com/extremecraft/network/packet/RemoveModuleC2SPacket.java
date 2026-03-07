@@ -17,8 +17,8 @@ public record RemoveModuleC2SPacket(String moduleId, String targetSlot) {
     private static final Logger LOGGER = LogManager.getLogger();
 
     public static void encode(RemoveModuleC2SPacket packet, FriendlyByteBuf buf) {
-        buf.writeUtf(packet.moduleId, 128);
-        buf.writeUtf(packet.targetSlot, 32);
+        buf.writeUtf(packet.moduleId == null ? "" : packet.moduleId, 128);
+        buf.writeUtf(packet.targetSlot == null ? "" : packet.targetSlot, 32);
     }
 
     public static RemoveModuleC2SPacket decode(FriendlyByteBuf buf) {

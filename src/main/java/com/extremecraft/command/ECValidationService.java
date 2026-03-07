@@ -10,6 +10,8 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.ArmorMaterial;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraftforge.fml.loading.FMLPaths;
@@ -22,6 +24,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -33,6 +37,8 @@ import java.util.stream.Stream;
 public final class ECValidationService {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final Gson GSON = new Gson();
+    private static final Set<String> CRAFTING_CATEGORIES = Set.of("building", "redstone", "equipment", "misc");
+    private static final Set<String> COOKING_CATEGORIES = Set.of("food", "blocks", "misc");
 
     private ECValidationService() {
     }
@@ -124,6 +130,16 @@ public final class ECValidationService {
                 reporter.warn("Missing blockstate file: " + relativeToResources(resourcesRoot, blockstate));
             }
 
+            Path lootTable = resourcesRoot
+                    .resolve("data")
+                    .resolve(ECConstants.MODID)
+                    .resolve("loot_tables")
+                    .resolve("blocks")
+                    .resolve(path + ".json");
+            if (!Files.exists(lootTable)) {
+                reporter.warn("Missing block loot table: " + relativeToResources(resourcesRoot, lootTable));
+            }
+
             String key = "block." + ECConstants.MODID + "." + path;
             if (!langKeys.contains(key)) {
                 reporter.warn("Missing lang key: " + key);
@@ -147,7 +163,56 @@ public final class ECValidationService {
             }
         }
 
+        validateArmorLayerTextures(resourcesRoot, assetsRoot, reporter);
         validateModelTextureReferences(resourcesRoot, assetsRoot, reporter);
+    }
+
+    private static void validateArmorLayerTextures(Path resourcesRoot, Path assetsRoot, ValidationReporter reporter) {
+        Path armorRoot = assetsRoot.resolve("textures").resolve("models").resolve("armor");
+        Set<String> materialIds = new LinkedHashSet<>();
+        Map<String, Boolean> materialHasLeggings = new HashMap<>();
+
+        for (ResourceLocation id : ForgeRegistries.ITEMS.getKeys()) {
+            if (!ECConstants.MODID.equals(id.getNamespace())) {
+                continue;
+            }
+
+            Item item = ForgeRegistries.ITEMS.getValue(id);
+            if (!(item instanceof ArmorItem armorItem)) {
+                continue;
+            }
+
+            String materialId = armorTextureBaseName(armorItem.getMaterial());
+            if (!materialId.isEmpty()) {
+                materialIds.add(materialId);
+                boolean hasLeggings = armorItem.getType() == ArmorItem.Type.LEGGINGS;
+                materialHasLeggings.merge(materialId, hasLeggings, Boolean::logicalOr);
+            }
+        }
+
+        for (String materialId : materialIds) {
+            Path layer1 = armorRoot.resolve(materialId + "_layer_1.png");
+            if (!Files.exists(layer1)) {
+                reporter.warn("Missing armor layer texture: " + relativeToResources(resourcesRoot, layer1));
+            }
+
+            if (materialHasLeggings.getOrDefault(materialId, false)) {
+                Path layer2 = armorRoot.resolve(materialId + "_layer_2.png");
+                if (!Files.exists(layer2)) {
+                    reporter.warn("Missing armor layer texture: " + relativeToResources(resourcesRoot, layer2));
+                }
+            }
+        }
+    }
+
+    private static String armorTextureBaseName(ArmorMaterial material) {
+        String name = material.getName();
+        if (name == null || name.isBlank()) {
+            return "";
+        }
+
+        int separator = name.indexOf(':');
+        return separator >= 0 ? name.substring(separator + 1) : name;
     }
 
     private static Set<String> loadLangKeys(Path langFile, ValidationReporter reporter) {
@@ -243,10 +308,59 @@ public final class ECValidationService {
                 return;
             }
 
+            validateRecipeCategory(root, resourcesRoot, recipePath, reporter);
+
             validateRecipeElement(root, "", resourcesRoot, recipePath, reporter);
         } catch (Exception ex) {
             reporter.warn("Invalid recipe JSON " + relativeToResources(resourcesRoot, recipePath) + ": " + ex.getMessage());
         }
+    }
+
+    private static void validateRecipeCategory(JsonElement root, Path resourcesRoot, Path recipePath, ValidationReporter reporter) {
+        if (!root.isJsonObject()) {
+            return;
+        }
+
+        JsonObject object = root.getAsJsonObject();
+        String type = stringOrEmpty(object.get("type"));
+        if (!type.startsWith("minecraft:")) {
+            return;
+        }
+
+        String category = stringOrEmpty(object.get("category"));
+        if (category.isEmpty()) {
+            return;
+        }
+
+        String normalized = category.toLowerCase();
+        if (isCraftingRecipe(type) && !CRAFTING_CATEGORIES.contains(normalized)) {
+            reporter.warn("Invalid crafting recipe category in " + relativeToResources(resourcesRoot, recipePath)
+                    + ": '" + category + "' (expected one of " + CRAFTING_CATEGORIES + ")");
+            return;
+        }
+
+        if (isCookingRecipe(type) && !COOKING_CATEGORIES.contains(normalized)) {
+            reporter.warn("Invalid cooking recipe category in " + relativeToResources(resourcesRoot, recipePath)
+                    + ": '" + category + "' (expected one of " + COOKING_CATEGORIES + ")");
+        }
+    }
+
+    private static String stringOrEmpty(JsonElement element) {
+        if (element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+            return "";
+        }
+        return element.getAsString().trim();
+    }
+
+    private static boolean isCraftingRecipe(String type) {
+        return "minecraft:crafting_shaped".equals(type) || "minecraft:crafting_shapeless".equals(type);
+    }
+
+    private static boolean isCookingRecipe(String type) {
+        return "minecraft:smelting".equals(type)
+                || "minecraft:blasting".equals(type)
+                || "minecraft:smoking".equals(type)
+                || "minecraft:campfire_cooking".equals(type);
     }
 
     private static void validateRecipeElement(JsonElement element, String key, Path resourcesRoot, Path recipePath, ValidationReporter reporter) {
