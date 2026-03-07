@@ -1,10 +1,12 @@
 package com.extremecraft.machine;
 
+import com.extremecraft.config.Config;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
 import net.minecraftforge.items.ItemHandlerHelper;
 
 import java.util.LinkedHashMap;
@@ -32,8 +34,18 @@ public final class MachineProcessingLogic {
 
         MachineRecipe recipe = resolveRecipe(machine, definition);
         if (recipe == null) {
-            machine.setProcessingTicks(0);
-            machine.setActiveRecipeId("");
+            boolean changed = false;
+            if (machine.processingTicks() != 0) {
+                machine.setProcessingTicks(0);
+                changed = true;
+            }
+            if (!machine.activeRecipeId().isBlank()) {
+                machine.setActiveRecipeId("");
+                changed = true;
+            }
+            if (changed) {
+                machine.setChanged();
+            }
             return;
         }
 
@@ -46,14 +58,18 @@ public final class MachineProcessingLogic {
         }
 
         machine.setProcessingTicks(machine.processingTicks() + 1);
-        machine.setChanged();
 
         if (machine.processingTicks() < recipe.processTicks()) {
+            // Persist long-running progress at low cadence instead of every tick.
+            if ((machine.processingTicks() % 20) == 0) {
+                machine.setChanged();
+            }
             return;
         }
 
         if (!canAcceptOutputs(machine, recipe.output())) {
             machine.setProcessingTicks(recipe.processTicks() - 1);
+            machine.setChanged();
             return;
         }
 
@@ -62,31 +78,43 @@ public final class MachineProcessingLogic {
 
         machine.setProcessingTicks(0);
         machine.setActiveRecipeId(recipe.id());
+        machine.resetRecipeLookupCooldown();
         machine.setChanged();
     }
 
     private static MachineRecipe resolveRecipe(MachineBlockEntity machine, MachineDefinition definition) {
+        Map<String, Integer> availableInputs = snapshotInputs(machine);
+        if (availableInputs.isEmpty()) {
+            machine.resetRecipeLookupCooldown();
+            return null;
+        }
+
         MachineRecipe active = MachineRegistry.recipe(machine.activeRecipeId());
-        if (active != null && Objects.equals(active.machineId(), definition.id()) && hasInputs(machine, active.input())) {
+        if (active != null && Objects.equals(active.machineId(), definition.id()) && hasInputs(availableInputs, active.input())) {
             return active;
+        }
+
+        Level level = machine.getLevel();
+        if (level != null && !machine.canLookupRecipes(level.getGameTime())) {
+            return null;
         }
 
         List<MachineRecipe> candidates = MachineRegistry.recipesForMachine(definition.id());
         for (MachineRecipe candidate : candidates) {
-            if (hasInputs(machine, candidate.input())) {
+            if (hasInputs(availableInputs, candidate.input())) {
                 machine.setActiveRecipeId(candidate.id());
                 return candidate;
             }
         }
 
+        if (level != null) {
+            machine.scheduleRecipeLookupCooldown(level.getGameTime(), Config.recipeLookupIntervalTicks());
+        }
+
         return null;
     }
 
-    private static boolean hasInputs(MachineBlockEntity machine, Map<String, Integer> requirements) {
-        if (requirements.isEmpty()) {
-            return true;
-        }
-
+    private static Map<String, Integer> snapshotInputs(MachineBlockEntity machine) {
         Map<String, Integer> available = new LinkedHashMap<>();
         for (int slot = 0; slot < machine.inputInventory().getSlots(); slot++) {
             ItemStack stack = machine.inputInventory().getStackInSlot(slot);
@@ -96,6 +124,18 @@ public final class MachineProcessingLogic {
 
             String id = String.valueOf(BuiltInRegistries.ITEM.getKey(stack.getItem()));
             available.merge(id, stack.getCount(), Integer::sum);
+        }
+
+        if (available.isEmpty()) {
+            return Map.of();
+        }
+
+        return available;
+    }
+
+    private static boolean hasInputs(Map<String, Integer> available, Map<String, Integer> requirements) {
+        if (requirements.isEmpty()) {
+            return true;
         }
 
         for (Map.Entry<String, Integer> requirement : requirements.entrySet()) {

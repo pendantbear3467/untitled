@@ -1,6 +1,7 @@
 package com.extremecraft.progression.capability;
 
 import com.extremecraft.progression.PlayerStatsService;
+import com.extremecraft.progression.ProgressionMutationService;
 import com.extremecraft.progression.level.LevelService;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
@@ -70,7 +71,7 @@ public class PlayerStatsGameplayEvents {
         if (event.getState().getDestroySpeed(event.getPlayer().level(), event.getPos()) > 5.0F) {
             xp = 2;
         }
-        PlayerStatsService.addExperience(player, xp);
+        ProgressionMutationService.grantXp(player, xp);
     }
 
     @SubscribeEvent
@@ -81,7 +82,7 @@ public class PlayerStatsGameplayEvents {
 
         String id = String.valueOf(ForgeRegistries.ITEMS.getKey(event.getCrafting().getItem()));
         int xp = id.contains("generator") || id.contains("machine") || id.contains("reactor") ? 12 : 3;
-        PlayerStatsService.addExperience(player, xp);
+        ProgressionMutationService.grantXp(player, xp);
     }
 
     @SubscribeEvent
@@ -95,3 +96,4 @@ public class PlayerStatsGameplayEvents {
         }
     }
 }
+

@@ -58,8 +58,8 @@ public class ModuleAbilityLoader {
                     }
 
                     ModuleTrigger trigger = ModuleTrigger.byName(GsonHelper.getAsString(root, "trigger", "passive"));
-                    int cooldownTicks = Math.max(0, GsonHelper.getAsInt(root, "cooldown_ticks", 0));
-                    int manaCost = Math.max(0, GsonHelper.getAsInt(root, "mana_cost", 0));
+                    int cooldownTicks = readInt(root, "cooldown_ticks", "cd_ticks", 0);
+                    int manaCost = readInt(root, "mana_cost", "mana", 0);
 
                     Map<String, Double> scaling = new LinkedHashMap<>();
                     if (root.has("scaling") && root.get("scaling").isJsonObject()) {
@@ -72,7 +72,7 @@ public class ModuleAbilityLoader {
                     }
 
                     ModuleAbilityDefinition previous = loaded.put(id,
-                            new ModuleAbilityDefinition(id, trigger, cooldownTicks, manaCost, Map.copyOf(scaling)));
+                            new ModuleAbilityDefinition(id, trigger, Math.max(0, cooldownTicks), Math.max(0, manaCost), Map.copyOf(scaling)));
                     if (previous != null) {
                         LOGGER.warn("[Module] Duplicate module ability id '{}' detected; keeping latest from {}", id, entry.getKey());
                     }
@@ -86,5 +86,16 @@ public class ModuleAbilityLoader {
             ModuleAbilityRegistry.replaceAll(loaded);
             LOGGER.info("[Module] Reloaded module abilities: loaded={}, malformed={}", loaded.size(), malformed);
         }
+
+        private static int readInt(JsonObject root, String primary, String legacy, int fallback) {
+            if (root.has(primary) && root.get(primary).isJsonPrimitive() && root.get(primary).getAsJsonPrimitive().isNumber()) {
+                return root.get(primary).getAsInt();
+            }
+            if (root.has(legacy) && root.get(legacy).isJsonPrimitive() && root.get(legacy).getAsJsonPrimitive().isNumber()) {
+                return root.get(legacy).getAsInt();
+            }
+            return fallback;
+        }
     }
 }
+

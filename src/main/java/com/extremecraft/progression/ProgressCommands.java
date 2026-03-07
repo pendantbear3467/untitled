@@ -14,7 +14,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
 public final class ProgressCommands {
-    private ProgressCommands() {}
+    private ProgressCommands() {
+    }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("extremecraft")
@@ -31,13 +32,8 @@ public final class ProgressCommands {
                                 .then(Commands.argument("value", IntegerArgumentType.integer(1, 999)).executes(ctx -> {
                                     ServerPlayer p = ctx.getSource().getPlayerOrException();
                                     int value = IntegerArgumentType.getInteger(ctx, "value");
-                                    return ProgressApi.get(p).map(data -> {
-                                        while (data.level() < value) {
-                                            data.addXp(PlayerProgressData.xpToNextLevel(data.level()));
-                                        }
-                                        ProgressionService.flushDirty(p);
-                                        return 1;
-                                    }).orElse(0);
+                                    ProgressionMutationService.setLevel(p, value);
+                                    return 1;
                                 }))))
                 .then(Commands.literal("class")
                         .then(Commands.literal("list").executes(ctx -> {
@@ -94,7 +90,7 @@ public final class ProgressCommands {
                                         }
 
                                         data.setQuestCompleted(id);
-                                        data.addXp(q.rewardXp());
+                                        ProgressionMutationService.grantXp(p, q.rewardXp());
                                         data.addPlayerSkillPoints(q.rewardPlayerSkillPoints());
                                         data.addClassSkillPoints(q.rewardClassSkillPoints());
                                         if (!q.rewardUnlockClass().isBlank()) {
@@ -114,3 +110,4 @@ public final class ProgressCommands {
         );
     }
 }
+

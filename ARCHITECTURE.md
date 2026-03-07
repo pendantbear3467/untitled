@@ -100,3 +100,26 @@ Runtime behavior:
 - Reload listeners are registered on Forge event bus.
 - Content is reloaded from datapacks/resource packs without code changes.
 - Systems read from registries, not directly from disk.
+
+## Canonical Ownership (Alpha Hardening)
+
+The following ownership boundaries are now canonical and should be treated as stable extension points.
+
+- Network authority: `com.extremecraft.network.ModNetwork` is the only packet registration owner.
+- Legacy network facade: `com.extremecraft.net.DwNetwork` is compatibility-only and must not register packets.
+- Progression mutation authority: `com.extremecraft.progression.ProgressionMutationService` is the runtime mutation entrypoint for XP/level updates.
+
+### Migration Shims
+
+These shims exist to preserve save compatibility and keep older systems operational while overlap is being retired.
+
+- `DwNetwork.CH` remains as a deprecated channel alias to `ModNetwork.CHANNEL`.
+- `ProgressionMutationService` updates canonical progression data first, then mirrors legacy level/stats capabilities.
+- Legacy callers may continue using `LevelService.grantXp`/`setLevel`; those methods now route through the canonical mutation facade.
+
+### Contributor Guidance
+
+- New gameplay C2S packets: register only in `ModNetwork.init()`.
+- New XP or level-granting gameplay events: call `ProgressionMutationService`, not direct capability services.
+- Legacy progression capability classes remain supported but should be treated as mirror/read-compat layers until fully retired.
+

@@ -11,8 +11,7 @@ public final class XPManager {
             return;
         }
 
-        PlayerStatsService.addExperience(player, amount);
-        ProgressionService.addXp(player, amount);
+        ProgressionMutationService.grantXp(player, amount);
     }
 
     public static int xpRequiredForLevel(int level) {

@@ -64,8 +64,8 @@ public class ModuleDefinitionLoader {
                         continue;
                     }
 
-                    int slotCost = Math.max(1, GsonHelper.getAsInt(root, "slot_cost", 1));
-                    String requiredSkillNode = GsonHelper.getAsString(root, "required_skill_node", "").trim().toLowerCase(Locale.ROOT);
+                    int slotCost = readInt(root, "slot_cost", "slots", 1);
+                    String requiredSkillNode = readString(root, "required_skill_node", "required_skill").trim().toLowerCase(Locale.ROOT);
 
                     Map<String, Float> statModifiers = new LinkedHashMap<>();
                     if (root.has("stat_modifiers") && root.get("stat_modifiers").isJsonObject()) {
@@ -80,6 +80,11 @@ public class ModuleDefinitionLoader {
                     Set<String> abilities = new LinkedHashSet<>();
                     if (root.has("abilities") && root.get("abilities").isJsonArray()) {
                         for (JsonElement ability : root.getAsJsonArray("abilities")) {
+                            if (!ability.isJsonPrimitive() || !ability.getAsJsonPrimitive().isString()) {
+                                LOGGER.warn("[Module] Ignoring non-string module ability entry in {}", entry.getKey());
+                                continue;
+                            }
+
                             String abilityId = ability.getAsString().trim().toLowerCase(Locale.ROOT);
                             if (!abilityId.isBlank()) {
                                 abilities.add(abilityId);
@@ -88,7 +93,7 @@ public class ModuleDefinitionLoader {
                     }
 
                     ModuleDefinition previous = loaded.put(id,
-                            new ModuleDefinition(id, type, slotCost, requiredSkillNode, Map.copyOf(statModifiers), java.util.List.copyOf(abilities)));
+                            new ModuleDefinition(id, type, Math.max(1, slotCost), requiredSkillNode, Map.copyOf(statModifiers), java.util.List.copyOf(abilities)));
                     if (previous != null) {
                         LOGGER.warn("[Module] Duplicate module id '{}' detected; keeping latest from {}", id, entry.getKey());
                     }
@@ -108,5 +113,26 @@ public class ModuleDefinitionLoader {
             LOGGER.info("[Module] Reloaded {} module definitions: loaded={}, malformed={}",
                     type.name().toLowerCase(Locale.ROOT), loaded.size(), malformed);
         }
+
+        private static String readString(JsonObject root, String primary, String legacy) {
+            if (root.has(primary) && root.get(primary).isJsonPrimitive()) {
+                return root.get(primary).getAsString();
+            }
+            if (root.has(legacy) && root.get(legacy).isJsonPrimitive()) {
+                return root.get(legacy).getAsString();
+            }
+            return "";
+        }
+
+        private static int readInt(JsonObject root, String primary, String legacy, int fallback) {
+            if (root.has(primary) && root.get(primary).isJsonPrimitive() && root.get(primary).getAsJsonPrimitive().isNumber()) {
+                return root.get(primary).getAsInt();
+            }
+            if (root.has(legacy) && root.get(legacy).isJsonPrimitive() && root.get(legacy).getAsJsonPrimitive().isNumber()) {
+                return root.get(legacy).getAsInt();
+            }
+            return fallback;
+        }
     }
 }
+

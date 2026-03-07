@@ -1,5 +1,6 @@
 package com.extremecraft.machine;
 
+import com.extremecraft.config.Config;
 import com.extremecraft.energy.EnergyStorageExt;
 import com.extremecraft.machine.core.ECEStorageAdapter;
 import com.extremecraft.machine.core.IECEStorage;
@@ -37,6 +38,7 @@ public class MachineBlockEntity extends BlockEntity implements MachineStateSyncP
 
     private int processingTicks = 0;
     private String activeRecipeId = "";
+    private long nextRecipeLookupTick = 0L;
 
     public MachineBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state, String machineId) {
         super(type, pos, state);
@@ -89,8 +91,29 @@ public class MachineBlockEntity extends BlockEntity implements MachineStateSyncP
         this.activeRecipeId = activeRecipeId == null ? "" : activeRecipeId;
     }
 
+    public boolean canLookupRecipes(long gameTime) {
+        return gameTime >= nextRecipeLookupTick;
+    }
+
+    public void scheduleRecipeLookupCooldown(long gameTime, int cooldownTicks) {
+        int safeCooldown = Math.max(1, cooldownTicks);
+        nextRecipeLookupTick = gameTime + safeCooldown;
+    }
+
+    public void resetRecipeLookupCooldown() {
+        nextRecipeLookupTick = 0L;
+    }
     public static void serverTick(Level level, BlockPos pos, BlockState state, MachineBlockEntity machine) {
-        if (level == null || level.isClientSide) {
+        if (level == null || level.isClientSide || !Config.areMachinesEnabled()) {
+            return;
+        }
+
+        if (!Config.isMachineEnabled(machine.definitionId())) {
+            return;
+        }
+
+        int tickInterval = Config.machineTickInterval();
+        if (tickInterval > 1 && ((level.getGameTime() + pos.asLong()) % tickInterval) != 0L) {
             return;
         }
 
@@ -172,6 +195,7 @@ public class MachineBlockEntity extends BlockEntity implements MachineStateSyncP
 
         processingTicks = Math.max(0, tag.getInt("processing_ticks"));
         activeRecipeId = tag.getString("active_recipe");
+        nextRecipeLookupTick = 0L;
 
         // Legacy saves before versioning are treated as version 0 and loaded defensively above.
         if (dataVersion <= 0 && activeRecipeId == null) {
@@ -179,3 +203,4 @@ public class MachineBlockEntity extends BlockEntity implements MachineStateSyncP
         }
     }
 }
+

@@ -1,5 +1,6 @@
 package com.extremecraft.platform;
 
+import com.extremecraft.config.Config;
 import net.minecraftforge.fml.ModList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -23,6 +24,11 @@ public final class OptionalCompatHooks {
     public static void bootstrap() {
         for (Map.Entry<String, Runnable> entry : COMPAT_BOOTSTRAP.entrySet()) {
             String modId = entry.getKey();
+            if (!isCompatEnabled(modId)) {
+                LOGGER.debug("[Compat] Optional dependency '{}' is disabled by config; skipping compat hooks", modId);
+                continue;
+            }
+
             if (!ModList.get().isLoaded(modId)) {
                 LOGGER.debug("[Compat] Optional dependency '{}' not present; skipping compat hooks", modId);
                 continue;
@@ -45,6 +51,15 @@ public final class OptionalCompatHooks {
         return Map.copyOf(hooks);
     }
 
+    private static boolean isCompatEnabled(String modId) {
+        return switch (modId) {
+            case "curios" -> Config.isCuriosCompatEnabled();
+            case "jei" -> Config.isJeiCompatEnabled();
+            case "geckolib" -> Config.isGeckoLibCompatEnabled();
+            default -> true;
+        };
+    }
+
     private static void initCuriosCompat() {
         // Placeholder for future Curios integration.
     }
@@ -57,3 +72,4 @@ public final class OptionalCompatHooks {
         // Placeholder for future GeckoLib animation integration.
     }
 }
+
