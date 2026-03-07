@@ -55,6 +55,7 @@ public final class ECValidationService {
         } else {
             validateAssets(resourcesRoot.get(), reporter);
             validateRecipeJson(resourcesRoot.get(), reporter);
+            validateDatapackLayout(resourcesRoot.get(), reporter);
         }
 
         validateRecipeRuntime(server, reporter);
@@ -285,6 +286,45 @@ public final class ECValidationService {
         }
     }
 
+
+    private static void validateDatapackLayout(Path resourcesRoot, ValidationReporter reporter) {
+        Path dataRoot = resourcesRoot.resolve("data").resolve(ECConstants.MODID);
+        warnIfLegacyDirectoryPopulated(dataRoot, "skill_trees", "skilltrees", reporter);
+        warnIfLegacyDirectoryPopulated(dataRoot, "machines", "machine", reporter);
+    }
+
+    private static void warnIfLegacyDirectoryPopulated(Path dataRoot,
+                                                       String canonicalDir,
+                                                       String legacyDir,
+                                                       ValidationReporter reporter) {
+        Path canonical = dataRoot.resolve(canonicalDir);
+        Path legacy = dataRoot.resolve(legacyDir);
+        if (!Files.isDirectory(legacy)) {
+            return;
+        }
+
+        long legacyJson = countJsonFiles(legacy);
+        if (legacyJson <= 0) {
+            return;
+        }
+
+        long canonicalJson = countJsonFiles(canonical);
+        reporter.warn("Legacy datapack directory detected: data/" + ECConstants.MODID + "/" + legacyDir
+                + " (json=" + legacyJson + "). Canonical directory is data/" + ECConstants.MODID + "/" + canonicalDir
+                + " (json=" + canonicalJson + "). Keep content in the canonical path to avoid reload drift.");
+    }
+
+    private static long countJsonFiles(Path root) {
+        if (!Files.isDirectory(root)) {
+            return 0L;
+        }
+
+        try (Stream<Path> files = Files.walk(root)) {
+            return files.filter(path -> path.toString().endsWith(".json")).count();
+        } catch (IOException ignored) {
+            return 0L;
+        }
+    }
     private static void validateRecipeJson(Path resourcesRoot, ValidationReporter reporter) {
         Path recipesRoot = resourcesRoot.resolve("data").resolve(ECConstants.MODID).resolve("recipes");
         if (!Files.isDirectory(recipesRoot)) {
@@ -462,3 +502,4 @@ public final class ECValidationService {
         }
     }
 }
+
