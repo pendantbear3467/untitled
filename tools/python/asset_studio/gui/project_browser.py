@@ -81,9 +81,11 @@ class ProjectBrowser(QWidget):
         self.open_runtime_button.clicked.connect(lambda: self._open_relation("runtime_export"))
         self.open_java_button = QPushButton("Open Java")
         self.open_java_button.clicked.connect(lambda: self._open_relation("java_target"))
+        self.open_asset_button = QPushButton("Open Asset")
+        self.open_asset_button.clicked.connect(self._open_linked_asset)
         self.open_linked_button = QPushButton("Open Linked")
         self.open_linked_button.clicked.connect(lambda: self._open_relation(None))
-        for button in [self.open_source_button, self.open_runtime_button, self.open_java_button, self.open_linked_button]:
+        for button in [self.open_source_button, self.open_runtime_button, self.open_java_button, self.open_asset_button, self.open_linked_button]:
             actions.addWidget(button)
         inspector_layout.addLayout(actions)
 
@@ -301,6 +303,7 @@ class ProjectBrowser(QWidget):
         self.open_source_button.setEnabled(self._relation_target(path, "source_document") is not None)
         self.open_runtime_button.setEnabled(self._relation_target(path, "runtime_export") is not None)
         self.open_java_button.setEnabled(self._relation_target(path, "java_target") is not None)
+        self.open_asset_button.setEnabled(self._asset_relation_target(path) is not None)
         self.open_linked_button.setEnabled(record is not None and bool(record.targets))
 
     def _open_context_menu(self, position) -> None:
@@ -319,6 +322,7 @@ class ProjectBrowser(QWidget):
         source_action = menu.addAction("Open Source Definition")
         runtime_action = menu.addAction("Open Runtime Export")
         java_action = menu.addAction("Open Java Target")
+        asset_action = menu.addAction("Open Linked Asset")
         menu.addSeparator()
         refresh_action = menu.addAction("Refresh")
 
@@ -336,6 +340,7 @@ class ProjectBrowser(QWidget):
             source_action.setEnabled(self._relation_target(path, "source_document") is not None)
             runtime_action.setEnabled(self._relation_target(path, "runtime_export") is not None)
             java_action.setEnabled(self._relation_target(path, "java_target") is not None)
+            asset_action.setEnabled(self._asset_relation_target(path) is not None)
 
         chosen = menu.exec(self.tree.viewport().mapToGlobal(position))
         if chosen is None:
@@ -362,6 +367,8 @@ class ProjectBrowser(QWidget):
                 self._open_relation("runtime_export", path)
             elif chosen == java_action and path is not None:
                 self._open_relation("java_target", path)
+            elif chosen == asset_action and path is not None:
+                self._open_linked_asset(path)
             elif chosen == refresh_action:
                 self.refresh_view()
         except Exception as exc:  # noqa: BLE001
@@ -389,6 +396,25 @@ class ProjectBrowser(QWidget):
         if target is None or not target.exists() or not target.is_file():
             label = "linked file" if relation is None else relation.replace("_", " ")
             self.notifications.emit(f"No {label} available for the current selection")
+            return
+        self.file_open_requested.emit(target)
+
+    def _asset_relation_target(self, path: Path | None) -> Path | None:
+        if path is None:
+            return None
+        record = self._relationship_record(path)
+        if record is None:
+            return None
+        asset_kinds = {"texture_asset", "item_model", "block_model", "model_runtime", "json"}
+        for target in record.targets:
+            if target.kind in asset_kinds:
+                return target.path
+        return None
+
+    def _open_linked_asset(self, path: Path | None = None) -> None:
+        target = self._asset_relation_target(path or self._selected_path())
+        if target is None or not target.exists() or not target.is_file():
+            self.notifications.emit("No linked asset available for the current selection")
             return
         self.file_open_requested.emit(target)
 

@@ -178,6 +178,11 @@ public final class DwClientHooks {
         startOrRetargetHeldBreak(blockHit);
     }
 
+    private void activateHeldBreakIntent(BlockHitResult hit) {
+        heldBreakIntent = true;
+        startOrRetargetHeldBreak(hit);
+    }
+
     private void startOrRetargetHeldBreak(BlockHitResult hit) {
         HeldBreakTarget nextTarget = new HeldBreakTarget(hit.getBlockPos().immutable(), hit.getDirection());
         if (nextTarget.equals(heldBreakTarget)) {
@@ -269,5 +274,6 @@ public final class DwClientHooks {
         return false;
     }
 }
+
 
 

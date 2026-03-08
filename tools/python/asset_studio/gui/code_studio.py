@@ -47,6 +47,8 @@ LANGUAGE_BY_SUFFIX = {
 }
 
 SYMBOL_GROUP_TITLES = {
+    "package": "Package",
+    "import": "Imports",
     "class": "Classes",
     "interface": "Interfaces",
     "enum": "Enums",
@@ -232,6 +234,7 @@ class CodeStudioPanel(QWidget):
         self._tabs: dict[StudioCodeEditor, _CodeTab] = {}
         self._setting_editor_text = False
         self._outline_cache: dict[StudioCodeEditor, list[JavaSymbol]] = {}
+        self._symbol_nav_index = -1
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -313,11 +316,18 @@ class CodeStudioPanel(QWidget):
             ("Open", self.open_file_dialog, "Open a file from the current workspace or disk."),
             ("Save", self.save_current, "Save the active file."),
             ("Save All", self.save_all, "Save all open files."),
+            ("New Java File", self.new_java_file, "Create a Java file scaffold and target path."),
             ("New Class", lambda: self.new_java_scaffold("class"), "Create a Java class scaffold in src/main/java."),
             ("New Interface", lambda: self.new_java_scaffold("interface"), "Create a Java interface scaffold."),
             ("New Enum", lambda: self.new_java_scaffold("enum"), "Create a Java enum scaffold."),
             ("New Record", lambda: self.new_java_scaffold("record"), "Create a Java record scaffold."),
             ("Go To Symbol", self.go_to_symbol, "Jump to a symbol in the active file."),
+            ("Prev Symbol", self.go_to_previous_symbol, "Jump to the previous symbol in the active outline."),
+            ("Next Symbol", self.go_to_next_symbol, "Jump to the next symbol in the active outline."),
+            ("Open Source", lambda: self.open_linked_target("source_document"), "Open linked source document for current file."),
+            ("Open Runtime", lambda: self.open_linked_target("runtime_export"), "Open linked runtime export for current file."),
+            ("Open Java", lambda: self.open_linked_target("java_target"), "Open linked Java target for current file."),
+            ("Open Asset", self.open_linked_asset, "Open linked texture/model asset for current file."),
         ]
         for label, callback, help_text in controls:
             button = QPushButton(label)
@@ -325,6 +335,13 @@ class CodeStudioPanel(QWidget):
             button.clicked.connect(callback)
             row.addWidget(button)
         return row
+
+    def new_java_file(self) -> None:
+        kinds = ["class", "interface", "enum", "record"]
+        kind, accepted = QInputDialog.getItem(self, "New Java File", "Type kind:", kinds, 0, False)
+        if not accepted:
+            return
+        self.new_java_scaffold(str(kind))
 
     def _build_search_toolbar(self) -> QHBoxLayout:
         row = QHBoxLayout()
@@ -617,8 +634,48 @@ class CodeStudioPanel(QWidget):
         if candidate is None:
             self.status_message.emit(f"No symbol match for '{query}'")
             return
+        self._symbol_nav_index = max(0, symbols.index(candidate))
         self._jump_to_position(candidate.line, candidate.column, max(1, len(candidate.name)))
         self.status_message.emit(f"Symbol: {candidate.display_name}")
+
+    def go_to_next_symbol(self) -> None:
+        self._step_symbol_navigation(1)
+
+    def go_to_previous_symbol(self) -> None:
+        self._step_symbol_navigation(-1)
+
+    def open_linked_target(self, relation: str) -> None:
+        tab = self._current_tab()
+        if tab is None or tab.path is None:
+            self.status_message.emit("No active file for linked navigation")
+            return
+        record = self._relationship_record(tab.path)
+        if record is None:
+            self.status_message.emit("No relationship data available")
+            return
+        target = record.first_target(relation)
+        if target is None:
+            self.status_message.emit(f"No linked {relation.replace('_', ' ')}")
+            return
+        self.open_link_requested.emit(target.path)
+        self.status_message.emit(f"Opened linked {relation.replace('_', ' ')}: {target.path.name}")
+
+    def open_linked_asset(self) -> None:
+        tab = self._current_tab()
+        if tab is None or tab.path is None:
+            self.status_message.emit("No active file for linked navigation")
+            return
+        record = self._relationship_record(tab.path)
+        if record is None:
+            self.status_message.emit("No relationship data available")
+            return
+        asset_kinds = {"texture_asset", "item_model", "block_model", "model_runtime", "json"}
+        for target in record.targets:
+            if target.kind in asset_kinds:
+                self.open_link_requested.emit(target.path)
+                self.status_message.emit(f"Opened linked asset: {target.path.name}")
+                return
+        self.status_message.emit("No linked asset target")
 
     def _editor_text_changed(self, editor: StudioCodeEditor) -> None:
         if self._setting_editor_text:
@@ -759,6 +816,25 @@ class CodeStudioPanel(QWidget):
         if language == "java":
             analysis = self._analyze_java(tab, text)
             self._outline_cache[editor] = list(analysis.symbols)
+            if analysis.package_name:
+                package_group = QTreeWidgetItem([SYMBOL_GROUP_TITLES["package"], "1"])
+                package_group.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                self.outline.addTopLevelItem(package_group)
+                package_line = self._line_for_regex(text, rf"^\s*package\s+{re.escape(analysis.package_name)}\s*;")
+                package_child = QTreeWidgetItem([analysis.package_name, str(package_line)])
+                package_child.setData(0, Qt.ItemDataRole.UserRole, (package_line, 1, max(1, len(analysis.package_name))))
+                package_group.addChild(package_child)
+
+            if analysis.imports:
+                import_group = QTreeWidgetItem([SYMBOL_GROUP_TITLES["import"], str(len(analysis.imports))])
+                import_group.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                self.outline.addTopLevelItem(import_group)
+                for import_name in analysis.imports:
+                    import_line = self._line_for_regex(text, rf"^\s*import\s+(?:static\s+)?{re.escape(import_name)}\s*;")
+                    import_child = QTreeWidgetItem([import_name, str(import_line)])
+                    import_child.setData(0, Qt.ItemDataRole.UserRole, (import_line, 1, max(1, len(import_name))))
+                    import_group.addChild(import_child)
+
             for symbol_type in ["class", "interface", "enum", "record", "field", "method"]:
                 symbols = [symbol for symbol in analysis.symbols if symbol.symbol_type == symbol_type]
                 if not symbols:
@@ -902,6 +978,7 @@ class CodeStudioPanel(QWidget):
 
     def _active_tab_changed(self, index: int) -> None:
         _ = index
+        self._symbol_nav_index = -1
         editor = self._current_editor()
         self._refresh_sidebar(editor)
         self._notify_current_file()
@@ -981,3 +1058,26 @@ class CodeStudioPanel(QWidget):
         item.setFlags(Qt.ItemFlag.ItemIsEnabled)
         self.problems.addTopLevelItem(item)
         self.file_meta.setText("No file open")
+
+    def _step_symbol_navigation(self, step: int) -> None:
+        editor = self._current_editor()
+        if editor is None:
+            return
+        symbols = self._outline_symbols(editor)
+        if not symbols:
+            self.status_message.emit("No symbols available for navigation")
+            return
+        if self._symbol_nav_index < 0:
+            self._symbol_nav_index = 0 if step >= 0 else len(symbols) - 1
+        else:
+            self._symbol_nav_index = (self._symbol_nav_index + step) % len(symbols)
+        symbol = symbols[self._symbol_nav_index]
+        self._jump_to_position(symbol.line, symbol.column, max(1, len(symbol.name)))
+        self.status_message.emit(f"Symbol {self._symbol_nav_index + 1}/{len(symbols)}: {symbol.display_name}")
+
+    def _line_for_regex(self, text: str, pattern: str) -> int:
+        regex = re.compile(pattern)
+        for index, line in enumerate(text.splitlines(), start=1):
+            if regex.match(line):
+                return index
+        return 1
