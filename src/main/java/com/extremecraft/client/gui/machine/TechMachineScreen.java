@@ -2,16 +2,29 @@ package com.extremecraft.client.gui.machine;
 
 import com.extremecraft.machine.menu.TechMachineMenu;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
 
 public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> {
     private static final ResourceLocation TEXTURE = new ResourceLocation("minecraft", "textures/gui/container/furnace.png");
+    private Button scramButton;
+    private boolean scramRequested;
 
     public TechMachineScreen(TechMachineMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        scramButton = addRenderableWidget(Button.builder(Component.literal("SCRAM"), b -> scramRequested = true)
+                .bounds(leftPos + imageWidth + 8, topPos + 94, 56, 20)
+                .build());
+        scramButton.visible = isReactorMachine();
     }
 
     @Override
@@ -30,6 +43,49 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
         if (energy > 0) {
             graphics.fill(x + 8, y + 70 - energy, x + 13, y + 70, 0xFF00CCFF);
         }
+
+        // Side diagnostics panel with explicit machine state readability.
+        int panelX = x + imageWidth + 6;
+        int panelY = y;
+        int panelW = 126;
+        int panelH = imageHeight;
+        graphics.fill(panelX, panelY, panelX + panelW, panelY + panelH, 0xD0111620);
+        graphics.fill(panelX + 1, panelY + 1, panelX + panelW - 1, panelY + panelH - 1, 0xAA1C2533);
+
+        graphics.drawString(font, Component.literal("Machine"), panelX + 6, panelY + 6, 0xE6F0FF, false);
+        graphics.drawString(font, Component.literal(menu.machineId()), panelX + 6, panelY + 17, 0xC9D6E8, false);
+        graphics.drawString(font, Component.literal(machineStatusLine()), panelX + 6, panelY + 30, statusColor(), false);
+
+        int rawEnergy = menu.rawEnergy();
+        int rawEnergyMax = menu.rawMaxEnergy();
+        int rawProgress = menu.rawProgress();
+        int rawProgressMax = menu.rawMaxProgress();
+
+        graphics.drawString(font, Component.literal("Energy: " + rawEnergy + " / " + rawEnergyMax), panelX + 6, panelY + 44, 0xB8D8F0, false);
+        graphics.drawString(font, Component.literal("Progress: " + rawProgress + " / " + rawProgressMax), panelX + 6, panelY + 55, 0xB8D8F0, false);
+
+        if (isReactorMachine()) {
+            int temp = 280 + (int) ((rawEnergy / (float) rawEnergyMax) * 920);
+            int coolant = Math.max(0, 100 - Math.round((rawEnergy / (float) rawEnergyMax) * 60));
+            int steam = Math.round((rawProgress / (float) rawProgressMax) * 100);
+            int waste = Math.min(100, Math.round((rawProgress / (float) rawProgressMax) * 75));
+            int damage = Math.max(0, (temp - 900) / 20);
+
+            graphics.drawString(font, Component.literal("Reactor Panel"), panelX + 6, panelY + 71, 0xFFD7AB8E, false);
+            graphics.drawString(font, Component.literal("Temp: " + temp + " K"), panelX + 6, panelY + 82, temp > 1000 ? 0xFFDF9A7A : 0xD6E7F7, false);
+            graphics.drawString(font, Component.literal("Coolant: " + coolant + "%"), panelX + 6, panelY + 93, coolant < 30 ? 0xFFE5A081 : 0xD6E7F7, false);
+            graphics.drawString(font, Component.literal("Steam Out: " + steam + "%"), panelX + 6, panelY + 104, 0xD6E7F7, false);
+            graphics.drawString(font, Component.literal("Waste: " + waste + "%"), panelX + 6, panelY + 115, waste > 70 ? 0xFFE5A081 : 0xD6E7F7, false);
+            graphics.drawString(font, Component.literal("Damage: " + damage + "%"), panelX + 6, panelY + 126, damage > 25 ? 0xFFE5A081 : 0xD6E7F7, false);
+
+            if (scramRequested) {
+                graphics.drawString(font, Component.literal("SCRAM requested (client)"), panelX + 6, panelY + 148, 0xFFDFB999, false);
+            }
+        } else {
+            graphics.drawString(font, Component.literal("What powers it: fuel/energy"), panelX + 6, panelY + 74, 0xD6E7F7, false);
+            graphics.drawString(font, Component.literal("Output: item processing"), panelX + 6, panelY + 85, 0xD6E7F7, false);
+            graphics.drawString(font, Component.literal("If stalled: check IO/fuel"), panelX + 6, panelY + 96, 0xD6E7F7, false);
+        }
     }
 
     @Override
@@ -43,5 +99,56 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         super.renderLabels(graphics, mouseX, mouseY);
         graphics.drawString(font, Component.literal(menu.machineId()), 8, 6, 0x404040, false);
+
+        if (isHovering(8, 70, 5, 52, mouseX, mouseY)) {
+            graphics.renderTooltip(font, Component.literal("Energy buffer"), mouseX - leftPos, mouseY - topPos);
+        }
+        if (isHovering(79, 34, 24, 16, mouseX, mouseY)) {
+            graphics.renderTooltip(font, Component.literal(machineStatusLine()), mouseX - leftPos, mouseY - topPos);
+        }
+    }
+
+    private boolean isReactorMachine() {
+        return menu.machineId().contains("reactor");
+    }
+
+    private String machineStatusLine() {
+        ItemStack input = menu.getSlot(0).getItem();
+        ItemStack fuel = menu.getSlot(1).getItem();
+        ItemStack output = menu.getSlot(2).getItem();
+
+        if (isReactorMachine() && menu.rawEnergy() > (int) (menu.rawMaxEnergy() * 0.90F)) {
+            return "Reactor warning";
+        }
+        if (menu.rawProgress() > 0) {
+            return "Processing";
+        }
+        if (!output.isEmpty() && output.getCount() >= output.getMaxStackSize()) {
+            return "Output full";
+        }
+        if (menu.rawEnergy() <= 0) {
+            if (menu.machineId().contains("mana") || menu.machineId().contains("arcane") || menu.machineId().contains("rune")) {
+                return "Insufficient Aether";
+            }
+            if (fuel.isEmpty()) {
+                return "Missing fuel";
+            }
+            return "Insufficient energy";
+        }
+        if (input.isEmpty()) {
+            return "No valid recipe";
+        }
+        return "Structure incomplete";
+    }
+
+    private int statusColor() {
+        String status = machineStatusLine();
+        if ("Processing".equals(status)) {
+            return 0xA8E8B7;
+        }
+        if (status.contains("warning") || status.contains("Missing") || status.contains("Insufficient") || status.contains("No valid")) {
+            return 0xFFCA9B;
+        }
+        return 0xC9D6E8;
     }
 }

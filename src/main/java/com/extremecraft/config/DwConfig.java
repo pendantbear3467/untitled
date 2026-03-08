@@ -26,6 +26,10 @@ public final class DwConfig {
         public final ForgeConfigSpec.DoubleValue guiScaleMultiplier;
         public final ForgeConfigSpec.DoubleValue skillTreeZoom;
         public final ForgeConfigSpec.BooleanValue showSkillNodeTooltips;
+        public final ForgeConfigSpec.BooleanValue enableManaHudOverlay;
+        public final ForgeConfigSpec.BooleanValue enableRadiationHudOverlay;
+        public final ForgeConfigSpec.IntValue hudAnchorX;
+        public final ForgeConfigSpec.IntValue hudAnchorY;
 
         public final ForgeConfigSpec.BooleanValue allowOffhandBlockBreaking;
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> blacklistedItems;
@@ -37,6 +41,10 @@ public final class DwConfig {
             guiScaleMultiplier = b.defineInRange("guiScaleMultiplier", 1.0D, 0.75D, 1.75D);
             skillTreeZoom = b.defineInRange("skillTreeZoom", 1.0D, 0.50D, 2.00D);
             showSkillNodeTooltips = b.define("showSkillNodeTooltips", true);
+            enableManaHudOverlay = b.define("enableManaHudOverlay", true);
+            enableRadiationHudOverlay = b.define("enableRadiationHudOverlay", true);
+            hudAnchorX = b.defineInRange("hudAnchorX", 0, -3200, 3200);
+            hudAnchorY = b.defineInRange("hudAnchorY", 0, -3200, 3200);
 
             allowOffhandBlockBreaking = b.define("allowOffhandBlockBreaking", true);
             blacklistedItems = b.defineList(

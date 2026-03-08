@@ -3,15 +3,22 @@ package com.extremecraft.client.gui.player;
 import com.extremecraft.client.gui.layout.GuiScaleContext;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.core.ECConstants;
+import com.extremecraft.classsystem.ClassRegistry;
+import com.extremecraft.classsystem.PlayerClass;
+import com.extremecraft.magic.Spell;
+import com.extremecraft.magic.SpellRegistry;
 import com.extremecraft.modules.runtime.ModuleCatalogClientState;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.InstallModuleC2SPacket;
 import com.extremecraft.network.packet.RemoveModuleC2SPacket;
 import com.extremecraft.network.packet.RequestPlayerStatsPacket;
 import com.extremecraft.network.packet.UpgradeStatPacket;
+import com.extremecraft.progression.PlayerProgressData;
 import com.extremecraft.progression.capability.PlayerStatsApi;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
+import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.skilltree.SkillTreeManager;
+import com.extremecraft.quest.QuestManager;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -27,6 +34,7 @@ import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Locale;
 
 public class ExtremePlayerScreen extends Screen {
     private static final ResourceLocation BG_TEXTURE = new ResourceLocation(ECConstants.MODID, "textures/gui/extreme_player_menu.png");
@@ -51,6 +59,7 @@ public class ExtremePlayerScreen extends Screen {
     private String moduleSearchQuery = "";
     private int toolPage = 0;
     private int armorPage = 0;
+    private int selectedSpellIndex = 0;
 
     private int guiWidth;
     private int guiHeight;
@@ -257,7 +266,15 @@ public class ExtremePlayerScreen extends Screen {
         int w = guiWidth - 28;
         int h = guiHeight - 76;
 
+        Optional<PlayerProgressData> progressOpt = ProgressApi.get(player);
+        int playerSkillPoints = progressOpt.map(PlayerProgressData::playerSkillPoints).orElse(0);
+        int classSkillPoints = progressOpt.map(PlayerProgressData::classSkillPoints).orElse(0);
+
         graphics.drawString(font, Component.literal("Skill Tree"), x, y - 10, 0xE8C78D, false);
+        graphics.drawString(font, Component.literal("Skill XP Domain: combat/mobs/active play"), x + 84, y - 10, 0xA4C8FF, false);
+        graphics.drawString(font, Component.literal("Class XP Domain: guild quests only"), x + 84, y + 2, 0xE8C190, false);
+        graphics.drawString(font, Component.literal("Skill Pts: " + playerSkillPoints), x + w - 144, y - 10, 0xA4C8FF, false);
+        graphics.drawString(font, Component.literal("Class Pts: " + classSkillPoints), x + w - 144, y + 2, 0xE8C190, false);
 
         int treeButtonX = x;
         int treeButtonY = y + h - 12;
@@ -282,7 +299,9 @@ public class ExtremePlayerScreen extends Screen {
 
         PlayerStatsCapability stats = statsOpt.get();
         graphics.drawString(font, Component.literal("Mana: " + stats.mana() + " / " + stats.maxMana()), x, y, 0xCFAEFF, false);
+        graphics.drawString(font, Component.literal("Aether: backend telemetry pending"), x + 128, y, 0xB7E8FF, false);
         graphics.drawString(font, Component.literal("Magic Power: " + stats.magicPower()), x, y + 14, 0xCFAEFF, false);
+        graphics.drawString(font, Component.literal("Readiness: " + readinessLabel(stats)), x + 128, y + 14, 0xF0D4A8, false);
 
         int time = player.tickCount;
         for (int i = 0; i < 8; i++) {
@@ -302,6 +321,38 @@ public class ExtremePlayerScreen extends Screen {
                 graphics.renderTooltip(font, Component.literal("Rune Slot " + (i + 1)), mouseX, mouseY);
             }
         }
+
+        List<Spell> spells = new ArrayList<>(SpellRegistry.all());
+        if (spells.isEmpty()) {
+            graphics.drawString(font, Component.literal("No spell data loaded."), x + 132, y + 42, 0xC8CFDB, false);
+            return;
+        }
+
+        selectedSpellIndex = Mth.clamp(selectedSpellIndex, 0, spells.size() - 1);
+        Spell selected = spells.get(selectedSpellIndex);
+        int listY = y + 42;
+        int listX = x + 132;
+
+        graphics.drawString(font, Component.literal("Spellbook"), listX, listY - 10, 0xE8C78D, false);
+        graphics.drawString(font, Component.literal("School: " + schoolLabel(selected.element())), listX, listY + 4, schoolColor(selected.element()), false);
+        graphics.drawString(font, Component.literal("Type: " + selected.type().name().toLowerCase(Locale.ROOT)), listX, listY + 16, 0xC8CFDB, false);
+        graphics.drawString(font, Component.literal("Cost: " + selected.manaCost() + " mana"), listX, listY + 28, selected.manaCost() <= stats.mana() ? 0x8FF3B2 : 0xFF9B9B, false);
+        graphics.drawString(font, Component.literal("Cooldown: " + (selected.cooldownTicks() / 20.0F) + "s"), listX + 104, listY + 28, 0xC8CFDB, false);
+        graphics.drawString(font, Component.literal("Range: " + String.format("%.1f", selected.range())), listX, listY + 40, 0xC8CFDB, false);
+        graphics.drawString(font, Component.literal("Radius: " + String.format("%.1f", selected.radius())), listX + 104, listY + 40, 0xC8CFDB, false);
+
+        int rowY = listY + 56;
+        int visible = Math.min(5, spells.size());
+        int start = Math.max(0, Math.min(selectedSpellIndex - 2, spells.size() - visible));
+        for (int i = 0; i < visible; i++) {
+            int idx = start + i;
+            Spell spell = spells.get(idx);
+            int color = idx == selectedSpellIndex ? 0xF7E2B5 : 0xC4CEDD;
+            graphics.drawString(font, Component.literal((idx == selectedSpellIndex ? "> " : "  ") + spell.id()), listX, rowY + (i * 12), color, false);
+        }
+
+        graphics.drawString(font, Component.literal("Use mouse wheel to browse spells"), listX, rowY + 66, 0x92A7C1, false);
+        graphics.drawString(font, Component.literal("Composition UI: awaiting backend support"), listX, rowY + 78, 0x92A7C1, false);
     }
 
     private void renderDualWieldTab(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -338,9 +389,36 @@ public class ExtremePlayerScreen extends Screen {
         int x = leftPos + 16;
         int y = topPos + 62;
 
-        graphics.drawString(font, Component.literal("Class System"), x, y, 0xE3CDA0, false);
-        graphics.drawString(font, Component.literal("Current class perks apply from progression data."), x, y + 16, 0xC8CFDB, false);
-        graphics.drawString(font, Component.literal("UI for class switching/perk trees is pending."), x, y + 30, 0xC8CFDB, false);
+        Optional<PlayerProgressData> progressOpt = ProgressApi.get(player);
+        String currentClassId = progressOpt.map(PlayerProgressData::currentClass).orElse("warrior");
+        int classSkillPoints = progressOpt.map(PlayerProgressData::classSkillPoints).orElse(0);
+        int playerSkillPoints = progressOpt.map(PlayerProgressData::playerSkillPoints).orElse(0);
+        int completedQuests = progressOpt.map(data -> data.completedQuests().size()).orElse(0);
+
+        graphics.drawString(font, Component.literal("Class Progression"), x, y, 0xE3CDA0, false);
+        graphics.drawString(font, Component.literal("Current Class: " + currentClassId), x, y + 14, 0xF2E6C9, false);
+        graphics.drawString(font, Component.literal("Class Skill Points: " + classSkillPoints), x, y + 26, 0xE8C190, false);
+        graphics.drawString(font, Component.literal("Player Skill Points: " + playerSkillPoints), x + 168, y + 26, 0xA4C8FF, false);
+        graphics.drawString(font, Component.literal("Completed Guild Quests: " + completedQuests), x, y + 38, 0xD0D8E6, false);
+
+        graphics.drawString(font, Component.literal("XP Domains"), x, y + 56, 0xE8C78D, false);
+        graphics.drawString(font, Component.literal("- Skill XP: combat + active gameplay"), x + 8, y + 68, 0xA4C8FF, false);
+        graphics.drawString(font, Component.literal("- Class XP: quest completion only"), x + 8, y + 80, 0xE8C190, false);
+
+        graphics.drawString(font, Component.literal("Available Classes"), x, y + 102, 0xE8C78D, false);
+        int rowY = y + 114;
+        for (PlayerClass klass : ClassRegistry.all()) {
+            boolean selected = klass.id().equalsIgnoreCase(currentClassId);
+            int color = selected ? 0xF6DEB2 : 0xC8CFDB;
+            graphics.drawString(font, Component.literal((selected ? "> " : "  ") + klass.id() + " req lvl " + klass.requiredLevel()), x + 8, rowY, color, false);
+            rowY += 11;
+            if (rowY > y + 168) {
+                break;
+            }
+        }
+
+        graphics.drawString(font, Component.literal("Quest Pool: " + QuestManager.all().size() + " loaded"), x + 168, y + 102, 0xC8CFDB, false);
+        graphics.drawString(font, Component.literal("Class switching UI: backend-safe wiring pending"), x + 168, y + 114, 0x92A7C1, false);
     }
 
     private void renderModulesTab(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -350,13 +428,15 @@ public class ExtremePlayerScreen extends Screen {
         ItemStack main = player.getMainHandItem();
         ItemStack chest = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
 
-        graphics.drawString(font, Component.literal("Module Bench"), x, y, 0xE8C78D, false);
-        graphics.drawString(font, Component.literal("Hold a modular tool or wear modular chest armor."), x, y + 14, 0xC8CFDB, false);
-        graphics.drawString(font, Component.literal("Main: " + main.getHoverName().getString()), x, y + 34, 0xD8DEE9, false);
-        graphics.drawString(font, Component.literal("Chest: " + chest.getHoverName().getString()), x, y + 46, 0xD8DEE9, false);
+        graphics.drawString(font, Component.literal("Tech Console"), x, y, 0xE8C78D, false);
+        graphics.drawString(font, Component.literal("What powers it: Fuel or network energy"), x, y + 14, 0xB7C8DD, false);
+        graphics.drawString(font, Component.literal("Why stalled: missing fuel/input/output space/structure"), x, y + 26, 0xB7C8DD, false);
+        graphics.drawString(font, Component.literal("Hold a modular tool or wear modular chest armor."), x, y + 38, 0xC8CFDB, false);
+        graphics.drawString(font, Component.literal("Main: " + main.getHoverName().getString()), x, y + 50, 0xD8DEE9, false);
+        graphics.drawString(font, Component.literal("Chest: " + chest.getHoverName().getString()), x, y + 62, 0xD8DEE9, false);
 
         int searchX = x;
-        int searchY = y + 60;
+        int searchY = y + 76;
         drawActionButton(graphics, searchX, searchY, 190, 16, "Search: " + (moduleSearchQuery.isBlank() ? "<type to filter>" : moduleSearchQuery));
         drawActionButton(graphics, searchX + 194, searchY, 32, 16, "CLR");
 
@@ -370,17 +450,17 @@ public class ExtremePlayerScreen extends Screen {
 
         int toolX = x;
         int armorX = x + 188;
-        int listTopY = y + 84;
+        int listTopY = y + 100;
 
-        graphics.drawString(font, Component.literal("Tool Modules"), toolX, y + 78, 0xE0E6F2, false);
-        drawActionButton(graphics, toolX + 108, y + 76, 16, 16, "<");
-        drawActionButton(graphics, toolX + 126, y + 76, 16, 16, ">");
-        graphics.drawString(font, Component.literal((toolPage + 1) + "/" + toolPages), toolX + 146, y + 80, 0xAFC0D8, false);
+        graphics.drawString(font, Component.literal("Tool Modules"), toolX, y + 94, 0xE0E6F2, false);
+        drawActionButton(graphics, toolX + 108, y + 92, 16, 16, "<");
+        drawActionButton(graphics, toolX + 126, y + 92, 16, 16, ">");
+        graphics.drawString(font, Component.literal((toolPage + 1) + "/" + toolPages), toolX + 146, y + 96, 0xAFC0D8, false);
 
-        graphics.drawString(font, Component.literal("Armor Modules"), armorX, y + 78, 0xE0E6F2, false);
-        drawActionButton(graphics, armorX + 108, y + 76, 16, 16, "<");
-        drawActionButton(graphics, armorX + 126, y + 76, 16, 16, ">");
-        graphics.drawString(font, Component.literal((armorPage + 1) + "/" + armorPages), armorX + 146, y + 80, 0xAFC0D8, false);
+        graphics.drawString(font, Component.literal("Armor Modules"), armorX, y + 94, 0xE0E6F2, false);
+        drawActionButton(graphics, armorX + 108, y + 92, 16, 16, "<");
+        drawActionButton(graphics, armorX + 126, y + 92, 16, 16, ">");
+        graphics.drawString(font, Component.literal((armorPage + 1) + "/" + armorPages), armorX + 146, y + 96, 0xAFC0D8, false);
 
         List<ModuleCatalogClientState.ModuleEntry> toolModules = pagedModules(toolFiltered, toolPage);
         List<ModuleCatalogClientState.ModuleEntry> armorModules = pagedModules(armorFiltered, armorPage);
@@ -402,8 +482,40 @@ public class ExtremePlayerScreen extends Screen {
         }
 
         if (toolFiltered.isEmpty() && armorFiltered.isEmpty()) {
-            graphics.drawString(font, Component.literal("No modules match current filter or waiting for sync."), x, y + 166, 0xC8CFDB, false);
+            graphics.drawString(font, Component.literal("No modules match current filter or waiting for sync."), x, y + 182, 0xC8CFDB, false);
         }
+    }
+
+    private String readinessLabel(PlayerStatsCapability stats) {
+        if (stats.mana() <= 0) {
+            return "No mana";
+        }
+        if (stats.mana() < Math.max(10, stats.maxMana() / 4)) {
+            return "Low reserves";
+        }
+        return "Ready";
+    }
+
+    private static String schoolLabel(String element) {
+        return switch (element == null ? "" : element.toLowerCase(Locale.ROOT)) {
+            case "earth" -> "Earth";
+            case "fire" -> "Fire";
+            case "storm", "lightning" -> "Storm";
+            case "water", "ice", "frost" -> "Water/Ice";
+            case "void", "shadow" -> "Void";
+            default -> "Unaligned";
+        };
+    }
+
+    private static int schoolColor(String element) {
+        return switch (element == null ? "" : element.toLowerCase(Locale.ROOT)) {
+            case "earth" -> 0xB9D58D;
+            case "fire" -> 0xFFB27F;
+            case "storm", "lightning" -> 0x9FC8FF;
+            case "water", "ice", "frost" -> 0xA8E6F8;
+            case "void", "shadow" -> 0xD2B3FF;
+            default -> 0xC8CFDB;
+        };
     }
 
     private void drawActionButton(GuiGraphics graphics, int x, int y, int w, int h, String label) {
@@ -420,7 +532,7 @@ public class ExtremePlayerScreen extends Screen {
         int x = leftPos + 16;
         int y = topPos + 62;
 
-        int searchY = y + 60;
+        int searchY = y + 76;
         if (mouseOver(mouseX, mouseY, x + 194, searchY, 32, 16)) {
             moduleSearchQuery = "";
             toolPage = 0;
@@ -437,19 +549,19 @@ public class ExtremePlayerScreen extends Screen {
         int toolX = x;
         int armorX = x + 188;
 
-        if (mouseOver(mouseX, mouseY, toolX + 108, y + 76, 16, 16)) {
+        if (mouseOver(mouseX, mouseY, toolX + 108, y + 92, 16, 16)) {
             toolPage = Math.max(0, toolPage - 1);
             return true;
         }
-        if (mouseOver(mouseX, mouseY, toolX + 126, y + 76, 16, 16)) {
+        if (mouseOver(mouseX, mouseY, toolX + 126, y + 92, 16, 16)) {
             toolPage = Math.min(Math.max(0, toolPages - 1), toolPage + 1);
             return true;
         }
-        if (mouseOver(mouseX, mouseY, armorX + 108, y + 76, 16, 16)) {
+        if (mouseOver(mouseX, mouseY, armorX + 108, y + 92, 16, 16)) {
             armorPage = Math.max(0, armorPage - 1);
             return true;
         }
-        if (mouseOver(mouseX, mouseY, armorX + 126, y + 76, 16, 16)) {
+        if (mouseOver(mouseX, mouseY, armorX + 126, y + 92, 16, 16)) {
             armorPage = Math.min(Math.max(0, armorPages - 1), armorPage + 1);
             return true;
         }
@@ -457,7 +569,7 @@ public class ExtremePlayerScreen extends Screen {
         List<ModuleCatalogClientState.ModuleEntry> toolModules = pagedModules(toolFiltered, toolPage);
         List<ModuleCatalogClientState.ModuleEntry> armorModules = pagedModules(armorFiltered, armorPage);
 
-        int listTopY = y + 84;
+        int listTopY = y + 100;
         for (int i = 0; i < toolModules.size(); i++) {
             int rowY = listTopY + (i * 18);
             ModuleCatalogClientState.ModuleEntry entry = toolModules.get(i);
@@ -569,7 +681,26 @@ public class ExtremePlayerScreen extends Screen {
                 return true;
             }
         }
+        if (activeTab == ExtremePlayerTabs.Tab.MAGIC) {
+            if (keyCode == InputConstants.KEY_UP) {
+                selectedSpellIndex = Math.max(0, selectedSpellIndex - 1);
+                return true;
+            }
+            if (keyCode == InputConstants.KEY_DOWN) {
+                selectedSpellIndex++;
+                return true;
+            }
+        }
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (activeTab == ExtremePlayerTabs.Tab.MAGIC) {
+            selectedSpellIndex = Math.max(0, selectedSpellIndex - (delta > 0 ? 1 : -1));
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     @Override

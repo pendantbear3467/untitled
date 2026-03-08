@@ -46,10 +46,26 @@ public class TechMachineMenu extends AbstractContainerMenu {
         return current * 24 / max;
     }
 
+    public int rawProgress() {
+        return data.get(0);
+    }
+
+    public int rawMaxProgress() {
+        return Math.max(1, data.get(1));
+    }
+
     public int energy() {
         int current = data.get(2);
         int max = Math.max(1, data.get(3));
         return current * 52 / max;
+    }
+
+    public int rawEnergy() {
+        return Math.max(0, data.get(2));
+    }
+
+    public int rawMaxEnergy() {
+        return Math.max(1, data.get(3));
     }
 
     public String machineId() {

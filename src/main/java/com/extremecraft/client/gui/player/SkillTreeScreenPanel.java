@@ -26,7 +26,7 @@ public class SkillTreeScreenPanel {
 
     private final Supplier<Optional<PlayerStatsCapability>> statsSupplier;
     private final Map<String, NodeUiCache> nodeUiCache = new HashMap<>();
-    private final List<Component> tooltipBuffer = new ArrayList<>(3);
+    private final List<Component> tooltipBuffer = new ArrayList<>(6);
 
     public SkillTreeScreenPanel(Supplier<Optional<PlayerStatsCapability>> statsSupplier) {
         this.statsSupplier = statsSupplier;
@@ -62,15 +62,20 @@ public class SkillTreeScreenPanel {
             drawNodeIcon(graphics, ui, x + 1, y + 1);
 
             if (mouseX >= x && mouseX <= x + NODE_SIZE && mouseY >= y && mouseY <= y + NODE_SIZE) {
-                hovered = ui;
+                hovered = ui.withState(state);
             }
         }
 
         if (hovered != null && DwConfig.CLIENT.showSkillNodeTooltips.get()) {
             tooltipBuffer.clear();
             tooltipBuffer.add(hovered.displayName);
+            tooltipBuffer.add(hovered.stateLine);
             tooltipBuffer.add(hovered.bonusText);
             tooltipBuffer.add(hovered.costLine);
+            if (!hovered.requirementLine.getString().isBlank()) {
+                tooltipBuffer.add(hovered.requirementLine);
+            }
+            tooltipBuffer.add(hovered.nextUnlockLine);
             graphics.renderTooltip(font, tooltipBuffer, Optional.empty(), mouseX, mouseY);
         }
     }
@@ -144,10 +149,27 @@ public class SkillTreeScreenPanel {
                     location,
                     present,
                     Component.literal(node.resolvedDisplayName()),
+                    Component.literal("State: Locked"),
                     Component.literal(node.resolvedDescription()),
-                    Component.literal("Cost: " + node.cost() + " skill point(s)")
+                    Component.literal("Cost: " + node.cost() + " skill point(s)"),
+                    buildRequirementLine(node),
+                    Component.literal("Next unlock: Spend skill points in this tree")
             );
         });
+    }
+
+    private static Component buildRequirementLine(SkillNode node) {
+        StringBuilder builder = new StringBuilder();
+        if (node.requiredLevel() > 1) {
+            builder.append("Requires level ").append(node.requiredLevel());
+        }
+        if (!node.requiredNodes().isEmpty()) {
+            if (!builder.isEmpty()) {
+                builder.append(" | ");
+            }
+            builder.append("Requires nodes: ").append(String.join(", ", node.requiredNodes()));
+        }
+        return Component.literal(builder.toString());
     }
 
     private SkillNodeStateService.NodeState nodeState(SkillNode node) {
@@ -176,9 +198,27 @@ public class SkillTreeScreenPanel {
             ResourceLocation icon,
             boolean iconPresent,
             Component displayName,
+            Component stateLine,
             Component bonusText,
-            Component costLine
+            Component costLine,
+            Component requirementLine,
+            Component nextUnlockLine
     ) {
+        private NodeUiCache withState(SkillNodeStateService.NodeState state) {
+            String status = switch (state) {
+                case UNLOCKED -> "State: Unlocked";
+                case UNLOCKABLE -> "State: Ready to unlock";
+                case LOCKED -> "State: Locked";
+            };
+
+            String next = switch (state) {
+                case UNLOCKED -> "Next unlock: Follow outgoing links";
+                case UNLOCKABLE -> "Next unlock: Left-click this node";
+                case LOCKED -> "Next unlock: Meet requirements and earn points";
+            };
+
+            return new NodeUiCache(icon, iconPresent, displayName, Component.literal(status), bonusText, costLine, requirementLine, Component.literal(next));
+        }
     }
 }
 

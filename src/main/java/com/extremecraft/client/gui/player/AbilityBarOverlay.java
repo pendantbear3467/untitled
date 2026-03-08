@@ -1,6 +1,7 @@
 package com.extremecraft.client.gui.player;
 
 import com.extremecraft.client.gui.debug.DeveloperOverlayState;
+import com.extremecraft.config.DwConfig;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.magic.mana.ManaApi;
 import com.extremecraft.network.sync.RuntimeSyncClientState;
@@ -13,6 +14,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -42,6 +44,7 @@ public class AbilityBarOverlay {
     private static final int ICON_SIZE = 16;
     private static final int SLOT_COUNT = 4;
     private static final int DEV_PANEL_WIDTH = 196;
+    private static final int HUD_PANEL_WIDTH = 116;
 
     @SubscribeEvent
     public void onRenderOverlay(RenderGuiOverlayEvent.Post event) {
@@ -54,18 +57,87 @@ public class AbilityBarOverlay {
         GuiGraphics gui = event.getGuiGraphics();
         int screenWidth = mc.getWindow().getGuiScaledWidth();
         int screenHeight = mc.getWindow().getGuiScaledHeight();
+        int anchorX = DwConfig.CLIENT.hudAnchorX.get();
+        int anchorY = DwConfig.CLIENT.hudAnchorY.get();
 
         int totalWidth = (SLOT_COUNT * SLOT_SIZE) + ((SLOT_COUNT - 1) * 4);
-        int startX = (screenWidth - totalWidth) / 2;
-        int y = screenHeight - 42;
+        int startX = (screenWidth - totalWidth) / 2 + anchorX;
+        int y = screenHeight - 42 + anchorY;
 
         for (int slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++) {
             int x = startX + slotIndex * (SLOT_SIZE + 4);
             renderSlot(gui, player, slotIndex, x, y);
         }
 
+        if (DwConfig.CLIENT.enableManaHudOverlay.get()) {
+            renderManaHud(gui, player, startX - HUD_PANEL_WIDTH - 6, y);
+        }
+
+        if (DwConfig.CLIENT.enableRadiationHudOverlay.get()) {
+            renderRadiationHud(gui, player, startX + totalWidth + 6, y);
+        }
+
         if (DeveloperOverlayState.isEnabled()) {
             renderDeveloperOverlay(gui, screenWidth);
+        }
+    }
+
+    private void renderManaHud(GuiGraphics gui, LocalPlayer player, int x, int y) {
+        int width = HUD_PANEL_WIDTH;
+        int currentMana = ManaApi.get(player).map(m -> (int) Math.floor(m.currentMana())).orElse(0);
+        int maxMana = Math.max(1, ManaApi.get(player).map(m -> (int) Math.ceil(m.maxMana())).orElse(1));
+        int fill = Math.min(width - 8, Math.round((currentMana / (float) maxMana) * (width - 8)));
+
+        gui.fill(x, y, x + width, y + SLOT_SIZE, 0xB0121821);
+        gui.drawString(Minecraft.getInstance().font, Component.literal("Mana"), x + 4, y + 3, 0xD8ECFF, false);
+        gui.fill(x + 4, y + 14, x + width - 4, y + 18, 0x88232D3D);
+        if (fill > 0) {
+            gui.fillGradient(x + 4, y + 14, x + 4 + fill, y + 18, 0xFF4B7FD6, 0xFF8CC8FF);
+        }
+        gui.drawString(Minecraft.getInstance().font, Component.literal(currentMana + "/" + maxMana), x + width - 40, y + 3, 0xC6DFF7, false);
+    }
+
+    private void renderRadiationHud(GuiGraphics gui, LocalPlayer player, int x, int y) {
+        int width = HUD_PANEL_WIDTH;
+        double radiation = player.getPersistentData().getDouble("ec_radiation");
+        double contamination = player.getPersistentData().getDouble("ec_contamination");
+        boolean warning = radiation >= 25.0D || contamination >= 0.40D;
+
+        gui.fill(x, y, x + width, y + SLOT_SIZE + 18, warning ? 0xB03A120E : 0xB0111A12);
+        gui.drawString(Minecraft.getInstance().font, Component.literal("Radiation"), x + 4, y + 3, warning ? 0xFFD4A27A : 0xBDE7C5, false);
+        gui.drawString(Minecraft.getInstance().font, Component.literal(String.format("%.1f uSv", radiation)), x + 4, y + 13, 0xD9E3EF, false);
+
+        int barRight = x + width - 4;
+        int barLeft = x + 62;
+        int contaminationFill = Math.min(barRight - barLeft, (int) Math.round((Math.min(1.0D, contamination)) * (barRight - barLeft)));
+        gui.fill(barLeft, y + 15, barRight, y + 19, 0x88402A2A);
+        if (contaminationFill > 0) {
+            gui.fillGradient(barLeft, y + 15, barLeft + contaminationFill, y + 19, 0xFFB6744E, 0xFFE7B471);
+        }
+        gui.drawString(Minecraft.getInstance().font, Component.literal("Contam"), x + 4, y + 14, 0xC8D8E8, false);
+
+        if (warning) {
+            gui.drawString(Minecraft.getInstance().font, Component.literal("WARNING: decon advised"), x + 4, y + SLOT_SIZE + 7, 0xFFE2B08A, false);
+        } else {
+            gui.drawString(Minecraft.getInstance().font, Component.literal("Status: stable"), x + 4, y + SLOT_SIZE + 7, 0xA7C8AD, false);
+        }
+
+        CompoundTag states = RuntimeSyncClientState.machineStates();
+        boolean reactorWarning = false;
+        for (String key : states.getAllKeys()) {
+            CompoundTag machine = states.getCompound(key);
+            String machineId = machine.getString("machine");
+            if (!machineId.contains("reactor")) {
+                continue;
+            }
+            int energy = machine.getInt("energy");
+            if (energy > 350_000) {
+                reactorWarning = true;
+                break;
+            }
+        }
+        if (reactorWarning) {
+            gui.drawString(Minecraft.getInstance().font, Component.literal("Reactor Alert"), x + width - 70, y + 3, 0xFFFFB08A, false);
         }
     }
 
