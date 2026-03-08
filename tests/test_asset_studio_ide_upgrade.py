@@ -10,7 +10,10 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt6.QtWidgets import QApplication
+try:
+    from PyQt6.QtWidgets import QApplication
+except ModuleNotFoundError:  # pragma: no cover - optional test dependency
+    QApplication = None
 
 TOOLS_PYTHON = Path(__file__).resolve().parents[1] / "tools" / "python"
 if str(TOOLS_PYTHON) not in sys.path:
@@ -19,12 +22,18 @@ if str(TOOLS_PYTHON) not in sys.path:
 from asset_studio.ai.workbench_service import AIRequest, AIWorkbenchService
 from asset_studio.code.java_support import analyze_java_source
 from asset_studio.core.studio_session import StudioSession
-from asset_studio.gui.preview_renderer import PreviewRenderer
-from asset_studio.gui.project_browser import ProjectBrowser
+if QApplication is not None:
+    from asset_studio.gui.preview_renderer import PreviewRenderer
+    from asset_studio.gui.project_browser import ProjectBrowser
+else:  # pragma: no cover - optional test dependency
+    PreviewRenderer = None
+    ProjectBrowser = None
 from asset_studio.schema.migration_service import DocumentMigrationService
 
 
-def _app() -> QApplication:
+def _app():
+    if QApplication is None:
+        return None
     app = QApplication.instance()
     if app is None:
         app = QApplication([])
@@ -157,6 +166,7 @@ public class CrusherScreen {
         self.assertIn("schemaVersion=2", gui_artifact.validation_messages)
         self.assertEqual(gui_artifact.candidate_payload["documentType"], "gui-studio")
 
+    @unittest.skipIf(QApplication is None, "PyQt6 is not available in this test environment")
     def test_preview_renderer_defaults_to_manual_control_and_accepts_payload_overlays(self) -> None:
         renderer = PreviewRenderer()
         renderer.set_preview_document(
@@ -172,6 +182,7 @@ public class CrusherScreen {
         self.assertEqual(renderer._selection_id, "body")
         self.assertEqual(renderer._issues[0]["message"], "stale export")
 
+    @unittest.skipIf(QApplication is None, "PyQt6 is not available in this test environment")
     def test_project_browser_uses_relationship_inspector_without_crashing(self) -> None:
         session = self._open_session()
         source = self.workspace / "gui_screens" / "crusher.gui.json"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import webbrowser
 from pathlib import Path
@@ -7,6 +8,8 @@ from pathlib import Path
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QApplication,
+    QCheckBox,
+    QComboBox,
     QDockWidget,
     QFileDialog,
     QHBoxLayout,
@@ -79,6 +82,9 @@ class AssetStudioWindow(QMainWindow):
         self.preview = self._create_editor("preview_renderer", PreviewRenderer)
         self.preview_tab_renderer = self._create_editor("preview_renderer", PreviewRenderer)
         self._last_preview_texture: Path | None = None
+        self._preview_variants: dict[str, dict[str, object]] = {}
+        self._preview_auto_mode = "texture"
+        self._preview_mode_choice = "auto"
 
         self.code_studio = CodeStudioPanel(self.session, self.context.workspace_root)
         self.code_studio.status_message.connect(self._set_cursor_status)
@@ -188,6 +194,7 @@ class AssetStudioWindow(QMainWindow):
         tabs = QTabWidget()
         tabs.setDocumentMode(True)
         tabs.addTab(self.code_studio, "Code")
+        tabs.addTab(self.ai_workbench, "AI Workbench")
         tabs.addTab(self.wizard, "Asset Wizard")
         tabs.addTab(self.visual_builder, "Graph Studio")
         tabs.addTab(self.skilltree_designer, "Progression")
@@ -452,8 +459,18 @@ class AssetStudioWindow(QMainWindow):
             self.build_run_panel.set_session(self.session)
         if hasattr(self.gui_studio, "set_engine"):
             self.gui_studio.set_engine(self.session.gui_studio_engine)
+        if hasattr(self.gui_studio, "set_services"):
+            self.gui_studio.set_services(
+                relationship_service=self.session.relationship_service,
+                migration_service=self.session.document_migration_service,
+            )
         if hasattr(self.model_studio, "set_engine"):
             self.model_studio.set_engine(self.session.model_studio_engine)
+        if hasattr(self.model_studio, "set_services"):
+            self.model_studio.set_services(
+                relationship_service=self.session.relationship_service,
+                migration_service=self.session.document_migration_service,
+            )
         if hasattr(self.visual_builder, "set_context"):
             self.visual_builder.set_context(self.context)
         if hasattr(self.skilltree_designer, "set_context"):
@@ -464,6 +481,7 @@ class AssetStudioWindow(QMainWindow):
                 self.main_tabs.removeTab(idx)
                 self.main_tabs.insertTab(idx, self.editor_tabs, "Data Editors")
                 break
+        self._sync_workspace_context()
 
     def _new_project(self) -> None:
         self.session.reload_workspace(self.context.workspace_root)
@@ -593,15 +611,17 @@ class AssetStudioWindow(QMainWindow):
         self._run_task(f"Export {target}", self.session.build_service.export_pack, target)
 
     def _preview_models(self) -> None:
-        self.preview.set_mode("block")
-        if self._last_preview_texture:
-            self.preview.load_texture(self._last_preview_texture)
+        for renderer in self._preview_renderers():
+            renderer.set_mode("block")
+            if self._last_preview_texture:
+                renderer.load_texture(self._last_preview_texture)
         self._write_log("Preview mode: model")
 
     def _preview_animations(self) -> None:
-        self.preview.set_mode("animated")
-        if self._last_preview_texture:
-            self.preview.load_texture(self._last_preview_texture)
+        for renderer in self._preview_renderers():
+            renderer.set_mode("animated")
+            if self._last_preview_texture:
+                renderer.load_texture(self._last_preview_texture)
         self._write_log("Preview mode: animated")
 
     def _texture_viewer(self) -> None:
@@ -614,8 +634,6 @@ class AssetStudioWindow(QMainWindow):
         if not selected:
             return
         self._set_preview_texture(Path(selected), "texture")
-        candidates = sorted(Path(selected).parent.glob("*.png"))
-        self.preview.set_texture_candidates(candidates)
         self._write_log(f"Texture loaded: {selected}")
 
     def _open_path(self, path: Path) -> None:
@@ -635,6 +653,50 @@ class AssetStudioWindow(QMainWindow):
         self._switch_tab("Code")
         self._sync_workspace_context()
 
+    def _preview_renderers(self) -> list[PreviewRenderer]:
+        return [self.preview, self.preview_tab_renderer]
+
+    def _set_preview_mode_choice(self, label: str) -> None:
+        mapping = {
+            "Auto": "auto",
+            "Source Model": "source_model",
+            "Runtime Model": "runtime_model",
+            "Source GUI": "source_gui",
+            "Runtime GUI": "runtime_gui",
+            "Texture / Asset": "texture",
+        }
+        self._preview_mode_choice = mapping.get(label, "auto")
+        self._apply_preview_variant()
+
+    def _set_preview_variants(self, auto_mode: str, variants: dict[str, dict[str, object]]) -> None:
+        self._preview_auto_mode = auto_mode
+        self._preview_variants = {mode: dict(data) for mode, data in variants.items()}
+        if self._preview_auto_mode not in self._preview_variants and self._preview_variants:
+            self._preview_auto_mode = next(iter(self._preview_variants))
+        self._apply_preview_variant()
+
+    def _selected_preview_mode(self) -> str:
+        if self._preview_mode_choice != "auto" and self._preview_mode_choice in self._preview_variants:
+            return self._preview_mode_choice
+        if self._preview_auto_mode in self._preview_variants:
+            return self._preview_auto_mode
+        return next(iter(self._preview_variants), "texture")
+
+    def _apply_preview_variant(self) -> None:
+        if not self._preview_variants:
+            return
+        mode = self._selected_preview_mode()
+        variant = self._preview_variants.get(mode) or {}
+        for renderer in self._preview_renderers():
+            renderer.set_preview_document(
+                mode,
+                payload=variant.get("payload"),
+                metadata=variant.get("metadata"),
+                issues=variant.get("issues"),
+                texture_path=variant.get("texture_path"),
+                selection_id=variant.get("selection_id"),
+            )
+
     def _set_preview_document(
         self,
         mode: str,
@@ -645,8 +707,18 @@ class AssetStudioWindow(QMainWindow):
         texture_path: Path | None = None,
         selection_id: str | None = None,
     ) -> None:
-        for renderer in [self.preview, self.preview_tab_renderer]:
-            renderer.set_preview_document(mode, payload=payload, metadata=metadata, issues=issues, texture_path=texture_path, selection_id=selection_id)
+        self._set_preview_variants(
+            mode,
+            {
+                mode: {
+                    "payload": payload,
+                    "metadata": metadata or {},
+                    "issues": issues or [],
+                    "texture_path": texture_path,
+                    "selection_id": selection_id,
+                }
+            },
+        )
 
     def _preview_issues_for_path(self, path: Path | None) -> list[dict[str, str]]:
         if path is None:
@@ -674,49 +746,156 @@ class AssetStudioWindow(QMainWindow):
         current_tab = self.main_tabs.tabText(self.main_tabs.currentIndex()) if hasattr(self, "main_tabs") and self.main_tabs.count() else ""
         if current_tab == "GUI Studio" and getattr(self.gui_studio, "current_document", None) is not None:
             document = self.gui_studio.current_document
-            payload = self.session.gui_studio_engine.preview_payload(document)
-            runtime = self.session.gui_studio_engine.build_runtime_definition(document)
-            metadata = {
-                "sourcePath": str(getattr(self.gui_studio, "current_path", "")),
-                "resourceId": runtime.get("resourceId"),
-                "runtimePath": str(self.session.gui_studio_engine.runtime_export_path(document)),
+            current_path = getattr(self.gui_studio, "current_path", None)
+            source_payload = self.session.gui_studio_engine.preview_payload(document)
+            runtime_payload = self.session.gui_studio_engine.build_runtime_definition(document)
+            runtime_path = self.session.gui_studio_engine.runtime_export_path(document)
+            base_metadata = {
+                "sourcePath": str(current_path or ""),
+                "resourceId": runtime_payload.get("resourceId"),
+                "runtimePath": str(runtime_path),
             }
             validation = self.session.gui_studio_engine.validate_document(document)
             issues = [{"severity": issue.severity, "message": issue.message} for issue in validation.issues]
-            self._set_preview_document("source_gui", payload=payload, metadata=metadata, issues=issues, selection_id=getattr(self.gui_studio, "selected_widget_id", None))
+            issues.extend(self._preview_issues_for_path(current_path))
+            self._set_preview_variants(
+                "source_gui",
+                {
+                    "source_gui": {
+                        "payload": source_payload,
+                        "metadata": {**base_metadata, "view": "source"},
+                        "issues": issues,
+                        "selection_id": getattr(self.gui_studio, "selected_widget_id", None),
+                    },
+                    "runtime_gui": {
+                        "payload": runtime_payload,
+                        "metadata": {**base_metadata, "view": "runtime"},
+                        "issues": issues,
+                        "selection_id": getattr(self.gui_studio, "selected_widget_id", None),
+                    },
+                },
+            )
             self.ai_workbench.set_context(
-                current_path=getattr(self.gui_studio, "current_path", None),
-                current_text=json.dumps(runtime, indent=2),
+                current_path=current_path,
+                current_text=json.dumps(runtime_payload, indent=2),
                 selection=getattr(self.gui_studio, "selected_widget_id", "") or "",
-                preview_payload=runtime,
-                relationship_context=self.session.relationship_service.inspector_payload(getattr(self.gui_studio, "current_path", Path())) if getattr(self.gui_studio, "current_path", None) else {},
+                preview_payload=runtime_payload,
+                relationship_context=self.session.relationship_service.inspector_payload(current_path) if current_path is not None else {},
             )
             return
         if current_tab == "Model Studio" and getattr(self.model_studio, "current_document", None) is not None:
             document = self.model_studio.current_document
-            payload = self.session.model_studio_engine.preview_payload(document)
-            runtime = self.session.model_studio_engine.build_runtime_definition(document)
-            metadata = {
-                "sourcePath": str(getattr(self.model_studio, "current_path", "")),
-                "resourceId": runtime.get("resourceId"),
-                "runtimePath": str(self.session.model_studio_engine.runtime_export_path(document)),
+            current_path = getattr(self.model_studio, "current_path", None)
+            source_payload = self.session.model_studio_engine.preview_payload(document)
+            runtime_payload = self.session.model_studio_engine.build_runtime_definition(document)
+            runtime_path = self.session.model_studio_engine.runtime_export_path(document)
+            base_metadata = {
+                "sourcePath": str(current_path or ""),
+                "resourceId": runtime_payload.get("resourceId"),
+                "runtimePath": str(runtime_path),
             }
             validation = self.session.model_studio_engine.validate_document(document)
             issues = [{"severity": issue.severity, "message": issue.message} for issue in validation.issues]
-            self._set_preview_document("source_model", payload=payload, metadata=metadata, issues=issues, selection_id=getattr(self.model_studio, "selected_cube_id", None))
+            issues.extend(self._preview_issues_for_path(current_path))
+            self._set_preview_variants(
+                "source_model",
+                {
+                    "source_model": {
+                        "payload": source_payload,
+                        "metadata": {**base_metadata, "view": "source"},
+                        "issues": issues,
+                        "selection_id": getattr(self.model_studio, "selected_cube_id", None),
+                    },
+                    "runtime_model": {
+                        "payload": runtime_payload,
+                        "metadata": {**base_metadata, "view": "runtime"},
+                        "issues": issues,
+                        "selection_id": getattr(self.model_studio, "selected_cube_id", None),
+                    },
+                },
+            )
             self.ai_workbench.set_context(
-                current_path=getattr(self.model_studio, "current_path", None),
-                current_text=json.dumps(runtime, indent=2),
+                current_path=current_path,
+                current_text=json.dumps(runtime_payload, indent=2),
                 selection=getattr(self.model_studio, "selected_cube_id", "") or "",
-                preview_payload=runtime,
-                relationship_context=self.session.relationship_service.inspector_payload(getattr(self.model_studio, "current_path", Path())) if getattr(self.model_studio, "current_path", None) else {},
+                preview_payload=runtime_payload,
+                relationship_context=self.session.relationship_service.inspector_payload(current_path) if current_path is not None else {},
             )
             return
         current_path, current_text = self._current_code_text()
         relationship_context = self.session.relationship_service.inspector_payload(current_path) if current_path is not None else {}
         self.ai_workbench.set_context(current_path=current_path, current_text=current_text, preview_payload=None, relationship_context=relationship_context)
-        if current_path is not None and current_path.suffix.lower() == ".png":
-            self._set_preview_texture(current_path, "texture")
+        if current_path is None:
+            return
+        entry = self.session.workspace_index_service.entry(current_path)
+        preview_payload = None
+        if current_path.suffix.lower() == ".json":
+            try:
+                loaded = json.loads(current_text)
+            except json.JSONDecodeError:
+                loaded = None
+            if isinstance(loaded, dict):
+                preview_payload = loaded
+        issues = self._preview_issues_for_path(current_path)
+        if current_path.suffix.lower() == ".png" or (entry is not None and entry.kind == "texture_asset"):
+            self._set_preview_variants(
+                "texture",
+                {
+                    "texture": {
+                        "texture_path": current_path,
+                        "metadata": {"sourcePath": str(current_path), "view": "texture"},
+                        "issues": issues,
+                    }
+                },
+            )
+            return
+        if entry is not None and entry.kind == "gui_runtime":
+            self._set_preview_variants(
+                "runtime_gui",
+                {
+                    "runtime_gui": {
+                        "payload": preview_payload,
+                        "metadata": {"sourcePath": str(current_path), "view": "runtime"},
+                        "issues": issues,
+                    }
+                },
+            )
+            return
+        if entry is not None and entry.kind == "gui_source":
+            self._set_preview_variants(
+                "source_gui",
+                {
+                    "source_gui": {
+                        "payload": preview_payload,
+                        "metadata": {"sourcePath": str(current_path), "view": "source"},
+                        "issues": issues,
+                    }
+                },
+            )
+            return
+        if entry is not None and entry.kind in {"model_runtime", "item_model", "block_model"}:
+            self._set_preview_variants(
+                "runtime_model",
+                {
+                    "runtime_model": {
+                        "payload": preview_payload,
+                        "metadata": {"sourcePath": str(current_path), "view": "runtime"},
+                        "issues": issues,
+                    }
+                },
+            )
+            return
+        if entry is not None and entry.kind == "model_source":
+            self._set_preview_variants(
+                "source_model",
+                {
+                    "source_model": {
+                        "payload": preview_payload,
+                        "metadata": {"sourcePath": str(current_path), "view": "source"},
+                        "issues": issues,
+                    }
+                },
+            )
 
     def _apply_ai_artifact(self, artifact) -> None:
         if artifact.apply_kind == "replace-current":
@@ -745,8 +924,7 @@ class AssetStudioWindow(QMainWindow):
             self._publish_notification("warning", "logs", "No latest log found for this workspace or runtime session")
             self._show_notifications()
             return
-        self.code_studio.open_file(latest)
-        self._switch_tab("Code")
+        self._open_path(latest)
         self._publish_notification("info", "logs", f"Opened latest log: {latest}")
 
     def _clear_logs(self) -> None:
@@ -773,39 +951,105 @@ class AssetStudioWindow(QMainWindow):
 
     def _set_preview_texture(self, texture_path: Path, mode: str) -> None:
         self._last_preview_texture = texture_path
-        self.preview.set_mode(mode)
-        self.preview.load_texture(texture_path)
-        self.preview_tab_renderer.set_mode(mode)
-        self.preview_tab_renderer.load_texture(texture_path)
+        candidates = sorted(texture_path.parent.glob("*.png")) if texture_path.parent.exists() else []
+        for renderer in self._preview_renderers():
+            renderer.set_texture_candidates(candidates)
+        self._set_preview_variants(
+            mode,
+            {
+                mode: {
+                    "texture_path": texture_path,
+                    "metadata": {"sourcePath": str(texture_path), "view": mode},
+                    "issues": self._preview_issues_for_path(texture_path),
+                }
+            },
+        )
+
+    def _set_preview_zoom(self, value: int) -> None:
+        zoom = value / 100.0
+        for renderer in self._preview_renderers():
+            renderer.set_zoom(zoom)
+
+    def _set_preview_lighting(self, value: int) -> None:
+        lighting = value / 100.0
+        for renderer in self._preview_renderers():
+            renderer.set_lighting(lighting)
+
+    def _toggle_preview_rotation(self, checked: bool) -> None:
+        for renderer in self._preview_renderers():
+            renderer.set_auto_rotate(checked)
+
+    def _set_preview_preset(self, preset: str) -> None:
+        for renderer in self._preview_renderers():
+            renderer.set_view_preset(preset)
+
+    def _reset_preview_camera(self) -> None:
+        for renderer in self._preview_renderers():
+            renderer.reset_camera()
+
+    def _switch_preview_texture(self, step: int) -> None:
+        for renderer in self._preview_renderers():
+            renderer.switch_texture(step)
+
+    def _set_preview_animation_progress(self, progress: float) -> None:
+        for renderer in self._preview_renderers():
+            renderer.set_animation_progress(progress)
 
     def _build_preview_controls(self) -> QWidget:
         holder = QWidget()
         row = QHBoxLayout(holder)
 
+        self.preview_mode_selector = QComboBox()
+        self.preview_mode_selector.addItems(["Auto", "Source Model", "Runtime Model", "Source GUI", "Runtime GUI", "Texture / Asset"])
+        self.preview_mode_selector.setToolTip("Switch the preview between source/runtime/gui/model/texture variants when the current context provides them.")
+        self.preview_mode_selector.currentTextChanged.connect(self._set_preview_mode_choice)
+
+        rotate_toggle = QCheckBox("Auto Rotate")
+        rotate_toggle.setToolTip("Enable or disable automatic rotation. Off by default for manual inspection.")
+        rotate_toggle.toggled.connect(self._toggle_preview_rotation)
+
         zoom = QSlider(Qt.Orientation.Horizontal)
         zoom.setRange(20, 300)
         zoom.setValue(100)
         zoom.setToolTip("Zoom preview")
-        zoom.valueChanged.connect(lambda value: self.preview.set_zoom(value / 100.0))
+        zoom.valueChanged.connect(self._set_preview_zoom)
 
         lighting = QSlider(Qt.Orientation.Horizontal)
         lighting.setRange(20, 200)
         lighting.setValue(100)
         lighting.setToolTip("Adjust preview lighting")
-        lighting.valueChanged.connect(lambda value: self.preview.set_lighting(value / 100.0))
-
-        next_texture = QPushButton("Next Texture")
-        next_texture.setToolTip("Cycle to next texture")
-        next_texture.clicked.connect(lambda: self.preview.switch_texture(1))
+        lighting.valueChanged.connect(self._set_preview_lighting)
 
         prev_texture = QPushButton("Prev Texture")
         prev_texture.setToolTip("Cycle to previous texture")
-        prev_texture.clicked.connect(lambda: self.preview.switch_texture(-1))
+        prev_texture.clicked.connect(lambda: self._switch_preview_texture(-1))
+
+        next_texture = QPushButton("Next Texture")
+        next_texture.setToolTip("Cycle to next texture")
+        next_texture.clicked.connect(lambda: self._switch_preview_texture(1))
+
+        front = QPushButton("Front")
+        front.clicked.connect(lambda: self._set_preview_preset("front"))
+        side = QPushButton("Side")
+        side.clicked.connect(lambda: self._set_preview_preset("side"))
+        top = QPushButton("Top")
+        top.clicked.connect(lambda: self._set_preview_preset("top"))
+        iso = QPushButton("Iso")
+        iso.clicked.connect(lambda: self._set_preview_preset("isometric"))
+        reset = QPushButton("Reset")
+        reset.clicked.connect(self._reset_preview_camera)
 
         timeline = TimelineWidget()
         timeline.setToolTip("Scrub animation preview")
-        timeline.progress_changed.connect(self.preview.set_animation_progress)
+        timeline.progress_changed.connect(self._set_preview_animation_progress)
 
+        row.addWidget(self.preview_mode_selector)
+        row.addWidget(rotate_toggle)
+        row.addWidget(front)
+        row.addWidget(side)
+        row.addWidget(top)
+        row.addWidget(iso)
+        row.addWidget(reset)
         row.addWidget(prev_texture)
         row.addWidget(next_texture)
         row.addWidget(zoom)

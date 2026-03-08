@@ -59,7 +59,7 @@ class MockAIProvider:
     name = "Mock Provider"
 
     def generate(self, request: AIRequest) -> ProviderResult:
-        mode = request.mode
+        mode = request.mode.strip().lower()
         prompt = request.prompt.strip() or "Untitled"
         base_name = _extract_name(prompt, request.current_path)
         if mode == "explain current selection":
@@ -161,8 +161,9 @@ class AIWorkbenchService:
 
     def generate_artifact(self, request: AIRequest, *, provider_name: str | None = None) -> AIArtifact:
         provider = self.provider(provider_name)
+        normalized_mode = request.mode.strip().lower()
         result = provider.generate(request)
-        diff_preview = self._build_diff(request.current_text, result.content) if request.mode in {"apply to current file", "generate diff preview"} else ""
+        diff_preview = self._build_diff(request.current_text, result.content) if normalized_mode in {"apply to current file", "generate diff preview"} else ""
         validation_messages = self._validate_result(result)
         preview_summary = self._build_preview_summary(result)
         artifact = AIArtifact(
@@ -221,6 +222,7 @@ class AIWorkbenchService:
         return preview
 
     def _apply_kind_for(self, mode: str, target_kind: str) -> str:
+        mode = mode.strip().lower()
         if mode in {"generate gui draft", "generate model draft", "generate java class draft", "generate into new file", "convert preview to runtime definition"}:
             return "open-draft"
         if mode in {"apply to current file", "generate diff preview"}:
@@ -256,3 +258,5 @@ def _package_from_path(path: Path | None) -> str:
         if parts[index:index + len(marker)] == marker:
             return ".".join(parts[index + len(marker):-1])
     return ""
+
+
