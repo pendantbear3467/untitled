@@ -329,6 +329,7 @@ class ProjectBrowser(QWidget):
             return
         self.tree.setCurrentItem(item)
         item.setSelected(True)
+        self.tree.scrollToItem(item)
 
     def _remember_expanded(self, item: QTreeWidgetItem) -> None:
         path = self._item_path(item)
@@ -361,6 +362,7 @@ class ProjectBrowser(QWidget):
         entry = self._entry_for_path(path)
         record = self._relationship_record(path)
         if entry is None:
+            self.selection_summary.setText("Choose a file or folder to inspect linked sources, exports, targets, and workspace issues.")
             self.path_label.setText("No selection")
             self.kind_label.setText("")
             self.resource_label.setText("")
@@ -382,10 +384,11 @@ class ProjectBrowser(QWidget):
         linked_target = self._relation_target_info(path, None, allow_inferred=True)
         if record is not None:
             resolution_counts = record.metadata.get("resolutionCounts") or {}
+            exact = resolution_counts.get("authoritative", 0)
+            possible = resolution_counts.get("inferred", 0)
+            self.selection_summary.setText(f"{entry.path.name} | exact links {exact} | possible links {possible}")
             details.append("")
-            details.append(
-                f"Resolution: exact={resolution_counts.get('authoritative', 0)} possible={resolution_counts.get('inferred', 0)}"
-            )
+            details.append(f"Resolution: exact={exact} possible={possible}")
             details.append("Relationships")
             details.extend(
                 f"- {target.state_label} {target.relation} -> {target.path.name} ({target.kind}; {target.source}; {target.confidence})"
@@ -395,6 +398,8 @@ class ProjectBrowser(QWidget):
                 details.append("")
                 details.append("Relationship warnings")
                 details.extend(f"- {warning}" for warning in record.warnings[:8])
+        else:
+            self.selection_summary.setText(f"{entry.path.name} | no relationship record available")
         self.detail_text.setText("\n".join(details).strip() or "No issues or relationships available.")
         self._configure_relation_button(self.open_source_button, "Source", source_target)
         self._configure_relation_button(self.open_runtime_button, "Runtime", runtime_target)

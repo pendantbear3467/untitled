@@ -155,6 +155,18 @@ class AssetStudioWindow(QMainWindow):
         self._shell_context_title.setObjectName("shellTitle")
         self._shell_context_target = QLabel()
         self._shell_context_target.setObjectName("shellMeta")
+        self._main_tab_aliases = {
+            "Code": "Code",
+            "AI Workbench": "AI Workbench",
+            "Asset Wizard": "Asset Wizard",
+            "Graph Studio": "Graph Studio",
+            "Progression": "Progression",
+            "GUI Studio": "GUI Studio",
+            "Model Studio": "Model Studio",
+            "Build/Run": "Build/Run",
+            "Data Editors": "Data Editors",
+            "Preview": "Preview",
+        }
         self._output_summary_label = QLabel("Logs and notifications will appear here.")
         self._output_summary_label.setObjectName("panelHelpHint")
         self._output_summary_label.setWordWrap(True)
@@ -168,18 +180,6 @@ class AssetStudioWindow(QMainWindow):
         self._context_actions: list[object] = []
         self._global_toolbar: QToolBar | None = None
         self._context_toolbar: QToolBar | None = None
-        self._main_tab_aliases = {
-            "Code": "Code",
-            "AI Workbench": "AI Workbench",
-            "Asset Wizard": "Asset Wizard",
-            "Graph Studio": "Graph Studio",
-            "Progression": "Progression",
-            "GUI Studio": "GUI Studio",
-            "Model Studio": "Model Studio",
-            "Build/Run": "Build/Run",
-            "Data Editors": "Data Editors",
-            "Preview": "Preview",
-        }
 
         self._build_docks()
         self._build_toolbar()
@@ -548,7 +548,8 @@ class AssetStudioWindow(QMainWindow):
         self._shell_workspace_name.setText(workspace_root.name or str(workspace_root))
         self._shell_workspace_path.setText(str(workspace_root))
         tab_name = self._tab_name() or "Workspace"
-        self._shell_context_title.setText(self._main_tab_aliases.get(tab_name, tab_name))
+        aliases = getattr(self, "_main_tab_aliases", {})
+        self._shell_context_title.setText(aliases.get(tab_name, tab_name))
         self._shell_context_target.setText(self._current_context_target_label())
 
     def _current_context_target_label(self) -> str:
