@@ -1,5 +1,6 @@
 package com.extremecraft.network.packet;
 
+import com.extremecraft.config.Config;
 import com.extremecraft.magic.SpellCastContext;
 import com.extremecraft.magic.SpellExecutor;
 import com.extremecraft.network.security.ServerPacketLimiter;
@@ -34,6 +35,11 @@ public record SpellCastPacket() {
             ServerPlayer sender = context.getSender();
             if (sender == null || sender.isSpectator()) {
                 LOGGER.debug("[Network] Dropped SpellCastPacket due to missing sender or spectator state");
+                return;
+            }
+
+            if (!Config.areAbilitiesEnabled()) {
+                LOGGER.debug("[Network] Dropped SpellCastPacket because abilities are disabled in common config");
                 return;
             }
 

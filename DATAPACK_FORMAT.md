@@ -4,6 +4,15 @@ ExtremeCraft consumes JSON datapack content from `data/extremecraft/**` (built-i
 
 Use this document as the contributor schema reference.
 
+## Resource Location Rules
+
+- Use lowercase ids and paths.
+- Prefer explicit namespace format (`extremecraft:<path>`) for references.
+- Keep file ids and JSON `id` fields aligned where possible.
+- Avoid legacy folder aliases when canonical folders exist.
+
+Validation checks in `ECValidationService` will report malformed or missing references with concrete file paths and ids.
+
 ## Machines
 
 Path:
@@ -36,6 +45,12 @@ Fields:
 - `recipes` string: recipe group/type key.
 - `display_name` string: optional UI label.
 
+Machine validation also checks common asset/reference hygiene:
+
+- Missing blockstate/block model/item model for machine id.
+- Missing referenced recipe ids (for local namespace refs).
+- Optional machine asset keys (such as `model`, `block_model`, `item_model`, `texture`, `icon`) when present.
+
 ## Skills
 
 Path:
@@ -57,6 +72,14 @@ Fields:
 - `skill` string: skill id.
 - `max_level` number: cap for progression.
 - `bonus_per_level` number: per-level bonus value.
+
+## Validation-Friendly Authoring Tips
+
+- Ensure every new block/item has model JSON (`assets/extremecraft/models/...`).
+- Ensure every new block/item has a language key in `assets/extremecraft/lang/en_us.json`.
+- Ensure every new block has a loot table (`data/extremecraft/loot_tables/blocks/...`).
+- Keep recipe `item` / `result` / `tag` references parseable resource locations.
+- Keep ability icon assets in either `assets/extremecraft/textures/gui/abilities/` or `assets/extremecraft/textures/gui/spells/`.
 
 ## Abilities
 

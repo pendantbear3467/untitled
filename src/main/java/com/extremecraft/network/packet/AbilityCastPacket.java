@@ -1,6 +1,7 @@
 package com.extremecraft.network.packet;
 
 import com.extremecraft.ability.AbilityEngine;
+import com.extremecraft.config.Config;
 import com.extremecraft.network.security.ServerPacketLimiter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -39,6 +40,11 @@ public record AbilityCastPacket(String abilityId) {
 
             if (!ServerPacketLimiter.allow(sender, "ability.cast", 1, 6, 20)) {
                 LOGGER.debug("[Network] Rate-limited AbilityCastPacket from {}", sender.getScoreboardName());
+                return;
+            }
+
+            if (!Config.areAbilitiesEnabled()) {
+                LOGGER.debug("[Network] Dropped AbilityCastPacket because abilities are disabled in common config");
                 return;
             }
 

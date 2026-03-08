@@ -24,9 +24,13 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.DirectoryStream;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -63,6 +67,7 @@ public final class ECValidationService {
 
         validateRecipeRuntime(server, reporter);
         validateRegistryEntries(reporter);
+        reporter.flushRepeatedWarnings();
 
         int warnings = reporter.warningCount();
         int omitted = reporter.omittedCount();
@@ -122,6 +127,8 @@ public final class ECValidationService {
         Path langFile = assetsRoot.resolve("lang").resolve("en_us.json");
 
         Set<String> langKeys = loadLangKeys(langFile, reporter);
+        Set<String> blockRegistryPaths = new LinkedHashSet<>();
+        Set<String> itemRegistryPaths = new LinkedHashSet<>();
 
         for (ResourceLocation id : ForgeRegistries.BLOCKS.getKeys()) {
             if (!ECConstants.MODID.equals(id.getNamespace())) {
@@ -129,6 +136,7 @@ public final class ECValidationService {
             }
 
             String path = id.getPath();
+            blockRegistryPaths.add(path);
             Path blockstate = assetsRoot.resolve("blockstates").resolve(path + ".json");
             if (!Files.exists(blockstate)) {
                 reporter.warn("Missing blockstate for " + id + " (file: " + relativeToResources(resourcesRoot, blockstate) + ")");
@@ -137,6 +145,8 @@ public final class ECValidationService {
             Path blockModel = assetsRoot.resolve("models").resolve("block").resolve(path + ".json");
             if (!Files.exists(blockModel)) {
                 reporter.warn("Missing block model for " + id + " (file: " + relativeToResources(resourcesRoot, blockModel) + ")");
+            } else {
+                validateBlockModelTextureReferences(resourcesRoot, assetsRoot, id, blockModel, reporter);
             }
 
             Path lootTable = resourcesRoot
@@ -163,6 +173,7 @@ public final class ECValidationService {
             }
 
             String path = id.getPath();
+            itemRegistryPaths.add(path);
             Path itemModel = assetsRoot.resolve("models").resolve("item").resolve(path + ".json");
             if (!Files.exists(itemModel)) {
                 reporter.warn("Missing item model for " + id + " (file: " + relativeToResources(resourcesRoot, itemModel) + ")");
@@ -176,6 +187,64 @@ public final class ECValidationService {
 
         validateArmorLayerTextures(resourcesRoot, assetsRoot, reporter);
         validateModelTextureReferences(resourcesRoot, assetsRoot, reporter);
+        validateAbilityIcons(resourcesRoot, assetsRoot, reporter);
+        validateOrphanedTopLevelResources(resourcesRoot, assetsRoot, blockRegistryPaths, itemRegistryPaths, reporter);
+    }
+
+    private static void validateBlockModelTextureReferences(Path resourcesRoot,
+                                                            Path assetsRoot,
+                                                            ResourceLocation blockId,
+                                                            Path blockModelPath,
+                                                            ValidationReporter reporter) {
+        try {
+            JsonObject json = GSON.fromJson(Files.readString(blockModelPath, StandardCharsets.UTF_8), JsonObject.class);
+            if (json == null || !json.has("textures") || !json.get("textures").isJsonObject()) {
+                return;
+            }
+
+            JsonObject textures = json.getAsJsonObject("textures");
+            for (Map.Entry<String, JsonElement> entry : textures.entrySet()) {
+                if (!entry.getValue().isJsonPrimitive()) {
+                    continue;
+                }
+
+                String raw = entry.getValue().getAsString().trim();
+                if (raw.isEmpty() || raw.startsWith("#") || raw.startsWith("minecraft:")) {
+                    continue;
+                }
+
+                String texturePath = raw;
+                String textureResource = ECConstants.MODID + ":" + texturePath;
+
+                if (raw.contains(":")) {
+                    ResourceLocation rl = ResourceLocation.tryParse(raw);
+                    if (rl == null) {
+                        reporter.warn("Malformed block texture reference '" + raw + "' in model "
+                                + relativeToResources(resourcesRoot, blockModelPath)
+                                + " (block: " + blockId + ")");
+                        continue;
+                    }
+
+                    if (!ECConstants.MODID.equals(rl.getNamespace())) {
+                        continue;
+                    }
+
+                    texturePath = rl.getPath();
+                    textureResource = rl.toString();
+                }
+
+                Path textureFile = assetsRoot.resolve("textures").resolve(texturePath + ".png");
+                if (!Files.exists(textureFile)) {
+                    reporter.warn("Missing block texture for " + blockId
+                            + ": " + textureResource
+                            + " (model: " + relativeToResources(resourcesRoot, blockModelPath)
+                            + ", expected file: " + relativeToResources(resourcesRoot, textureFile) + ")");
+                }
+            }
+        } catch (Exception ex) {
+            reporter.warn("Invalid block model JSON for " + blockId + " (file: "
+                    + relativeToResources(resourcesRoot, blockModelPath) + "): " + ex.getMessage());
+        }
     }
 
     private static void validateArmorLayerTextures(Path resourcesRoot, Path assetsRoot, ValidationReporter reporter) {
@@ -204,17 +273,137 @@ public final class ECValidationService {
         for (String materialId : materialIds) {
             Path layer1 = armorRoot.resolve(materialId + "_layer_1.png");
             if (!Files.exists(layer1)) {
-                reporter.warn("Missing armor texture " + ECConstants.MODID + ":" + materialId + "_layer_1"
+                reporter.warn("Missing armor texture: " + ECConstants.MODID + ":" + materialId + "_layer_1"
                         + " (file: " + relativeToResources(resourcesRoot, layer1) + ")");
             }
 
             if (materialHasLeggings.getOrDefault(materialId, false)) {
                 Path layer2 = armorRoot.resolve(materialId + "_layer_2.png");
                 if (!Files.exists(layer2)) {
-                    reporter.warn("Missing armor texture " + ECConstants.MODID + ":" + materialId + "_layer_2"
+                    reporter.warn("Missing armor texture: " + ECConstants.MODID + ":" + materialId + "_layer_2"
                             + " (file: " + relativeToResources(resourcesRoot, layer2) + ")");
                 }
             }
+        }
+    }
+
+    private static void validateAbilityIcons(Path resourcesRoot, Path assetsRoot, ValidationReporter reporter) {
+        Path dataRoot = resourcesRoot.resolve("data").resolve(ECConstants.MODID);
+        List<Path> abilityRoots = List.of(dataRoot.resolve("abilities"), dataRoot.resolve("abilities_platform"));
+
+        for (Path abilityRoot : abilityRoots) {
+            if (!Files.isDirectory(abilityRoot)) {
+                continue;
+            }
+
+            try (Stream<Path> files = Files.walk(abilityRoot)) {
+                files.filter(path -> path.toString().endsWith(".json"))
+                        .forEach(path -> validateAbilityIconFile(resourcesRoot, assetsRoot, path, reporter));
+            } catch (IOException ex) {
+                reporter.warn("Failed to scan ability icon definitions in "
+                        + relativeToResources(resourcesRoot, abilityRoot) + ": " + ex.getMessage());
+            }
+        }
+    }
+
+    private static void validateAbilityIconFile(Path resourcesRoot,
+                                                Path assetsRoot,
+                                                Path abilityFile,
+                                                ValidationReporter reporter) {
+        try {
+            JsonObject json = GSON.fromJson(Files.readString(abilityFile, StandardCharsets.UTF_8), JsonObject.class);
+            if (json == null) {
+                return;
+            }
+
+            String fallbackId = stripJsonExtension(abilityFile.getFileName().toString());
+            String abilityId = GsonHelper.getAsString(json, "id", fallbackId).trim().toLowerCase();
+            if (abilityId.isBlank()) {
+                reporter.warn("Ability definition has blank id (file: " + relativeToResources(resourcesRoot, abilityFile) + ")");
+                return;
+            }
+
+            String iconRef = GsonHelper.getAsString(json, "icon", "").trim();
+            if (!iconRef.isBlank()) {
+                validateNamedTextureReference(resourcesRoot, assetsRoot, abilityId, abilityFile, "icon", iconRef, reporter);
+                return;
+            }
+
+            Path defaultIcon = assetsRoot.resolve("textures").resolve("gui").resolve("abilities").resolve(abilityId + ".png");
+            Path spellIcon = assetsRoot.resolve("textures").resolve("gui").resolve("spells").resolve(abilityId + ".png");
+            if (!Files.exists(defaultIcon) && !Files.exists(spellIcon)) {
+                reporter.warn("Missing ability icon: " + ECConstants.MODID + ":" + abilityId
+                        + " (ability file: " + relativeToResources(resourcesRoot, abilityFile)
+                        + ", expected one of: " + relativeToResources(resourcesRoot, defaultIcon)
+                        + " or " + relativeToResources(resourcesRoot, spellIcon) + ")");
+            }
+        } catch (Exception ex) {
+            reporter.warn("Invalid ability definition JSON " + relativeToResources(resourcesRoot, abilityFile) + ": " + ex.getMessage());
+        }
+    }
+
+    private static void validateOrphanedTopLevelResources(Path resourcesRoot,
+                                                           Path assetsRoot,
+                                                           Set<String> blockRegistryPaths,
+                                                           Set<String> itemRegistryPaths,
+                                                           ValidationReporter reporter) {
+        warnOrphanedJsonFiles(
+                resourcesRoot,
+                assetsRoot.resolve("models").resolve("item"),
+                itemRegistryPaths,
+                "Orphaned item model (no matching item registry id)",
+                reporter
+        );
+        warnOrphanedJsonFiles(
+                resourcesRoot,
+                assetsRoot.resolve("models").resolve("block"),
+                blockRegistryPaths,
+                "Orphaned block model (no matching block registry id)",
+                reporter
+        );
+        warnOrphanedJsonFiles(
+                resourcesRoot,
+                assetsRoot.resolve("blockstates"),
+                blockRegistryPaths,
+                "Orphaned blockstate (no matching block registry id)",
+                reporter
+        );
+
+        Path lootBlocks = resourcesRoot.resolve("data").resolve(ECConstants.MODID).resolve("loot_tables").resolve("blocks");
+        warnOrphanedJsonFiles(
+                resourcesRoot,
+                lootBlocks,
+                blockRegistryPaths,
+                "Orphaned block loot table (no matching block registry id)",
+                reporter
+        );
+    }
+
+    private static void warnOrphanedJsonFiles(Path resourcesRoot,
+                                              Path directory,
+                                              Set<String> registryPaths,
+                                              String messagePrefix,
+                                              ValidationReporter reporter) {
+        if (!Files.isDirectory(directory)) {
+            return;
+        }
+
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory, "*.json")) {
+            for (Path file : stream) {
+                if (!Files.isRegularFile(file)) {
+                    continue;
+                }
+
+                String stem = stripJsonExtension(file.getFileName().toString());
+                if (stem.isBlank() || registryPaths.contains(stem)) {
+                    continue;
+                }
+
+                reporter.warn(messagePrefix + ": " + ECConstants.MODID + ":" + stem
+                        + " (file: " + relativeToResources(resourcesRoot, file) + ")");
+            }
+        } catch (IOException ex) {
+            reporter.warn("Failed to scan directory " + relativeToResources(resourcesRoot, directory) + ": " + ex.getMessage());
         }
     }
 
@@ -420,6 +609,8 @@ public final class ECValidationService {
                         + ", source: " + relativeToResources(resourcesRoot, machineFile) + ")");
             }
 
+            validateMachineAssetReferences(resourcesRoot, assetsRoot, machineId, machineFile, json, reporter);
+
             String recipesRef = GsonHelper.getAsString(json, "recipes", "").trim().toLowerCase();
             if (!recipesRef.isBlank()) {
                 ResourceLocation recipeId = parseRecipeId(recipesRef);
@@ -439,6 +630,118 @@ public final class ECValidationService {
             }
         } catch (Exception ex) {
             reporter.warn("Invalid machine definition JSON " + relativeToResources(resourcesRoot, machineFile) + ": " + ex.getMessage());
+        }
+    }
+
+    private static void validateMachineAssetReferences(Path resourcesRoot,
+                                                       Path assetsRoot,
+                                                       String machineId,
+                                                       Path machineFile,
+                                                       JsonObject machineJson,
+                                                       ValidationReporter reporter) {
+        validateMachineModelReference(resourcesRoot, assetsRoot, machineId, machineFile, machineJson, "model", reporter);
+        validateMachineModelReference(resourcesRoot, assetsRoot, machineId, machineFile, machineJson, "block_model", reporter);
+        validateMachineModelReference(resourcesRoot, assetsRoot, machineId, machineFile, machineJson, "item_model", reporter);
+
+        validateNamedTextureReference(resourcesRoot, assetsRoot, machineId, machineFile, "texture", GsonHelper.getAsString(machineJson, "texture", "").trim(), reporter);
+        validateNamedTextureReference(resourcesRoot, assetsRoot, machineId, machineFile, "icon", GsonHelper.getAsString(machineJson, "icon", "").trim(), reporter);
+        validateNamedTextureReference(resourcesRoot, assetsRoot, machineId, machineFile, "gui_texture", GsonHelper.getAsString(machineJson, "gui_texture", "").trim(), reporter);
+    }
+
+    private static void validateMachineModelReference(Path resourcesRoot,
+                                                      Path assetsRoot,
+                                                      String machineId,
+                                                      Path machineFile,
+                                                      JsonObject machineJson,
+                                                      String key,
+                                                      ValidationReporter reporter) {
+        String modelRef = GsonHelper.getAsString(machineJson, key, "").trim();
+        if (modelRef.isBlank()) {
+            return;
+        }
+
+        ParsedResourceRef parsed = parseResourceRef(modelRef);
+        if (parsed.isMalformed()) {
+            reporter.warn("Machine " + ECConstants.MODID + ":" + machineId
+                    + " has malformed model reference '" + modelRef + "' in key '" + key + "'"
+                    + " (source: " + relativeToResources(resourcesRoot, machineFile) + ")");
+            return;
+        }
+
+        if (!parsed.isLocalMod()) {
+            return;
+        }
+
+        String path = stripJsonExtension(parsed.path());
+        List<Path> candidates = new ArrayList<>();
+        if ("block_model".equals(key)) {
+            candidates.add(assetsRoot.resolve("models").resolve("block").resolve(path + ".json"));
+            if (path.startsWith("block/")) {
+                candidates.add(assetsRoot.resolve("models").resolve(path + ".json"));
+            }
+        } else if ("item_model".equals(key)) {
+            candidates.add(assetsRoot.resolve("models").resolve("item").resolve(path + ".json"));
+            if (path.startsWith("item/")) {
+                candidates.add(assetsRoot.resolve("models").resolve(path + ".json"));
+            }
+        } else {
+            candidates.add(assetsRoot.resolve("models").resolve(path + ".json"));
+            candidates.add(assetsRoot.resolve("models").resolve("block").resolve(path + ".json"));
+            candidates.add(assetsRoot.resolve("models").resolve("item").resolve(path + ".json"));
+        }
+
+        for (Path candidate : candidates) {
+            if (Files.exists(candidate)) {
+                return;
+            }
+        }
+
+        Path expected = candidates.get(0);
+        reporter.warn("Machine " + ECConstants.MODID + ":" + machineId
+                + " references missing model " + parsed.resourceLocation()
+                + " (key: " + key
+                + ", source: " + relativeToResources(resourcesRoot, machineFile)
+                + ", expected file: " + relativeToResources(resourcesRoot, expected) + ")");
+    }
+
+    private static void validateNamedTextureReference(Path resourcesRoot,
+                                                      Path assetsRoot,
+                                                      String ownerId,
+                                                      Path sourceFile,
+                                                      String key,
+                                                      String textureRef,
+                                                      ValidationReporter reporter) {
+        if (textureRef == null || textureRef.isBlank()) {
+            return;
+        }
+
+        ParsedResourceRef parsed = parseResourceRef(textureRef);
+        if (parsed.isMalformed()) {
+            reporter.warn("Malformed texture reference '" + textureRef + "' in key '" + key + "'"
+                    + " (id: " + ECConstants.MODID + ":" + ownerId
+                    + ", source: " + relativeToResources(resourcesRoot, sourceFile) + ")");
+            return;
+        }
+
+        if (!parsed.isLocalMod()) {
+            return;
+        }
+
+        String texturePath = parsed.path();
+        if (texturePath.startsWith("textures/")) {
+            texturePath = texturePath.substring("textures/".length());
+        }
+        if (texturePath.endsWith(".png")) {
+            texturePath = texturePath.substring(0, texturePath.length() - 4);
+        }
+
+        Path textureFile = assetsRoot.resolve("textures").resolve(texturePath + ".png");
+        if (!Files.exists(textureFile)) {
+            reporter.warn("Missing texture asset " + parsed.resourceLocation()
+                    + " for " + ECConstants.MODID + ":" + ownerId
+                    + " (key: " + key
+                    + ", source: " + relativeToResources(resourcesRoot, sourceFile)
+                    + ", expected file: " + relativeToResources(resourcesRoot, textureFile) + ")");
         }
     }
 
@@ -595,14 +898,20 @@ public final class ECValidationService {
             return;
         }
 
-        if (!("item".equals(key) || "result".equals(key))) {
+        if (!("item".equals(key) || "result".equals(key) || "tag".equals(key))) {
             return;
         }
 
         String value = element.getAsString();
         ResourceLocation id = ResourceLocation.tryParse(value);
         if (id == null) {
-            reporter.warn("Invalid item id in recipe " + relativeToResources(resourcesRoot, recipePath) + ": " + value);
+            reporter.warn("Invalid resource location in recipe " + relativeToResources(resourcesRoot, recipePath)
+                    + " (key: " + key + "): " + value);
+            return;
+        }
+
+        if ("tag".equals(key)) {
+            validateRecipeTagReference(resourcesRoot, recipePath, id, reporter);
             return;
         }
 
@@ -614,6 +923,48 @@ public final class ECValidationService {
         if (item == null || item == net.minecraft.world.item.Items.AIR) {
             reporter.warn("Unknown item id in recipe " + relativeToResources(resourcesRoot, recipePath) + ": " + id);
         }
+    }
+
+    private static void validateRecipeTagReference(Path resourcesRoot,
+                                                   Path recipePath,
+                                                   ResourceLocation tagId,
+                                                   ValidationReporter reporter) {
+        if (!ECConstants.MODID.equals(tagId.getNamespace())) {
+            return;
+        }
+
+        Path itemsTag = resourcesRoot.resolve("data").resolve(ECConstants.MODID)
+                .resolve("tags").resolve("items").resolve(tagId.getPath() + ".json");
+        Path blocksTag = resourcesRoot.resolve("data").resolve(ECConstants.MODID)
+                .resolve("tags").resolve("blocks").resolve(tagId.getPath() + ".json");
+
+        if (!Files.exists(itemsTag) && !Files.exists(blocksTag)) {
+            reporter.warn("Unknown tag in recipe " + relativeToResources(resourcesRoot, recipePath)
+                    + ": " + tagId
+                    + " (expected one of: " + relativeToResources(resourcesRoot, itemsTag)
+                    + " or " + relativeToResources(resourcesRoot, blocksTag) + ")");
+        }
+    }
+
+    private static ParsedResourceRef parseResourceRef(String value) {
+        if (value == null) {
+            return ParsedResourceRef.malformedRef();
+        }
+
+        String normalized = value.trim();
+        if (normalized.isBlank()) {
+            return ParsedResourceRef.malformedRef();
+        }
+
+        if (normalized.contains(":")) {
+            ResourceLocation rl = ResourceLocation.tryParse(normalized);
+            if (rl == null) {
+                return ParsedResourceRef.malformedRef();
+            }
+            return new ParsedResourceRef(rl.getNamespace(), rl.getPath(), false);
+        }
+
+        return new ParsedResourceRef(ECConstants.MODID, normalized, false);
     }
 
     private static Optional<Path> resolveResourcesRoot() {
@@ -649,17 +1000,40 @@ public final class ECValidationService {
         private final CommandSourceStack source;
         private int warnings;
         private int emitted;
+        private final Map<String, Integer> warningCounts = new LinkedHashMap<>();
 
         private ValidationReporter(CommandSourceStack source) {
             this.source = source;
         }
 
         private void warn(String message) {
+            int count = warningCounts.getOrDefault(message, 0) + 1;
+            warningCounts.put(message, count);
+            if (count > 1) {
+                return;
+            }
+
             warnings++;
             LOGGER.warn("{} {}", VALIDATION_LOG_PREFIX, message);
             if (emitted < MAX_CHAT_WARNINGS) {
                 emitted++;
                 source.sendFailure(Component.literal("[ecvalidate] " + message));
+            }
+        }
+
+        private void flushRepeatedWarnings() {
+            for (Map.Entry<String, Integer> entry : warningCounts.entrySet()) {
+                int count = entry.getValue();
+                if (count <= 1) {
+                    continue;
+                }
+
+                String summary = "Repeated warning (" + count + "x): " + entry.getKey();
+                LOGGER.warn("{} {}", VALIDATION_LOG_PREFIX, summary);
+                if (emitted < MAX_CHAT_WARNINGS) {
+                    emitted++;
+                    source.sendFailure(Component.literal("[ecvalidate] " + summary));
+                }
             }
         }
 
@@ -669,6 +1043,24 @@ public final class ECValidationService {
 
         private int omittedCount() {
             return Math.max(0, warnings - emitted);
+        }
+    }
+
+    private record ParsedResourceRef(String namespace, String path, boolean malformed) {
+        private static ParsedResourceRef malformedRef() {
+            return new ParsedResourceRef("", "", true);
+        }
+
+        private boolean isMalformed() {
+            return malformed;
+        }
+
+        private boolean isLocalMod() {
+            return !malformed && ECConstants.MODID.equals(namespace);
+        }
+
+        private String resourceLocation() {
+            return namespace + ":" + path;
         }
     }
 }

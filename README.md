@@ -35,6 +35,12 @@ Run the mod in a Forge client dev session:
 .\gradlew.bat runClient
 ```
 
+Run the dedicated/local server dev session:
+
+```powershell
+.\gradlew.bat runServer
+```
+
 Run verification checks:
 
 ```powershell
@@ -54,6 +60,29 @@ Build distributable artifacts:
 ```powershell
 .\gradlew.bat build
 ```
+
+## Contributor Orientation
+
+- Core gameplay/runtime code: `src/main/java/com/extremecraft/**`
+- Runtime assets and builtin datapack content: `src/main/resources/assets/extremecraft/**`, `src/main/resources/data/extremecraft/**`
+- Datapack contributor workspace: `datapacks/`
+- Python/tooling/generators: `tools/`, `assetstudio.py`, `generate_assets.py`, `main.py`
+- API and integration-facing module: `api/`
+
+## Safe Contribution Areas
+
+- Add or refine datapack JSON content, models, textures, lang entries, and loot tables.
+- Add validation, diagnostics, or logging improvements that are non-invasive.
+- Improve docs and developer tooling workflows.
+
+## Areas Requiring Senior-Scope Changes
+
+- Packet ownership/architecture and channel topology.
+- Registry ownership or registry id remapping behavior.
+- Progression/combat/machine ownership semantics.
+- Save-compatibility-sensitive migrations and cross-system refactors.
+
+When in doubt, keep changes additive and compile-safe.
 
 ## How Datapacks Extend ExtremeCraft
 

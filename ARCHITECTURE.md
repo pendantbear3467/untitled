@@ -123,3 +123,25 @@ These shims exist to preserve save compatibility and keep older systems operatio
 - New XP or level-granting gameplay events: call `ProgressionMutationService`, not direct capability services.
 - Legacy progression capability classes remain supported but should be treated as mirror/read-compat layers until fully retired.
 
+## Codebase Map
+
+- Gameplay systems: `src/main/java/com/extremecraft/**`
+- Datapack/runtime content: `src/main/resources/data/extremecraft/**`
+- Assets (models, lang, textures): `src/main/resources/assets/extremecraft/**`
+- Python/content tooling: `tools/`, `assetstudio.py`, `generate_assets.py`, `main.py`
+
+## Finishing-Pass Safe Zones
+
+- Validation/reporting improvements in existing validator services.
+- Asset hygiene fixes (missing model/lang/texture wiring).
+- Loader and debug message clarity.
+- Contributor docs and examples.
+
+## Senior-Scope Zones (Do Not Touch in Routine PRs)
+
+- Cross-system architecture rewrites.
+- Packet architecture redesign.
+- Registry ownership or namespace migration.
+- Progression/combat/machine authority changes.
+- Any save-format or migration behavior that can impact existing worlds.
+

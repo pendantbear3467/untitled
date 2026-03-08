@@ -167,7 +167,7 @@ public class AbilityBarOverlay {
             }
 
             if (loggedMissingAbilityIcons.add(id)) {
-                LOGGER.warn("Missing ability icon for '{}', using fallback texture", id);
+                LOGGER.warn("[ExtremeCraft Validation] Missing ability icon: extremecraft:{} (using fallback texture)", id);
             }
 
             if (hasResource(minecraft.getResourceManager(), FALLBACK_ICON)) {
@@ -175,7 +175,7 @@ public class AbilityBarOverlay {
             }
 
             if (!loggedMissingFallback) {
-                LOGGER.error("Missing fallback ability icon texture '{}'", FALLBACK_ICON);
+                LOGGER.error("[ExtremeCraft Validation] Missing fallback ability icon texture: {}", FALLBACK_ICON);
                 loggedMissingFallback = true;
             }
             return SLOT_BG;
