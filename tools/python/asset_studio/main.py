@@ -33,7 +33,7 @@ def main(argv: list[str] | None = None) -> int:
     workspace = Path(args.workspace)
 
     if args.gui:
-        from asset_studio.gui.app_window import launch_gui
+        from asset_studio.studio.app_window import launch_gui
 
         return launch_gui(workspace)
 
