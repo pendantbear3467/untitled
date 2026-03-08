@@ -1,0 +1,25 @@
+ExtremeCraft first-release placeholder assets
+
+These GUI assets are intentionally placeholder copies for playtest readability.
+Replace artwork in-place without renaming files to preserve data and UI references.
+
+Files intentionally placeholder for first release scaffold:
+- gui/spells/earth_lance.png
+- gui/spells/frost_shard.png
+- gui/spells/storm_chain.png
+- gui/spells/glacial_wall.png
+- gui/spells/void_tap.png
+- gui/spells/null_pulse.png
+- gui/spells/event_horizon.png
+- gui/spells/tactical_nuke_protocol.png
+- gui/spells/dirty_bomb_cloud.png
+- gui/abilities/* matching the above IDs
+- gui/skills/earth_focus.png
+- gui/skills/fire_focus.png
+- gui/skills/storm_focus.png
+- gui/skills/water_focus.png
+- gui/skills/void_focus.png
+- gui/skills/primitive_harness.png
+- gui/skills/industrial_harness.png
+- gui/skills/reactor_discipline.png
+- gui/skills/aether_circuitry.png

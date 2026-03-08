@@ -21,12 +21,15 @@ public class PlayerProgressData {
     private final Set<String> completedQuests = new HashSet<>();
     private final Map<String, Integer> questProgress = new HashMap<>();
     private final Set<String> discoveredRegions = new HashSet<>();
+    private final Map<String, Integer> classExperience = new HashMap<>();
+    private final Map<String, Integer> classLevels = new HashMap<>();
 
     private boolean syncDirty = true;
     private boolean attributesDirty = true;
 
     public PlayerProgressData() {
         unlockedClasses.add(PlayerClass.WARRIOR.id());
+        ensureClassTrackers(currentClass);
     }
 
     public int level() { return level; }
@@ -39,6 +42,8 @@ public class PlayerProgressData {
     public Set<String> completedQuests() { return completedQuests; }
     public Map<String, Integer> questProgress() { return questProgress; }
     public Set<String> discoveredRegions() { return discoveredRegions; }
+    public Map<String, Integer> classExperience() { return classExperience; }
+    public Map<String, Integer> classLevels() { return classLevels; }
 
     public void setCurrentClass(String classId) {
         if (classId == null || classId.isBlank() || classId.equalsIgnoreCase(this.currentClass)) {
@@ -46,6 +51,7 @@ public class PlayerProgressData {
         }
 
         this.currentClass = classId;
+        ensureClassTrackers(classId);
         markAttributesDirty();
         markSyncDirty();
     }
@@ -56,6 +62,7 @@ public class PlayerProgressData {
         }
 
         if (unlockedClasses.add(classId)) {
+            ensureClassTrackers(classId);
             markSyncDirty();
         }
     }
@@ -66,8 +73,11 @@ public class PlayerProgressData {
         markAttributesDirty();
         markSyncDirty();
     }
+
     public void addXp(int amount) {
-        if (amount <= 0) return;
+        if (amount <= 0) {
+            return;
+        }
         xp += amount;
 
         while (xp >= xpToNextLevel(level)) {
@@ -106,6 +116,41 @@ public class PlayerProgressData {
             classSkillPoints += amount;
             markSyncDirty();
         }
+    }
+
+    public int getClassExperience(String classId) {
+        String normalized = normalizeClassId(classId);
+        return normalized.isBlank() ? 0 : classExperience.getOrDefault(normalized, 0);
+    }
+
+    public int getClassLevel(String classId) {
+        String normalized = normalizeClassId(classId);
+        return normalized.isBlank() ? 1 : classLevels.getOrDefault(normalized, 1);
+    }
+
+    public int addClassExperience(String classId, int amount) {
+        String normalized = normalizeClassId(classId);
+        if (normalized.isBlank() || amount <= 0) {
+            return 0;
+        }
+
+        ensureClassTrackers(normalized);
+        int xp = classExperience.getOrDefault(normalized, 0) + amount;
+        int currentLevel = classLevels.getOrDefault(normalized, 1);
+        int gainedLevels = 0;
+        while (xp >= classXpForNextLevel(currentLevel)) {
+            xp -= classXpForNextLevel(currentLevel);
+            currentLevel++;
+            gainedLevels++;
+        }
+
+        classExperience.put(normalized, xp);
+        classLevels.put(normalized, currentLevel);
+        if (gainedLevels > 0) {
+            classSkillPoints += gainedLevels;
+        }
+        markSyncDirty();
+        return gainedLevels;
     }
 
     public void addQuestProgress(String questId, int amount) {
@@ -167,6 +212,11 @@ public class PlayerProgressData {
         return safeLevel * safeLevel * 10;
     }
 
+    public static int classXpForNextLevel(int classLevel) {
+        int safeLevel = Math.max(1, classLevel);
+        return 60 + (safeLevel * 40);
+    }
+
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
         tag.putInt("level", level);
@@ -190,6 +240,14 @@ public class PlayerProgressData {
         ListTag regions = new ListTag();
         discoveredRegions.forEach(r -> regions.add(StringTag.valueOf(r)));
         tag.put("discovered_regions", regions);
+
+        CompoundTag classXpTag = new CompoundTag();
+        classExperience.forEach(classXpTag::putInt);
+        tag.put("class_experience", classXpTag);
+
+        CompoundTag classLevelTag = new CompoundTag();
+        classLevels.forEach(classLevelTag::putInt);
+        tag.put("class_levels", classLevelTag);
 
         return tag;
     }
@@ -228,6 +286,25 @@ public class PlayerProgressData {
             for (Tag t : regions) discoveredRegions.add(t.getAsString());
         }
 
+        classExperience.clear();
+        if (tag.contains("class_experience", Tag.TAG_COMPOUND)) {
+            CompoundTag xpTag = tag.getCompound("class_experience");
+            for (String key : xpTag.getAllKeys()) {
+                classExperience.put(key, Math.max(0, xpTag.getInt(key)));
+            }
+        }
+
+        classLevels.clear();
+        if (tag.contains("class_levels", Tag.TAG_COMPOUND)) {
+            CompoundTag levelTag = tag.getCompound("class_levels");
+            for (String key : levelTag.getAllKeys()) {
+                classLevels.put(key, Math.max(1, levelTag.getInt(key)));
+            }
+        }
+
+        unlockedClasses.forEach(this::ensureClassTrackers);
+        ensureClassTrackers(currentClass);
+
         syncDirty = false;
         attributesDirty = false;
     }
@@ -251,11 +328,27 @@ public class PlayerProgressData {
         this.discoveredRegions.clear();
         this.discoveredRegions.addAll(other.discoveredRegions);
 
+        this.classExperience.clear();
+        this.classExperience.putAll(other.classExperience);
+
+        this.classLevels.clear();
+        this.classLevels.putAll(other.classLevels);
+
         markAttributesDirty();
         markSyncDirty();
     }
+
+    private void ensureClassTrackers(String classId) {
+        String normalized = normalizeClassId(classId);
+        if (normalized.isBlank()) {
+            return;
+        }
+
+        classExperience.putIfAbsent(normalized, 0);
+        classLevels.putIfAbsent(normalized, 1);
+    }
+
+    private static String normalizeClassId(String classId) {
+        return classId == null ? "" : classId.trim().toLowerCase();
+    }
 }
-
-
-
-
