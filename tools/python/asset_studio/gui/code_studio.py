@@ -238,6 +238,7 @@ class CodeStudioPanel(QWidget):
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(6)
         root.addLayout(self._build_primary_toolbar())
         root.addLayout(self._build_search_toolbar())
 
@@ -250,43 +251,110 @@ class CodeStudioPanel(QWidget):
         split.addWidget(self.tab_widget)
 
         right = QWidget()
+        right.setMinimumWidth(360)
         right_layout = QVBoxLayout(right)
         right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.addWidget(QLabel("File Metadata"))
+        right_layout.setSpacing(6)
+
+        inspector_title = QLabel("Code Inspector")
+        inspector_title.setObjectName("panelHeaderTitle")
+        right_layout.addWidget(inspector_title)
+
+        inspector_hint = QLabel("Keep the current file, linked targets, structure, and diagnostics visible without crowding the main editor.")
+        inspector_hint.setObjectName("panelHelpHint")
+        inspector_hint.setWordWrap(True)
+        right_layout.addWidget(inspector_hint)
+
+        self.sidebar_tabs = QTabWidget()
+        self.sidebar_tabs.setDocumentMode(True)
+
+        overview_tab = QWidget()
+        overview_layout = QVBoxLayout(overview_tab)
+        overview_layout.setContentsMargins(0, 0, 0, 0)
+        overview_layout.setSpacing(6)
+        overview_layout.addWidget(QLabel("File Metadata"))
         self.file_meta = QLabel("No file open")
         self.file_meta.setWordWrap(True)
-        right_layout.addWidget(self.file_meta)
+        overview_layout.addWidget(self.file_meta)
+        self.relationship_summary = QLabel("Linked source, runtime, Java, and asset targets appear here.")
+        self.relationship_summary.setObjectName("panelHelpHint")
+        self.relationship_summary.setWordWrap(True)
+        overview_layout.addWidget(self.relationship_summary)
 
-        self.symbol_filter = QLineEdit()
-        self.symbol_filter.setPlaceholderText("Go to symbol")
-        self.symbol_filter.returnPressed.connect(self.go_to_symbol)
-        right_layout.addWidget(self.symbol_filter)
+        linked_actions = QHBoxLayout()
+        linked_actions.setSpacing(6)
+        self.link_source_button = QPushButton("Source")
+        self.link_source_button.clicked.connect(lambda: self.open_linked_target("source_document"))
+        self.link_runtime_button = QPushButton("Runtime")
+        self.link_runtime_button.clicked.connect(lambda: self.open_linked_target("runtime_export"))
+        self.link_java_button = QPushButton("Java")
+        self.link_java_button.clicked.connect(lambda: self.open_linked_target("java_target"))
+        self.link_asset_button = QPushButton("Asset")
+        self.link_asset_button.clicked.connect(self.open_linked_asset)
+        for button in [self.link_source_button, self.link_runtime_button, self.link_java_button, self.link_asset_button]:
+            linked_actions.addWidget(button)
+        overview_layout.addLayout(linked_actions)
 
-        right_layout.addWidget(QLabel("Linked Assets / Targets"))
         self.relationships = QTreeWidget()
+        self.relationships.setAlternatingRowColors(True)
         self.relationships.setHeaderLabels(["Relation", "Target"])
         self.relationships.itemDoubleClicked.connect(self._open_relation_item)
-        right_layout.addWidget(self.relationships)
+        overview_layout.addWidget(self.relationships, 1)
 
-        right_layout.addWidget(QLabel("Outline"))
-        self.outline = QTreeWidget()
-        self.outline.setHeaderLabels(["Symbol", "Line"])
-        self.outline.itemDoubleClicked.connect(self._jump_to_outline)
-        right_layout.addWidget(self.outline)
-
-        right_layout.addWidget(QLabel("Problems"))
-        self.problems = QTreeWidget()
-        self.problems.setHeaderLabels(["Problem", "Location"])
-        self.problems.itemDoubleClicked.connect(self._jump_to_problem)
-        right_layout.addWidget(self.problems)
-
-        right_layout.addWidget(QLabel("Recent Files"))
+        overview_layout.addWidget(QLabel("Recent Files"))
         self.recent_files = QListWidget()
         self.recent_files.itemDoubleClicked.connect(self._open_recent_file)
-        right_layout.addWidget(self.recent_files)
+        overview_layout.addWidget(self.recent_files, 1)
+
+        structure_tab = QWidget()
+        structure_layout = QVBoxLayout(structure_tab)
+        structure_layout.setContentsMargins(0, 0, 0, 0)
+        structure_layout.setSpacing(6)
+        structure_layout.addWidget(QLabel("Outline / Go To Symbol"))
+        self.symbol_filter = QLineEdit()
+        self.symbol_filter.setPlaceholderText("Go to symbol or filter outline")
+        self.symbol_filter.returnPressed.connect(self.go_to_symbol)
+        self.symbol_filter.textChanged.connect(self._apply_outline_filter)
+        structure_layout.addWidget(self.symbol_filter)
+        symbol_actions = QHBoxLayout()
+        symbol_actions.setSpacing(6)
+        go_button = QPushButton("Go To")
+        go_button.clicked.connect(self.go_to_symbol)
+        prev_button = QPushButton("Prev")
+        prev_button.clicked.connect(self.go_to_previous_symbol)
+        next_button = QPushButton("Next")
+        next_button.clicked.connect(self.go_to_next_symbol)
+        for button in [go_button, prev_button, next_button]:
+            symbol_actions.addWidget(button)
+        structure_layout.addLayout(symbol_actions)
+        self.outline = QTreeWidget()
+        self.outline.setAlternatingRowColors(True)
+        self.outline.setHeaderLabels(["Symbol", "Line"])
+        self.outline.itemDoubleClicked.connect(self._jump_to_outline)
+        structure_layout.addWidget(self.outline, 1)
+
+        problems_tab = QWidget()
+        problems_layout = QVBoxLayout(problems_tab)
+        problems_layout.setContentsMargins(0, 0, 0, 0)
+        problems_layout.setSpacing(6)
+        problems_layout.addWidget(QLabel("Problems"))
+        self.problem_summary = QLabel("Diagnostics are grouped by severity and file.")
+        self.problem_summary.setObjectName("panelHelpHint")
+        self.problem_summary.setWordWrap(True)
+        problems_layout.addWidget(self.problem_summary)
+        self.problems = QTreeWidget()
+        self.problems.setAlternatingRowColors(True)
+        self.problems.setHeaderLabels(["Problem", "Location"])
+        self.problems.itemDoubleClicked.connect(self._jump_to_problem)
+        problems_layout.addWidget(self.problems, 1)
+
+        self.sidebar_tabs.addTab(overview_tab, "Overview")
+        self.sidebar_tabs.addTab(structure_tab, "Structure")
+        self.sidebar_tabs.addTab(problems_tab, "Problems")
+        right_layout.addWidget(self.sidebar_tabs, 1)
 
         split.addWidget(right)
-        split.setSizes([980, 420])
+        split.setSizes([1020, 440])
         root.addWidget(split)
 
         self._update_recent_files()
@@ -311,29 +379,34 @@ class CodeStudioPanel(QWidget):
 
     def _build_primary_toolbar(self) -> QHBoxLayout:
         row = QHBoxLayout()
-        controls = [
-            ("New", self.new_document, "Create a new untitled document."),
-            ("Open", self.open_file_dialog, "Open a file from the current workspace or disk."),
-            ("Save", self.save_current, "Save the active file."),
-            ("Save All", self.save_all, "Save all open files."),
-            ("New Java File", self.new_java_file, "Create a Java file scaffold and target path."),
-            ("New Class", lambda: self.new_java_scaffold("class"), "Create a Java class scaffold in src/main/java."),
-            ("New Interface", lambda: self.new_java_scaffold("interface"), "Create a Java interface scaffold."),
-            ("New Enum", lambda: self.new_java_scaffold("enum"), "Create a Java enum scaffold."),
-            ("New Record", lambda: self.new_java_scaffold("record"), "Create a Java record scaffold."),
-            ("Go To Symbol", self.go_to_symbol, "Jump to a symbol in the active file."),
-            ("Prev Symbol", self.go_to_previous_symbol, "Jump to the previous symbol in the active outline."),
-            ("Next Symbol", self.go_to_next_symbol, "Jump to the next symbol in the active outline."),
-            ("Open Source", lambda: self.open_linked_target("source_document"), "Open linked source document for current file."),
-            ("Open Runtime", lambda: self.open_linked_target("runtime_export"), "Open linked runtime export for current file."),
-            ("Open Java", lambda: self.open_linked_target("java_target"), "Open linked Java target for current file."),
-            ("Open Asset", self.open_linked_asset, "Open linked texture/model asset for current file."),
+        row.setSpacing(6)
+        groups = [
+            [
+                ("New", self.new_document, "Create a new untitled document."),
+                ("Open", self.open_file_dialog, "Open a file from the current workspace or disk."),
+                ("Save", self.save_current, "Save the active file."),
+                ("Save All", self.save_all, "Save all open files."),
+            ],
+            [
+                ("New Java File", self.new_java_file, "Create a Java file scaffold and target path."),
+                ("New Class", lambda: self.new_java_scaffold("class"), "Create a Java class scaffold in src/main/java."),
+                ("New Interface", lambda: self.new_java_scaffold("interface"), "Create a Java interface scaffold."),
+                ("New Enum", lambda: self.new_java_scaffold("enum"), "Create a Java enum scaffold."),
+                ("New Record", lambda: self.new_java_scaffold("record"), "Create a Java record scaffold."),
+            ],
+            [
+                ("Go To Symbol", self.go_to_symbol, "Jump to a symbol in the active file."),
+            ],
         ]
-        for label, callback, help_text in controls:
-            button = QPushButton(label)
-            button.setToolTip(help_text)
-            button.clicked.connect(callback)
-            row.addWidget(button)
+        for group_index, controls in enumerate(groups):
+            for label, callback, help_text in controls:
+                button = QPushButton(label)
+                button.setToolTip(help_text)
+                button.clicked.connect(callback)
+                row.addWidget(button)
+            if group_index < len(groups) - 1:
+                row.addSpacing(10)
+        row.addStretch(1)
         return row
 
     def new_java_file(self) -> None:
