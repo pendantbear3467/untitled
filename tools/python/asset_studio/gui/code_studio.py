@@ -726,12 +726,13 @@ class CodeStudioPanel(QWidget):
         if record is None:
             self.status_message.emit("No relationship data available")
             return
-        target = record.first_target(relation)
+        target = record.preferred_target(relation, allow_inferred=True)
         if target is None:
             self.status_message.emit(f"No linked {relation.replace('_', ' ')}")
             return
         self.open_link_requested.emit(target.path)
-        self.status_message.emit(f"Opened linked {relation.replace('_', ' ')}: {target.path.name}")
+        qualifier = "possible " if not target.authoritative else ""
+        self.status_message.emit(f"Opened {qualifier}{relation.replace('_', ' ')}: {target.path.name}")
 
     def open_linked_asset(self) -> None:
         tab = self._current_tab()
@@ -743,12 +744,18 @@ class CodeStudioPanel(QWidget):
             self.status_message.emit("No relationship data available")
             return
         asset_kinds = {"texture_asset", "item_model", "block_model", "model_runtime", "json"}
-        for target in record.targets:
-            if target.kind in asset_kinds:
-                self.open_link_requested.emit(target.path)
-                self.status_message.emit(f"Opened linked asset: {target.path.name}")
-                return
-        self.status_message.emit("No linked asset target")
+        exact = next((target for target in record.targets if target.kind in asset_kinds and target.authoritative), None)
+        target = exact
+        if target is None:
+            inferred = [candidate for candidate in record.targets if candidate.kind in asset_kinds and not candidate.authoritative]
+            if len(inferred) == 1:
+                target = inferred[0]
+        if target is None:
+            self.status_message.emit("No linked asset target")
+            return
+        self.open_link_requested.emit(target.path)
+        qualifier = "possible " if not target.authoritative else ""
+        self.status_message.emit(f"Opened {qualifier}asset: {target.path.name}")
 
     def _editor_text_changed(self, editor: StudioCodeEditor) -> None:
         if self._setting_editor_text:
@@ -848,10 +855,12 @@ class CodeStudioPanel(QWidget):
     def _refresh_relations(self, editor: StudioCodeEditor | None) -> None:
         self.relationships.clear()
         if editor is None or editor not in self._tabs:
+            self.relationship_summary.setText("Linked source, runtime, Java, and asset targets appear here.")
             return
         tab = self._tabs[editor]
         record = self._relationship_record(tab.path)
         if record is None:
+            self.relationship_summary.setText("No relationship data is available for the active file.")
             item = QTreeWidgetItem(["No relationship data", ""])
             item.setFlags(Qt.ItemFlag.ItemIsEnabled)
             self.relationships.addTopLevelItem(item)
@@ -880,6 +889,10 @@ class CodeStudioPanel(QWidget):
                 warning_item = QTreeWidgetItem([message, ""])
                 warning_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
                 warning_group.addChild(warning_item)
+        resolution_counts = record.metadata.get("resolutionCounts") or {}
+        self.relationship_summary.setText(
+            f"Exact {resolution_counts.get('authoritative', 0)} | Possible {resolution_counts.get('inferred', 0)} | Total {len(record.targets)}"
+        )
         self.relationships.expandAll()
 
     def _refresh_outline(self, editor: StudioCodeEditor | None) -> None:
@@ -924,6 +937,8 @@ class CodeStudioPanel(QWidget):
                     child.setData(0, Qt.ItemDataRole.UserRole, (symbol.line, symbol.column, len(symbol.name)))
                     group.addChild(child)
             self.outline.expandAll()
+        self._apply_outline_filter()
+            self._apply_outline_filter()
             return
 
         self._outline_cache[editor] = []
@@ -956,14 +971,36 @@ class CodeStudioPanel(QWidget):
             group.addChild(child)
         self.outline.expandAll()
 
+    def _apply_outline_filter(self) -> None:
+        query = self.symbol_filter.text().strip().lower()
+        for index in range(self.outline.topLevelItemCount()):
+            group = self.outline.topLevelItem(index)
+            if group is None:
+                continue
+            visible_children = 0
+            for child_index in range(group.childCount()):
+                child = group.child(child_index)
+                haystack = f"{group.text(0)} {child.text(0)}".lower()
+                hidden = bool(query) and query not in haystack
+                child.setHidden(hidden)
+                if not hidden:
+                    visible_children += 1
+            if group.childCount() == 0:
+                group.setHidden(False)
+                continue
+            group.setHidden(visible_children == 0)
+            group.setExpanded(visible_children > 0)
+
     def _refresh_problems(self, editor: StudioCodeEditor | None) -> None:
         self.problems.clear()
         if editor is None or editor not in self._tabs:
+            self.problem_summary.setText("Diagnostics are grouped by severity and file.")
             return
         tab = self._tabs[editor]
         diagnostics = self._diagnose(tab)
         self.editor_service.problems.set_document_issues(tab.document_id, diagnostics)
         if not diagnostics:
+            self.problem_summary.setText("No problems detected for the active file.")
             ok_item = QTreeWidgetItem(["No problems detected", ""])
             ok_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
             self.problems.addTopLevelItem(ok_item)
@@ -975,6 +1012,12 @@ class CodeStudioPanel(QWidget):
         by_severity: dict[str, list[CodeDiagnostic]] = defaultdict(list)
         for diagnostic in diagnostics:
             by_severity[diagnostic.severity].append(diagnostic)
+        self.problem_summary.setText(
+            " | ".join(
+                f"{severity}:{len(by_severity[severity])}"
+                for severity in sorted(by_severity, key=lambda value: SEVERITY_ORDER.get(value, 99))
+            )
+        )
         for severity in sorted(by_severity, key=lambda value: SEVERITY_ORDER.get(value, 99)):
             group = QTreeWidgetItem([severity.upper(), str(len(by_severity[severity]))])
             group.setFlags(Qt.ItemFlag.ItemIsEnabled)
@@ -1057,6 +1100,8 @@ class CodeStudioPanel(QWidget):
         _ = index
         self._symbol_nav_index = -1
         editor = self._current_editor()
+        if editor is not None:
+            self.sidebar_tabs.setCurrentIndex(0)
         self._refresh_sidebar(editor)
         self._notify_current_file()
 
@@ -1135,6 +1180,8 @@ class CodeStudioPanel(QWidget):
         item.setFlags(Qt.ItemFlag.ItemIsEnabled)
         self.problems.addTopLevelItem(item)
         self.file_meta.setText("No file open")
+        self.relationship_summary.setText("Linked source, runtime, Java, and asset targets appear here.")
+        self.problem_summary.setText("Diagnostics are grouped by severity and file.")
 
     def _step_symbol_navigation(self, step: int) -> None:
         editor = self._current_editor()
