@@ -565,7 +565,8 @@ class AssetStudioWindow(QMainWindow):
             return str(current_path) if current_path is not None else "No model document open"
         if tab_name == "Preview":
             state = self.preview.preview_state()
-            source_label = str(state.get("texturePath") or self.preview.preview_state().get("mode") or "Preview idle")
+            metadata = getattr(self.preview, "_metadata", {})
+            source_label = str(metadata.get("sourcePath") or state.get("texturePath") or state.get("mode") or "Preview idle")
             return source_label
         return "Use the active workbench toolbar for editor-specific actions"
 
@@ -1103,6 +1104,8 @@ class AssetStudioWindow(QMainWindow):
                 },
             )
             self._refresh_shell_header()
+            return
+        self._refresh_shell_header()
 
     def _apply_ai_artifact(self, artifact) -> None:
         if getattr(artifact, "validation_blockers", None):
@@ -1330,8 +1333,12 @@ class AssetStudioWindow(QMainWindow):
         self.setStyleSheet(
             """
             QMainWindow { background: #111723; }
+            QWidget#shellHeader { background: #151e2d; border: 1px solid #28344d; }
             QToolBar { spacing: 6px; padding: 4px 6px; background: #1a2232; border-bottom: 1px solid #283147; }
             QToolBar QToolButton { margin: 1px; padding: 4px 8px; }
+            QLabel#shellEyebrow, QLabel#toolbarSectionLabel { color: #8ea8d5; font-size: 11px; font-weight: 600; }
+            QLabel#shellTitle, QLabel#panelHeaderTitle { color: #f0f5ff; font-size: 14px; font-weight: 600; }
+            QLabel#shellMeta, QLabel#panelHelpHint { color: #9db6e0; font-size: 11px; }
             QTabWidget::pane { border: 1px solid #2a344b; background: #141c2b; }
             QTabBar::tab { background: #1c2536; color: #d7deed; padding: 7px 12px; margin-right: 2px; }
             QTabBar::tab:selected { background: #28334a; color: #ffffff; }
@@ -1342,8 +1349,6 @@ class AssetStudioWindow(QMainWindow):
             }
             QPushButton { background-color: #25324a; color: #f0f4ff; border: 1px solid #384e72; padding: 5px 10px; }
             QPushButton:hover { background-color: #304261; }
-            QLabel#panelHeaderTitle { color: #f0f5ff; font-size: 14px; font-weight: 600; }
-            QLabel#panelHelpHint { color: #9db6e0; font-size: 11px; }
             """
         )
 

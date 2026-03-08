@@ -535,11 +535,9 @@ class PreviewRenderer(QOpenGLWidget):
         painter.setPen(QColor("#f4f7ff"))
         painter.drawText(left + 14, top + 28, "Nothing to preview yet")
         hint = (
-            "Open a GUI/model source, runtime export,
-or texture asset to populate the focused preview."
+            "Open a GUI/model source, runtime export,\\nor texture asset to populate the focused preview."
             if self._mode != "texture"
-            else "Load a texture or select a linked asset
-to inspect it here."
+            else "Load a texture or select a linked asset\\nto inspect it here."
         )
         painter.setPen(QColor("#9db6e0"))
         painter.drawText(left + 14, top + 54, width - 28, 44, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, hint)

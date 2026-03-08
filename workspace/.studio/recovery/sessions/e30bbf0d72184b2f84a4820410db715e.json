@@ -4,5 +4,12 @@
   "workspace": "workspace",
   "startedAt": "2026-03-08T22:26:29Z",
   "openedDocuments": [],
-  "lastCommand": null
+  "lastCommand": null,
+  "codeSession": {
+    "open_documents": [],
+    "recent_files": [],
+    "split_layouts": {},
+    "open_files": []
+  },
+  "lastSavedWorkspace": "workspace"
 }
