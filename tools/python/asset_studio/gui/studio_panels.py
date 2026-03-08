@@ -29,8 +29,10 @@ from PyQt6.QtWidgets import (
 )
 
 from asset_studio.gui_studio.engine import GuiStudioEngine
+from asset_studio.gui_studio.serializer import load_document as load_gui_document
 from asset_studio.gui_studio.models import GuiAnchor, GuiBinding, GuiBounds, GuiDocument, GuiWidget
 from asset_studio.model_studio.engine import ModelStudioEngine
+from asset_studio.model_studio.serializer import load_document as load_model_document
 from asset_studio.model_studio.models import FaceMapping, ModelBone, ModelCube, ModelDocument, Vec3
 
 
@@ -269,10 +271,13 @@ class _GuiCanvas(QWidget):
 class GuiStudioPanel(QWidget):
     status_message = pyqtSignal(str)
     notifications = pyqtSignal(str)
+    open_path_requested = pyqtSignal(object)
 
-    def __init__(self, engine: GuiStudioEngine) -> None:
+    def __init__(self, engine: GuiStudioEngine, *, relationship_service=None, migration_service=None) -> None:
         super().__init__()
         self.engine = engine
+        self.relationship_service = relationship_service
+        self.migration_service = migration_service
         self.current_document: GuiDocument | None = None
         self.current_path: Path | None = None
         self.selected_widget_id: str | None = None
@@ -303,6 +308,10 @@ class GuiStudioPanel(QWidget):
         self._refresh_document_list()
         self._refresh_surface()
 
+    def set_services(self, *, relationship_service=None, migration_service=None) -> None:
+        self.relationship_service = relationship_service
+        self.migration_service = migration_service
+
     def _build_top_actions(self) -> QWidget:
         host = QWidget()
         row = QHBoxLayout(host)
@@ -319,6 +328,9 @@ class GuiStudioPanel(QWidget):
         row.addWidget(_button("Export Runtime", self.export_runtime_current, "Export the current GUI document into the deterministic mod-facing runtime path."))
         row.addWidget(_button("Validate Current", self.validate_current, "Validate the current GUI definition against the authoritative backend validator."))
         row.addWidget(_button("Preview Current", self.preview_current, "Refresh the preview payload and selection summary."))
+        row.addWidget(_button("Open Runtime", lambda: self._open_related("runtime_export"), "Open the linked runtime export in the main workbench."))
+        row.addWidget(_button("Open Java", lambda: self._open_related("java_target"), "Open the inferred linked Java target in the main workbench."))
+        row.addWidget(_button("Migration Preview", self.preview_migration_current, "Preview schema normalization and diagnostic migration state for the current GUI document."))
         row.addStretch(1)
         return host
 
@@ -536,13 +548,21 @@ class GuiStudioPanel(QWidget):
         self.open_document(Path(selected))
 
     def open_document(self, path_or_name: str | Path) -> None:
-        loaded = self.engine.load_document(path_or_name)
+        actual_path = Path(path_or_name) if isinstance(path_or_name, Path) else self.engine.document_path(str(path_or_name))
+        migration = self.migration_service.load_preview("gui", actual_path) if self.migration_service is not None else None
+        loaded = load_gui_document(migration.payload if migration is not None else actual_path)
         self.current_document = loaded.document
-        self.current_path = Path(path_or_name) if isinstance(path_or_name, Path) else self.engine.document_path(str(path_or_name))
+        self.current_path = actual_path
         self.selected_widget_id = next(iter(self.current_document.widgets), None)
-        self._dirty = False
+        self._dirty = bool(migration.applied) if migration is not None else False
         self._refresh_document_list(select=self.current_document.name)
         self._refresh_surface()
+        if migration is not None:
+            self.report.setPlainText(self._migration_preview_text(migration))
+            for warning in migration.warnings:
+                self.notifications.emit(f"GUI migration warning: {warning}")
+            for error in migration.errors:
+                self.notifications.emit(f"GUI migration error: {error}")
         for warning in loaded.warnings:
             self.notifications.emit(f"GUI load warning: {warning}")
         for error in loaded.errors:
@@ -553,13 +573,63 @@ class GuiStudioPanel(QWidget):
         if self.current_document is None:
             self.notifications.emit("Create or open a GUI document before saving")
             return False
+        backup_note = ""
+        if self.current_path is not None and self.migration_service is not None:
+            preview = self.migration_service.prepare_save("gui", self.current_path, metadata=self.current_document.metadata)
+            if preview is not None and preview.backup_path is not None:
+                backup_note = f"
+Migration backup: {preview.backup_path}"
         saved_path = self.engine.save_document(self.current_document)
         self.current_path = saved_path
         self._dirty = False
         self._refresh_document_list(select=self.current_document.name)
-        self.report.setPlainText(f"Saved GUI document to {saved_path}")
+        self.report.setPlainText(f"Saved GUI document to {saved_path}{backup_note}")
         self.notifications.emit(f"Saved GUI document {self.current_document.name}")
         return True
+
+    def load_draft_payload(self, payload: dict) -> None:
+        loaded = load_gui_document(payload)
+        self.current_document = loaded.document
+        self.current_path = None
+        self.selected_widget_id = next(iter(self.current_document.widgets), None)
+        self._dirty = True
+        self._refresh_document_list(select=self.current_document.name)
+        self._refresh_surface()
+        self.report.setPlainText("Loaded generated GUI draft. Review, validate, preview, then save explicitly.")
+        self.notifications.emit(f"Loaded GUI draft {self.current_document.name}")
+
+    def preview_migration_current(self) -> None:
+        if self.current_path is None or self.migration_service is None:
+            self.report.setPlainText("No migration preview available for an unsaved GUI document.")
+            return
+        preview = self.migration_service.load_preview("gui", self.current_path)
+        self.report.setPlainText(self._migration_preview_text(preview))
+
+    def _open_related(self, relation: str) -> None:
+        if self.current_path is None or self.relationship_service is None:
+            self.notifications.emit("No linked document available")
+            return
+        target = self.relationship_service.first_related_path(self.current_path, relation)
+        if target is None:
+            self.notifications.emit(f"No {relation.replace('_', ' ')} available for this GUI document")
+            return
+        self.open_path_requested.emit(target)
+
+    def _migration_preview_text(self, preview) -> str:
+        lines = [f"Migration preview: gui", f"Source: {preview.source_path}", f"Applied: {'yes' if preview.applied else 'no'}"]
+        if preview.from_version is not None or preview.to_version is not None:
+            lines.append(f"Version: {preview.from_version} -> {preview.to_version}")
+        if preview.actions:
+            lines.append("Actions:")
+            lines.extend(f"- {action}" for action in preview.actions)
+        if preview.warnings:
+            lines.append("Warnings:")
+            lines.extend(f"- {warning}" for warning in preview.warnings)
+        if preview.errors:
+            lines.append("Errors:")
+            lines.extend(f"- {error}" for error in preview.errors)
+        return "
+".join(lines)
 
     def save_all(self) -> int:
         return 1 if self.save_current() else 0
@@ -1067,10 +1137,13 @@ class _ModelViewport(QWidget):
 class ModelStudioPanel(QWidget):
     status_message = pyqtSignal(str)
     notifications = pyqtSignal(str)
+    open_path_requested = pyqtSignal(object)
 
-    def __init__(self, engine: ModelStudioEngine) -> None:
+    def __init__(self, engine: ModelStudioEngine, *, relationship_service=None, migration_service=None) -> None:
         super().__init__()
         self.engine = engine
+        self.relationship_service = relationship_service
+        self.migration_service = migration_service
         self.current_document: ModelDocument | None = None
         self.current_path: Path | None = None
         self.selected_cube_id: str | None = None
@@ -1100,6 +1173,10 @@ class ModelStudioPanel(QWidget):
         self._refresh_document_list()
         self._refresh_surface()
 
+    def set_services(self, *, relationship_service=None, migration_service=None) -> None:
+        self.relationship_service = relationship_service
+        self.migration_service = migration_service
+
     def _build_top_actions(self) -> QWidget:
         host = QWidget()
         row = QHBoxLayout(host)
@@ -1117,6 +1194,9 @@ class ModelStudioPanel(QWidget):
         row.addWidget(_button("Export Runtime", self.export_runtime_current, "Export the current model document into the deterministic mod-facing runtime path."))
         row.addWidget(_button("Validate Current", self.validate_current, "Validate the current model document using the authoritative model validator."))
         row.addWidget(_button("Preview Current", self.preview_current, "Refresh the viewport summary and preview payload."))
+        row.addWidget(_button("Open Runtime", lambda: self._open_related("runtime_export"), "Open the linked runtime export in the main workbench."))
+        row.addWidget(_button("Open Java", lambda: self._open_related("java_target"), "Open the inferred linked Java target in the main workbench."))
+        row.addWidget(_button("Migration Preview", self.preview_migration_current, "Preview schema normalization and diagnostic migration state for the current model document."))
         row.addStretch(1)
         return host
 
@@ -1289,13 +1369,21 @@ class ModelStudioPanel(QWidget):
         self.open_document(Path(selected))
 
     def open_document(self, path_or_name: str | Path) -> None:
-        loaded = self.engine.load_document(path_or_name)
+        actual_path = Path(path_or_name) if isinstance(path_or_name, Path) else self.engine.document_path(str(path_or_name))
+        migration = self.migration_service.load_preview("model", actual_path) if self.migration_service is not None else None
+        loaded = load_model_document(migration.payload if migration is not None else actual_path)
         self.current_document = loaded.document
-        self.current_path = Path(path_or_name) if isinstance(path_or_name, Path) else self.engine.document_path(str(path_or_name))
+        self.current_path = actual_path
         self.selected_cube_id = next(iter(self.current_document.cubes), None)
         self.selected_bone_id = "root"
         self._refresh_document_list(select=self.current_document.name)
         self._refresh_surface()
+        if migration is not None:
+            self.report.setPlainText(self._migration_preview_text(migration))
+            for warning in migration.warnings:
+                self.notifications.emit(f"Model migration warning: {warning}")
+            for error in migration.errors:
+                self.notifications.emit(f"Model migration error: {error}")
         for warning in loaded.warnings:
             self.notifications.emit(f"Model load warning: {warning}")
         for error in loaded.errors:
@@ -1305,11 +1393,62 @@ class ModelStudioPanel(QWidget):
         if self.current_document is None:
             self.notifications.emit("Create or open a model document before saving")
             return False
+        backup_note = ""
+        if self.current_path is not None and self.migration_service is not None:
+            preview = self.migration_service.prepare_save("model", self.current_path, metadata=self.current_document.metadata)
+            if preview is not None and preview.backup_path is not None:
+                backup_note = f"
+Migration backup: {preview.backup_path}"
         saved_path = self.engine.save_document(self.current_document)
         self.current_path = saved_path
-        self.report.setPlainText(f"Saved model document to {saved_path}\nRuntime export path: {self.engine.runtime_export_path(self.current_document)}")
+        self.report.setPlainText(f"Saved model document to {saved_path}
+Runtime export path: {self.engine.runtime_export_path(self.current_document)}{backup_note}")
         self.notifications.emit(f"Saved model document {self.current_document.name}")
         return True
+
+    def load_draft_payload(self, payload: dict) -> None:
+        loaded = load_model_document(payload)
+        self.current_document = loaded.document
+        self.current_path = None
+        self.selected_cube_id = next(iter(self.current_document.cubes), None)
+        self.selected_bone_id = "root"
+        self._refresh_document_list(select=self.current_document.name)
+        self._refresh_surface()
+        self.report.setPlainText("Loaded generated model draft. Review, validate, preview, then save explicitly.")
+        self.notifications.emit(f"Loaded model draft {self.current_document.name}")
+
+    def preview_migration_current(self) -> None:
+        if self.current_path is None or self.migration_service is None:
+            self.report.setPlainText("No migration preview available for an unsaved model document.")
+            return
+        preview = self.migration_service.load_preview("model", self.current_path)
+        self.report.setPlainText(self._migration_preview_text(preview))
+
+    def _open_related(self, relation: str) -> None:
+        if self.current_path is None or self.relationship_service is None:
+            self.notifications.emit("No linked document available")
+            return
+        target = self.relationship_service.first_related_path(self.current_path, relation)
+        if target is None:
+            self.notifications.emit(f"No {relation.replace('_', ' ')} available for this model document")
+            return
+        self.open_path_requested.emit(target)
+
+    def _migration_preview_text(self, preview) -> str:
+        lines = [f"Migration preview: model", f"Source: {preview.source_path}", f"Applied: {'yes' if preview.applied else 'no'}"]
+        if preview.from_version is not None or preview.to_version is not None:
+            lines.append(f"Version: {preview.from_version} -> {preview.to_version}")
+        if preview.actions:
+            lines.append("Actions:")
+            lines.extend(f"- {action}" for action in preview.actions)
+        if preview.warnings:
+            lines.append("Warnings:")
+            lines.extend(f"- {warning}" for warning in preview.warnings)
+        if preview.errors:
+            lines.append("Errors:")
+            lines.extend(f"- {error}" for error in preview.errors)
+        return "
+".join(lines)
 
     def save_all(self) -> int:
         return 1 if self.save_current() else 0
@@ -1757,4 +1896,13 @@ class BuildRunPanel(QWidget):
             for notification in notifications:
                 lines.append(f"[{notification.severity}] {notification.source}: {notification.message}")
         self.task_status.setPlainText("\n".join(lines) if lines else "No task output yet.")
+
+
+
+
+
+
+
+
+
 

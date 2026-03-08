@@ -109,17 +109,35 @@ class AssetStudioWindow(QMainWindow):
         if hasattr(self.skilltree_designer, "log_requested"):
             self.skilltree_designer.log_requested.connect(self._write_log)
 
-        self.gui_studio = self._safe_panel("GUI Studio", lambda: GuiStudioPanel(self.session.gui_studio_engine))
+        self.gui_studio = self._safe_panel(
+            "GUI Studio",
+            lambda: GuiStudioPanel(
+                self.session.gui_studio_engine,
+                relationship_service=self.session.relationship_service,
+                migration_service=self.session.document_migration_service,
+            ),
+        )
         if hasattr(self.gui_studio, "status_message"):
             self.gui_studio.status_message.connect(self._set_cursor_status)
         if hasattr(self.gui_studio, "notifications"):
             self.gui_studio.notifications.connect(lambda message: self._publish_notification("info", "gui", message))
+        if hasattr(self.gui_studio, "open_path_requested"):
+            self.gui_studio.open_path_requested.connect(self._open_path)
 
-        self.model_studio = self._safe_panel("Model Studio", lambda: ModelStudioPanel(self.session.model_studio_engine))
+        self.model_studio = self._safe_panel(
+            "Model Studio",
+            lambda: ModelStudioPanel(
+                self.session.model_studio_engine,
+                relationship_service=self.session.relationship_service,
+                migration_service=self.session.document_migration_service,
+            ),
+        )
         if hasattr(self.model_studio, "status_message"):
             self.model_studio.status_message.connect(self._set_cursor_status)
         if hasattr(self.model_studio, "notifications"):
             self.model_studio.notifications.connect(lambda message: self._publish_notification("info", "model", message))
+        if hasattr(self.model_studio, "open_path_requested"):
+            self.model_studio.open_path_requested.connect(self._open_path)
         self.build_run_panel = BuildRunPanel(self.session, self._callbacks())
 
         self.editor_tabs = self._build_editor_tabs()
@@ -600,9 +618,126 @@ class AssetStudioWindow(QMainWindow):
         self.preview.set_texture_candidates(candidates)
         self._write_log(f"Texture loaded: {selected}")
 
-    def _open_file_from_browser(self, path: Path) -> None:
-        self.code_studio.open_file(path)
+    def _open_path(self, path: Path) -> None:
+        normalized = path.resolve(strict=False)
+        entry = self.session.workspace_index_service.entry(normalized)
+        if entry is not None and entry.kind == "gui_source" and hasattr(self.gui_studio, "open_document"):
+            self.gui_studio.open_document(normalized)
+            self._switch_tab("GUI Studio")
+            self._sync_workspace_context()
+            return
+        if entry is not None and entry.kind == "model_source" and hasattr(self.model_studio, "open_document"):
+            self.model_studio.open_document(normalized)
+            self._switch_tab("Model Studio")
+            self._sync_workspace_context()
+            return
+        self.code_studio.open_file(normalized)
         self._switch_tab("Code")
+        self._sync_workspace_context()
+
+    def _set_preview_document(
+        self,
+        mode: str,
+        *,
+        payload: dict | None = None,
+        metadata: dict[str, object] | None = None,
+        issues: list[dict[str, str]] | None = None,
+        texture_path: Path | None = None,
+        selection_id: str | None = None,
+    ) -> None:
+        for renderer in [self.preview, self.preview_tab_renderer]:
+            renderer.set_preview_document(mode, payload=payload, metadata=metadata, issues=issues, texture_path=texture_path, selection_id=selection_id)
+
+    def _preview_issues_for_path(self, path: Path | None) -> list[dict[str, str]]:
+        if path is None:
+            return []
+        record = self.session.relationship_service.resolve_path(path)
+        if record is None:
+            return []
+        issues: list[dict[str, str]] = []
+        metadata_issues = record.metadata.get("issues") or []
+        for issue in metadata_issues[:8]:
+            if isinstance(issue, dict):
+                issues.append({"severity": str(issue.get("severity", "warning")), "message": str(issue.get("message", ""))})
+        return issues
+
+    def _current_code_text(self) -> tuple[Path | None, str]:
+        tab = self.code_studio._current_tab() if hasattr(self.code_studio, "_current_tab") else None
+        if tab is None:
+            return None, ""
+        document = self.session.code_editor_service.documents.get(tab.document_id)
+        if document is None:
+            return tab.path, tab.editor.toPlainText()
+        return document.path, document.content
+
+    def _sync_workspace_context(self) -> None:
+        current_tab = self.main_tabs.tabText(self.main_tabs.currentIndex()) if hasattr(self, "main_tabs") and self.main_tabs.count() else ""
+        if current_tab == "GUI Studio" and getattr(self.gui_studio, "current_document", None) is not None:
+            document = self.gui_studio.current_document
+            payload = self.session.gui_studio_engine.preview_payload(document)
+            runtime = self.session.gui_studio_engine.build_runtime_definition(document)
+            metadata = {
+                "sourcePath": str(getattr(self.gui_studio, "current_path", "")),
+                "resourceId": runtime.get("resourceId"),
+                "runtimePath": str(self.session.gui_studio_engine.runtime_export_path(document)),
+            }
+            validation = self.session.gui_studio_engine.validate_document(document)
+            issues = [{"severity": issue.severity, "message": issue.message} for issue in validation.issues]
+            self._set_preview_document("source_gui", payload=payload, metadata=metadata, issues=issues, selection_id=getattr(self.gui_studio, "selected_widget_id", None))
+            self.ai_workbench.set_context(
+                current_path=getattr(self.gui_studio, "current_path", None),
+                current_text=json.dumps(runtime, indent=2),
+                selection=getattr(self.gui_studio, "selected_widget_id", "") or "",
+                preview_payload=runtime,
+                relationship_context=self.session.relationship_service.inspector_payload(getattr(self.gui_studio, "current_path", Path())) if getattr(self.gui_studio, "current_path", None) else {},
+            )
+            return
+        if current_tab == "Model Studio" and getattr(self.model_studio, "current_document", None) is not None:
+            document = self.model_studio.current_document
+            payload = self.session.model_studio_engine.preview_payload(document)
+            runtime = self.session.model_studio_engine.build_runtime_definition(document)
+            metadata = {
+                "sourcePath": str(getattr(self.model_studio, "current_path", "")),
+                "resourceId": runtime.get("resourceId"),
+                "runtimePath": str(self.session.model_studio_engine.runtime_export_path(document)),
+            }
+            validation = self.session.model_studio_engine.validate_document(document)
+            issues = [{"severity": issue.severity, "message": issue.message} for issue in validation.issues]
+            self._set_preview_document("source_model", payload=payload, metadata=metadata, issues=issues, selection_id=getattr(self.model_studio, "selected_cube_id", None))
+            self.ai_workbench.set_context(
+                current_path=getattr(self.model_studio, "current_path", None),
+                current_text=json.dumps(runtime, indent=2),
+                selection=getattr(self.model_studio, "selected_cube_id", "") or "",
+                preview_payload=runtime,
+                relationship_context=self.session.relationship_service.inspector_payload(getattr(self.model_studio, "current_path", Path())) if getattr(self.model_studio, "current_path", None) else {},
+            )
+            return
+        current_path, current_text = self._current_code_text()
+        relationship_context = self.session.relationship_service.inspector_payload(current_path) if current_path is not None else {}
+        self.ai_workbench.set_context(current_path=current_path, current_text=current_text, preview_payload=None, relationship_context=relationship_context)
+        if current_path is not None and current_path.suffix.lower() == ".png":
+            self._set_preview_texture(current_path, "texture")
+
+    def _apply_ai_artifact(self, artifact) -> None:
+        if artifact.apply_kind == "replace-current":
+            if self.code_studio.apply_text_to_current(artifact.candidate_content):
+                self._switch_tab("Code")
+                self._sync_workspace_context()
+            return
+        if artifact.target_kind == "gui" and artifact.candidate_payload is not None and hasattr(self.gui_studio, "load_draft_payload"):
+            self.gui_studio.load_draft_payload(artifact.candidate_payload)
+            self._switch_tab("GUI Studio")
+            self._sync_workspace_context()
+            return
+        if artifact.target_kind == "model" and artifact.candidate_payload is not None and hasattr(self.model_studio, "load_draft_payload"):
+            self.model_studio.load_draft_payload(artifact.candidate_payload)
+            self._switch_tab("Model Studio")
+            self._sync_workspace_context()
+            return
+        language = "java" if artifact.target_kind == "java" else "json" if artifact.target_kind in {"gui", "model", "json"} else "text"
+        self.code_studio.open_generated_content(artifact.candidate_content, language=language, title=artifact.title)
+        self._switch_tab("Code")
+        self._sync_workspace_context()
 
     def _open_latest_log(self) -> None:
         latest = self.session.latest_log_path()
@@ -739,6 +874,10 @@ def launch_gui(workspace_root: Path) -> int:
     window = AssetStudioWindow(workspace_root)
     window.show()
     return app.exec()
+
+
+
+
 
 
 
