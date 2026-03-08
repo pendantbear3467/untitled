@@ -2,7 +2,6 @@ package com.extremecraft.progression.capability;
 
 import com.extremecraft.progression.PlayerStatsService;
 import com.extremecraft.progression.ProgressionMutationService;
-import com.extremecraft.progression.level.LevelService;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -96,5 +95,6 @@ public class PlayerStatsGameplayEvents {
         }
     }
 }
+
 
 

@@ -19,7 +19,6 @@ public final class MachineCatalog {
         register(new MachineDefinition("steam_generator", MachineCategory.GENERATOR, ProgressionStage.ENERGY, 0, 0, 0, 70));
         register(new MachineDefinition("solar_generator", MachineCategory.GENERATOR, ProgressionStage.ENERGY, 0, 0, 0, 25));
         register(new MachineDefinition("fusion_reactor", MachineCategory.GENERATOR, ProgressionStage.ADVANCED, 0, 0, 0, 450));
-        register(new MachineDefinition("fission_reactor", MachineCategory.GENERATOR, ProgressionStage.ADVANCED, 0, 0, 0, 320));
 
         register(new MachineDefinition("electric_furnace", MachineCategory.PROCESSOR, ProgressionStage.ENERGY, 120, 36, 1, 0));
         register(new MachineDefinition("enrichment_chamber", MachineCategory.PROCESSOR, ProgressionStage.ENERGY, 160, 48, 2, 0));
@@ -52,3 +51,4 @@ public final class MachineCatalog {
     private MachineCatalog() {
     }
 }
+
