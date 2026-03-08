@@ -24,6 +24,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from asset_studio.code.editor_service import EditorService
+
 
 LANGUAGE_BY_SUFFIX = {
     ".py": "python",
@@ -201,6 +203,7 @@ class StudioCodeEditor(QPlainTextEdit):
 
 @dataclass
 class _CodeTab:
+    document_id: str
     path: Path
     editor: StudioCodeEditor
     dirty: bool = False
@@ -210,8 +213,9 @@ class CodeStudioPanel(QWidget):
     status_message = pyqtSignal(str)
     notifications = pyqtSignal(str)
 
-    def __init__(self, workspace_root: Path) -> None:
+    def __init__(self, editor_service: EditorService, workspace_root: Path) -> None:
         super().__init__()
+        self.editor_service = editor_service
         self.workspace_root = workspace_root
         self._tabs: dict[int, _CodeTab] = {}
 
@@ -299,14 +303,15 @@ class CodeStudioPanel(QWidget):
             self.tab_widget.setCurrentIndex(existing_index)
             return
 
+        document = self.editor_service.open_document(path)
+
         editor = StudioCodeEditor()
-        text = path.read_text(encoding="utf-8", errors="replace")
-        editor.setPlainText(text)
-        editor.set_language(LANGUAGE_BY_SUFFIX.get(path.suffix.lower(), "text"))
+        editor.setPlainText(document.content)
+        editor.set_language(document.syntax_mode)
         editor.cursor_moved.connect(self._cursor_moved)
 
         index = self.tab_widget.addTab(editor, path.name)
-        self._tabs[index] = _CodeTab(path=path, editor=editor, dirty=False)
+        self._tabs[index] = _CodeTab(document_id=document.document_id, path=path, editor=editor, dirty=document.dirty)
         editor.textChanged.connect(lambda idx=index: self._mark_dirty(idx))
         self.tab_widget.setCurrentIndex(index)
         self._refresh_meta(index)
@@ -321,31 +326,26 @@ class CodeStudioPanel(QWidget):
             return True
 
         try:
-            tab.path.write_text(tab.editor.toPlainText(), encoding="utf-8")
+            self.editor_service.set_document_text(tab.document_id, tab.editor.toPlainText())
+            saved_path = self.editor_service.save_document(tab.document_id)
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, "Save Failed", f"Could not save file:\n{tab.path}\n\n{exc}")
             self.notifications.emit(f"ERROR: failed to save {tab.path.name}: {exc}")
             return False
 
+        tab.path = saved_path
         tab.dirty = False
         self._update_tab_title(index)
         self._refresh_problems(index)
-        self.status_message.emit(f"Saved: {tab.path}")
+        self.status_message.emit(f"Saved: {saved_path}")
         self.notifications.emit(f"Saved {tab.path.name}")
         return True
 
     def autosave_dirty(self) -> int:
-        saved = 0
-        for index, tab in list(self._tabs.items()):
-            if not tab.dirty:
-                continue
-            autosave_root = self.workspace_root / ".studio" / "autosave"
-            autosave_root.mkdir(parents=True, exist_ok=True)
-            safe_name = tab.path.name.replace("/", "_").replace("\\", "_")
-            autosave_file = autosave_root / f"{safe_name}.autosave"
-            autosave_file.write_text(tab.editor.toPlainText(), encoding="utf-8")
-            saved += 1
-        return saved
+        snapshots = self.workspace_root / ".studio" / "autosave"
+        if not snapshots.exists():
+            return 0
+        return len(list(snapshots.glob("text-document-*.json")))
 
     def has_unsaved(self) -> bool:
         return any(tab.dirty for tab in self._tabs.values())
@@ -354,6 +354,7 @@ class CodeStudioPanel(QWidget):
         tab = self._tabs.get(index)
         if tab is None:
             return
+        self.tab_widget.setCurrentIndex(index)
         if tab.dirty:
             result = QMessageBox.question(
                 self,
@@ -367,6 +368,7 @@ class CodeStudioPanel(QWidget):
                 if not self.save_current():
                     return
         self.tab_widget.removeTab(index)
+        self.editor_service.close_document(tab.document_id)
         self._reindex_tabs()
         self._active_tab_changed(self.tab_widget.currentIndex())
 
@@ -416,7 +418,8 @@ class CodeStudioPanel(QWidget):
         tab = self._tabs.get(index)
         if tab is None:
             return
-        tab.dirty = True
+        self.editor_service.set_document_text(tab.document_id, tab.editor.toPlainText())
+        tab.dirty = self.editor_service.documents[tab.document_id].dirty
         self._update_tab_title(index)
         if self.tab_widget.currentIndex() == index:
             self._refresh_outline(index)
@@ -433,9 +436,11 @@ class CodeStudioPanel(QWidget):
         if tab is None:
             self.file_meta.setText("No file open")
             return
-        text = tab.editor.toPlainText()
+        document = self.editor_service.documents.get(tab.document_id)
+        text = document.content if document is not None else tab.editor.toPlainText()
         line_count = text.count("\n") + 1
-        self.file_meta.setText(f"Path: {tab.path}\nLanguage: {LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), 'text')}\nLines: {line_count}")
+        language = document.syntax_mode if document is not None else LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text")
+        self.file_meta.setText(f"Path: {tab.path}\nLanguage: {language}\nLines: {line_count}")
 
     def _refresh_outline(self, index: int) -> None:
         self.outline.clear()
