@@ -7,7 +7,9 @@ class ConsolePanel(QPlainTextEdit):
     def __init__(self) -> None:
         super().__init__()
         self.setReadOnly(True)
-        self.setPlaceholderText("Build and runtime logs appear here.")
+        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.setMaximumBlockCount(5000)
+        self.setPlaceholderText("Logs stream here while builds, validation, and runtime tasks execute.")
 
     def append_line(self, text: str) -> None:
         self.appendPlainText(text)

@@ -6,6 +6,7 @@ from pathlib import Path
 from PyQt6.QtCore import Qt, QUrl, pyqtSignal
 from PyQt6.QtGui import QBrush, QColor, QDesktopServices
 from PyQt6.QtWidgets import (
+    QHeaderView,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -13,7 +14,6 @@ from PyQt6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
-    QSplitter,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -37,9 +37,11 @@ class ProjectBrowser(QWidget):
         self._expanded_paths: set[Path] = set()
         self._current_file: Path | None = None
         self._path_to_item: dict[Path, QTreeWidgetItem] = {}
+        self._inspector_host = self._build_inspector_widget()
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
 
         search_row = QHBoxLayout()
         self.search_input = QLineEdit()
@@ -51,21 +53,31 @@ class ProjectBrowser(QWidget):
         search_row.addWidget(self.refresh_button)
         layout.addLayout(search_row)
 
-        split = QSplitter(Qt.Orientation.Horizontal)
         self.tree = QTreeWidget()
         self.tree.setColumnCount(3)
         self.tree.setHeaderLabels(["Workspace", "Kind", "State"])
+        self.tree.setAlternatingRowColors(True)
+        self.tree.setUniformRowHeights(True)
+        self.tree.setRootIsDecorated(True)
+        self.tree.setToolTip("Workspace tree with inferred links and validation state badges.")
+        self.tree.header().setStretchLastSection(False)
+        self.tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.tree.header().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.tree.header().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.tree.itemDoubleClicked.connect(self._item_activated)
         self.tree.itemExpanded.connect(self._remember_expanded)
         self.tree.itemCollapsed.connect(self._forget_expanded)
         self.tree.itemSelectionChanged.connect(self._sync_inspector)
         self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self._open_context_menu)
-        split.addWidget(self.tree)
+        layout.addWidget(self.tree, 1)
 
+    def _build_inspector_widget(self) -> QWidget:
         inspector = QWidget()
         inspector_layout = QVBoxLayout(inspector)
-        inspector_layout.addWidget(QLabel("Details"))
+        inspector_layout.setContentsMargins(6, 6, 6, 6)
+        inspector_layout.setSpacing(8)
+        inspector_layout.addWidget(QLabel("Selection Details"))
         self.path_label = QLabel("No selection")
         self.path_label.setWordWrap(True)
         inspector_layout.addWidget(self.path_label)
@@ -76,15 +88,16 @@ class ProjectBrowser(QWidget):
         inspector_layout.addWidget(self.resource_label)
 
         actions = QHBoxLayout()
-        self.open_source_button = QPushButton("Open Source")
+        actions.setSpacing(6)
+        self.open_source_button = QPushButton("Source")
         self.open_source_button.clicked.connect(lambda: self._open_relation("source_document"))
-        self.open_runtime_button = QPushButton("Open Runtime")
+        self.open_runtime_button = QPushButton("Runtime")
         self.open_runtime_button.clicked.connect(lambda: self._open_relation("runtime_export"))
-        self.open_java_button = QPushButton("Open Java")
+        self.open_java_button = QPushButton("Java")
         self.open_java_button.clicked.connect(lambda: self._open_relation("java_target"))
-        self.open_asset_button = QPushButton("Open Asset")
+        self.open_asset_button = QPushButton("Asset")
         self.open_asset_button.clicked.connect(self._open_linked_asset)
-        self.open_linked_button = QPushButton("Open Linked")
+        self.open_linked_button = QPushButton("Linked")
         self.open_linked_button.clicked.connect(lambda: self._open_relation(None))
         for button in [self.open_source_button, self.open_runtime_button, self.open_java_button, self.open_asset_button, self.open_linked_button]:
             actions.addWidget(button)
@@ -95,9 +108,10 @@ class ProjectBrowser(QWidget):
         self.detail_text.setWordWrap(True)
         self.detail_text.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         inspector_layout.addWidget(self.detail_text, 1)
-        split.addWidget(inspector)
-        split.setSizes([760, 340])
-        layout.addWidget(split)
+        return inspector
+
+    def take_inspector_widget(self) -> QWidget:
+        return self._inspector_host
 
     def bind_session(self, session) -> None:
         self.index_service = getattr(session, "workspace_index_service", None)
@@ -282,7 +296,7 @@ class ProjectBrowser(QWidget):
             self.kind_label.setText("")
             self.resource_label.setText("")
             self.detail_text.setText("Select a file to inspect links, warnings, and workspace issues.")
-            for button in [self.open_source_button, self.open_runtime_button, self.open_java_button, self.open_linked_button]:
+            for button in [self.open_source_button, self.open_runtime_button, self.open_java_button, self.open_asset_button, self.open_linked_button]:
                 button.setEnabled(False)
             return
         self.path_label.setText(str(entry.path))

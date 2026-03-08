@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
     QStatusBar,
     QTabWidget,
     QToolBar,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -150,6 +151,23 @@ class AssetStudioWindow(QMainWindow):
         self.notifications = QListWidget()
         self.notifications.setAlternatingRowColors(True)
         self.notifications.setToolTip("Non-fatal warnings, errors, and workflow updates.")
+        self.notifications.setUniformItemSizes(True)
+
+        self._context_actions: list[object] = []
+        self._global_toolbar: QToolBar | None = None
+        self._context_toolbar: QToolBar | None = None
+        self._main_tab_aliases = {
+            "Code": "Code",
+            "AI Workbench": "AI Workbench",
+            "Asset Wizard": "Asset Wizard",
+            "Graph Studio": "Graph Studio",
+            "Progression": "Progression",
+            "GUI Studio": "GUI Studio",
+            "Model Studio": "Model Studio",
+            "Build/Run": "Build/Run",
+            "Data Editors": "Data Editors",
+            "Preview": "Preview",
+        }
 
         self._build_docks()
         self._build_toolbar()
@@ -200,56 +218,92 @@ class AssetStudioWindow(QMainWindow):
         tabs.addTab(self.build_run_panel, "Build/Run")
         tabs.addTab(self.editor_tabs, "Data Editors")
         tabs.addTab(self.preview_tab_renderer, "Preview")
-        tabs.currentChanged.connect(lambda i: self.statusBar().showMessage(f"Studio: {tabs.tabText(i)}", 2500) if i >= 0 else None)
+        tabs.currentChanged.connect(self._on_main_tab_changed)
         return tabs
+
+    def _on_main_tab_changed(self, index: int) -> None:
+        if index < 0:
+            return
+        self.statusBar().showMessage(f"Studio: {self.main_tabs.tabText(index)}", 2500)
+        self._refresh_context_toolbar()
 
     def _build_docks(self) -> None:
         self.project_dock = QDockWidget("Project Browser", self)
         self.project_dock.setWidget(self.browser)
+        self.project_dock.setMinimumWidth(360)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.project_dock)
+
+        browser_inspector = self.browser.take_inspector_widget() if hasattr(self.browser, "take_inspector_widget") else QWidget()
+        self.inspector_dock = QDockWidget("Inspector", self)
+        self.inspector_dock.setWidget(browser_inspector)
+        self.inspector_dock.setMinimumWidth(340)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.inspector_dock)
 
         preview_host = QWidget()
         preview_layout = QVBoxLayout(preview_host)
         preview_layout.setContentsMargins(6, 6, 6, 6)
+        preview_layout.setSpacing(8)
+        preview_layout.addWidget(QLabel("Focused Preview"))
         preview_layout.addWidget(self.preview)
         preview_layout.addWidget(self._build_preview_controls())
         self.preview_dock = QDockWidget("Preview", self)
         self.preview_dock.setWidget(preview_host)
+        self.preview_dock.setMinimumWidth(360)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.preview_dock)
+        self.tabifyDockWidget(self.inspector_dock, self.preview_dock)
+        self.inspector_dock.raise_()
 
         self.output_tabs = QTabWidget()
-        self.output_tabs.addTab(self.log, "Console")
-        self.output_tabs.addTab(self.notifications, "Notifications")
+        output_host = QWidget()
+        output_layout = QVBoxLayout(output_host)
+        output_layout.setContentsMargins(6, 6, 6, 6)
+        output_layout.setSpacing(6)
+        output_header = QHBoxLayout()
+        output_label = QLabel("Run Output")
+        output_label.setToolTip("Process logs, runtime stream output, and workflow notifications.")
+        output_header.addWidget(output_label)
+        output_header.addStretch(1)
+        clear_button = QToolButton()
+        clear_button.setText("Clear")
+        clear_button.setToolTip("Clear in-memory output and notifications.")
+        clear_button.clicked.connect(self._clear_logs)
+        output_header.addWidget(clear_button)
+        output_layout.addLayout(output_header)
+        self.output_tabs.addTab(self.log, "Logs")
+        self.output_tabs.addTab(self.notifications, "Events")
         self.output_tabs.setToolTip("Runtime output and non-fatal diagnostics")
+        output_layout.addWidget(self.output_tabs, 1)
         self.output_dock = QDockWidget("Output", self)
-        self.output_dock.setWidget(self.output_tabs)
+        self.output_dock.setWidget(output_host)
+        self.output_dock.setMinimumHeight(210)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.output_dock)
 
+        self.setCorner(Qt.Corner.BottomLeftCorner, Qt.DockWidgetArea.LeftDockWidgetArea)
+        self.setCorner(Qt.Corner.BottomRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
+
     def _build_toolbar(self) -> None:
-        toolbar = QToolBar("Studio")
-        toolbar.setMovable(False)
-        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolbar)
-        self._add_toolbar_action(toolbar, "Open", self._open_current_target, "Open a file or studio document for the active page.")
-        self._add_toolbar_action(toolbar, "Workspace", self._open_project, "Open a different workspace folder.")
-        self._add_toolbar_action(toolbar, "Save", self._save_workspace, "Save the active page and persist workspace state.")
-        self._add_toolbar_action(toolbar, "Save All", self._save_all_pages, "Save all supported pages and flush workspace state.")
-        toolbar.addSeparator()
-        self._add_toolbar_action(toolbar, "Code", lambda: self._switch_tab("Code"), "Switch to Code Studio.")
-        self._add_toolbar_action(toolbar, "Progression", lambda: self._switch_tab("Progression"), "Switch to Progression Studio.")
-        self._add_toolbar_action(toolbar, "GUI", lambda: self._switch_tab("GUI Studio"), "Switch to GUI Studio.")
-        self._add_toolbar_action(toolbar, "Model", lambda: self._switch_tab("Model Studio"), "Switch to Model Studio.")
-        self._add_toolbar_action(toolbar, "Build/Run", lambda: self._switch_tab("Build/Run"), "Switch to Build/Run Studio.")
-        toolbar.addSeparator()
-        self._add_toolbar_action(toolbar, "Validate", self._validate_assets, "Run workspace validation and show feedback in Output/Notifications.")
-        self._add_toolbar_action(toolbar, "Build Assets", self._compile_assets, "Run the asset build pipeline.")
-        self._add_toolbar_action(toolbar, "Run Client", lambda: self._run_named_configuration("client"), "Run the configured client process safely through RunService.")
-        self._add_toolbar_action(toolbar, "Run Server", lambda: self._run_named_configuration("server"), "Run the configured server process safely through RunService.")
-        toolbar.addSeparator()
-        self._add_toolbar_action(toolbar, "Latest Log", self._open_latest_log, "Open run/logs/latest.log if it exists.")
-        self._add_toolbar_action(toolbar, "Clear Logs", self._clear_logs, "Clear console and notification history after confirmation.")
-        self._add_toolbar_action(toolbar, "Output", self._show_output, "Reveal the output dock and focus console logs.")
-        self._add_toolbar_action(toolbar, "Notifications", self._show_notifications, "Reveal the output dock and focus notifications.")
+        global_toolbar = QToolBar("Studio Global")
+        global_toolbar.setMovable(False)
+        global_toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, global_toolbar)
+        self._global_toolbar = global_toolbar
+
+        self._add_toolbar_action(global_toolbar, "Open", self._open_current_target, "Open a file or studio document for the active page.")
+        self._add_toolbar_action(global_toolbar, "Workspace", self._open_project, "Open a different workspace folder.")
+        self._add_toolbar_action(global_toolbar, "Save", self._save_workspace, "Save the active page and persist workspace state.")
+        self._add_toolbar_action(global_toolbar, "Save All", self._save_all_pages, "Save all supported pages and flush workspace state.")
+        global_toolbar.addSeparator()
+        self._add_toolbar_action(global_toolbar, "Code", lambda: self._switch_tab("Code"), "Switch to Code Studio.")
+        self._add_toolbar_action(global_toolbar, "GUI", lambda: self._switch_tab("GUI Studio"), "Switch to GUI Studio.")
+        self._add_toolbar_action(global_toolbar, "Model", lambda: self._switch_tab("Model Studio"), "Switch to Model Studio.")
+        self._add_toolbar_action(global_toolbar, "Build/Run", lambda: self._switch_tab("Build/Run"), "Switch to Build/Run Studio.")
+
+        context_toolbar = QToolBar("Workbench Context")
+        context_toolbar.setMovable(False)
+        context_toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, context_toolbar)
+        self._context_toolbar = context_toolbar
+        self._refresh_context_toolbar()
 
     def _add_toolbar_action(self, toolbar: QToolBar, label: str, callback, description: str) -> None:
         action = toolbar.addAction(label, self._safe_action(label, callback))
@@ -437,6 +491,84 @@ class AssetStudioWindow(QMainWindow):
             if self.main_tabs.tabText(idx) == title:
                 self.main_tabs.setCurrentIndex(idx)
                 return
+
+    def _tab_name(self) -> str:
+        if not hasattr(self, "main_tabs") or self.main_tabs.count() == 0:
+            return ""
+        return self.main_tabs.tabText(self.main_tabs.currentIndex())
+
+    def _context_action_specs(self, tab_name: str) -> list[tuple[str, object, str]]:
+        shared_output = [
+            ("Latest Log", self._open_latest_log, "Open run/logs/latest.log if it exists."),
+            ("Output", self._show_output, "Reveal output and focus logs."),
+            ("Events", self._show_notifications, "Reveal output and focus notifications."),
+        ]
+        per_tab: dict[str, list[tuple[str, object, str]]] = {
+            "Code": [
+                ("Validate", self._validate_assets, "Run workspace validation and show feedback in output."),
+                ("Build Assets", self._compile_assets, "Run the asset build pipeline."),
+            ],
+            "AI Workbench": [
+                ("Validate", self._validate_assets, "Run workspace validation before applying artifacts."),
+                ("Build Assets", self._compile_assets, "Build generated or edited assets quickly."),
+            ],
+            "Asset Wizard": [
+                ("Build Assets", self._compile_assets, "Build assets after generation."),
+                ("Preview", self._texture_viewer, "Open a texture preview target for quick inspection."),
+            ],
+            "Graph Studio": [
+                ("Validate", self._validate_assets, "Validate graph-generated workspace output."),
+                ("Build Assets", self._compile_assets, "Run asset build with graph output included."),
+            ],
+            "Progression": [
+                ("Validate", self._validate_assets, "Validate progression data and outputs."),
+                ("Build Assets", self._compile_assets, "Build progression-linked assets."),
+            ],
+            "GUI Studio": [
+                ("Preview", self._preview_models, "Sync preview to GUI/model payload mode."),
+                ("Validate", self._validate_assets, "Run workspace validation from GUI authoring context."),
+                ("Build Assets", self._compile_assets, "Build assets with current GUI changes."),
+            ],
+            "Model Studio": [
+                ("Preview", self._preview_models, "Switch preview to model payload mode."),
+                ("Animate", self._preview_animations, "Switch preview to animated mode."),
+                ("Build Assets", self._compile_assets, "Build assets with current model changes."),
+            ],
+            "Build/Run": [
+                ("Validate", self._validate_assets, "Run validation task."),
+                ("Build Assets", self._compile_assets, "Run build task."),
+                ("Run Client", lambda: self._run_named_configuration("client"), "Run client configuration safely."),
+                ("Run Server", lambda: self._run_named_configuration("server"), "Run server configuration safely."),
+            ],
+            "Data Editors": [
+                ("Validate", self._validate_assets, "Validate data editor output."),
+                ("Build Assets", self._compile_assets, "Build workspace assets from data edits."),
+            ],
+            "Preview": [
+                ("Texture", self._texture_viewer, "Open texture in preview."),
+                ("Model", self._preview_models, "Switch preview to model mode."),
+                ("Animate", self._preview_animations, "Switch preview to animated mode."),
+            ],
+        }
+        return per_tab.get(tab_name, []) + shared_output
+
+    def _refresh_context_toolbar(self) -> None:
+        if self._context_toolbar is None:
+            return
+        self._context_toolbar.clear()
+        self._context_actions.clear()
+
+        tab_name = self._tab_name()
+        specs = self._context_action_specs(tab_name)
+        title = self._main_tab_aliases.get(tab_name, "Workbench")
+        self._context_toolbar.setWindowTitle(f"{title} Actions")
+        for index, (label, callback, description) in enumerate(specs):
+            action = self._context_toolbar.addAction(label, self._safe_action(f"context.{label}", callback))
+            action.setToolTip(description)
+            action.setStatusTip(description)
+            self._context_actions.append(action)
+            if index in {2, 5} and index < len(specs) - 1:
+                self._context_toolbar.addSeparator()
 
     def _rebind_workspace(self) -> None:
         self.workspace_manager = self.session.workspace_manager
@@ -975,7 +1107,13 @@ class AssetStudioWindow(QMainWindow):
 
     def _build_preview_controls(self) -> QWidget:
         holder = QWidget()
-        row = QHBoxLayout(holder)
+        layout = QVBoxLayout(holder)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        top_row = QHBoxLayout()
+        camera_row = QHBoxLayout()
+        timeline_row = QHBoxLayout()
 
         self.preview_mode_selector = QComboBox()
         self.preview_mode_selector.addItems(["Auto", "Source Model", "Runtime Model", "Source GUI", "Runtime GUI", "Texture / Asset"])
@@ -1021,18 +1159,31 @@ class AssetStudioWindow(QMainWindow):
         timeline.setToolTip("Scrub animation preview")
         timeline.progress_changed.connect(self._set_preview_animation_progress)
 
-        row.addWidget(self.preview_mode_selector)
-        row.addWidget(rotate_toggle)
-        row.addWidget(front)
-        row.addWidget(side)
-        row.addWidget(top)
-        row.addWidget(iso)
-        row.addWidget(reset)
-        row.addWidget(prev_texture)
-        row.addWidget(next_texture)
-        row.addWidget(zoom)
-        row.addWidget(lighting)
-        row.addWidget(timeline)
+        top_row.addWidget(QLabel("Mode"))
+        top_row.addWidget(self.preview_mode_selector)
+        top_row.addWidget(rotate_toggle)
+        top_row.addWidget(QLabel("Zoom"))
+        top_row.addWidget(zoom)
+        top_row.addWidget(QLabel("Light"))
+        top_row.addWidget(lighting)
+
+        camera_row.addWidget(QLabel("View"))
+        camera_row.addWidget(front)
+        camera_row.addWidget(side)
+        camera_row.addWidget(top)
+        camera_row.addWidget(iso)
+        camera_row.addWidget(reset)
+        camera_row.addSpacing(10)
+        camera_row.addWidget(prev_texture)
+        camera_row.addWidget(next_texture)
+        camera_row.addStretch(1)
+
+        timeline_row.addWidget(QLabel("Timeline"))
+        timeline_row.addWidget(timeline, 1)
+
+        layout.addLayout(top_row)
+        layout.addLayout(camera_row)
+        layout.addLayout(timeline_row)
         return holder
 
     def _show_recovery_hint(self) -> None:
@@ -1073,11 +1224,13 @@ class AssetStudioWindow(QMainWindow):
         self.setStyleSheet(
             """
             QMainWindow { background: #111723; }
-            QToolBar { spacing: 8px; padding: 6px; background: #1a2232; border-bottom: 1px solid #283147; }
+            QToolBar { spacing: 6px; padding: 4px 6px; background: #1a2232; border-bottom: 1px solid #283147; }
+            QToolBar QToolButton { margin: 1px; padding: 4px 8px; }
             QTabWidget::pane { border: 1px solid #2a344b; background: #141c2b; }
             QTabBar::tab { background: #1c2536; color: #d7deed; padding: 7px 12px; margin-right: 2px; }
             QTabBar::tab:selected { background: #28334a; color: #ffffff; }
             QDockWidget::title { background: #1e2738; color: #dbe4f7; text-align: left; padding-left: 8px; }
+            QHeaderView::section { background: #1e2738; color: #dbe4f7; border: 1px solid #2d3b56; padding: 4px 6px; }
             QListWidget, QTreeWidget, QPlainTextEdit, QTextEdit, QLineEdit, QComboBox, QSpinBox {
                 background-color: #161f2f; color: #e4ebff; border: 1px solid #2d3b56; selection-background-color: #31548a;
             }
