@@ -9,7 +9,7 @@ import com.extremecraft.network.packet.AbilitySyncPacket;
 import com.extremecraft.network.packet.ActivateAbilityC2SPacket;
 import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
 import com.extremecraft.network.packet.InstallModuleC2SPacket;
-import com.extremecraft.network.packet.ManaSyncPacket;
+import com.extremecraft.network.sync.SyncManaStateS2CPacket;
 import com.extremecraft.network.packet.OpenExtremeCraftDebugScreenS2CPacket;
 import com.extremecraft.network.packet.PlayerStatsPacket;
 import com.extremecraft.network.packet.RemoveModuleC2SPacket;
@@ -250,6 +250,7 @@ public final class ModNetwork {
         return initialized;
     }
 }
+
 
 
 

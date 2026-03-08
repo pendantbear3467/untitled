@@ -82,14 +82,47 @@ public final class GameplayMechanicsEvents {
             return cached.activeMachines();
         }
 
+        int minX = center.getX() - horizontalRadius;
+        int maxX = center.getX() + horizontalRadius;
+        int minY = center.getY() - verticalRadius;
+        int maxY = center.getY() + verticalRadius;
+        int minZ = center.getZ() - horizontalRadius;
+        int maxZ = center.getZ() + horizontalRadius;
+
+        int minChunkX = minX >> 4;
+        int maxChunkX = maxX >> 4;
+        int minChunkZ = minZ >> 4;
+        int maxChunkZ = maxZ >> 4;
+
         int activeMachines = 0;
-        for (BlockPos pos : BlockPos.betweenClosed(
-                center.offset(-horizontalRadius, -verticalRadius, -horizontalRadius),
-                center.offset(horizontalRadius, verticalRadius, horizontalRadius))) {
-            BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof TechMachineBlockEntity machine
-                    && machine.getEnergyStorageExt().getEnergyStored() > machine.getEnergyStorageExt().getMaxEnergyStored() * 0.8F) {
-                activeMachines++;
+        for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
+            for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
+                var chunk = level.getChunkSource().getChunkNow(chunkX, chunkZ);
+                if (chunk == null) {
+                    continue;
+                }
+
+                for (BlockEntity be : chunk.getBlockEntities().values()) {
+                    if (!(be instanceof TechMachineBlockEntity machine)) {
+                        continue;
+                    }
+
+                    BlockPos pos = be.getBlockPos();
+                    if (pos.getX() < minX || pos.getX() > maxX
+                            || pos.getY() < minY || pos.getY() > maxY
+                            || pos.getZ() < minZ || pos.getZ() > maxZ) {
+                        continue;
+                    }
+
+                    int maxEnergy = machine.getEnergyStorageExt().getMaxEnergyStored();
+                    if (maxEnergy <= 0) {
+                        continue;
+                    }
+
+                    if (machine.getEnergyStorageExt().getEnergyStored() > maxEnergy * 0.8F) {
+                        activeMachines++;
+                    }
+                }
             }
         }
 
@@ -138,4 +171,5 @@ public final class GameplayMechanicsEvents {
     private record HazardSnapshot(long tick, int activeMachines) {
     }
 }
+
 
