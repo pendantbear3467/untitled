@@ -79,6 +79,7 @@ class SkillTreeDesigner(QWidget):
         self._refresh_palette()
         self._refresh_template_list()
         self._refresh_node_browser()
+        self._refresh_bookmarks()
         self.scene.load_document(ProgressionDocument(name="empty"))
         self.report_view.clear()
 
@@ -101,6 +102,9 @@ class SkillTreeDesigner(QWidget):
         self.paste_btn = QPushButton("Paste")
         self.export_btn = QPushButton("Export")
         self.import_btn = QPushButton("Import")
+        self.fit_btn = QPushButton("Fit")
+        self.center_btn = QPushButton("Center Selection")
+        self.branch_btn = QPushButton("Branch Compare")
 
         for widget in [
             self.new_btn,
@@ -119,6 +123,9 @@ class SkillTreeDesigner(QWidget):
             self.paste_btn,
             self.export_btn,
             self.import_btn,
+            self.fit_btn,
+            self.center_btn,
+            self.branch_btn,
         ]:
             layout.addWidget(widget)
 
@@ -138,6 +145,13 @@ class SkillTreeDesigner(QWidget):
         self.paste_btn.clicked.connect(self._paste_selection)
         self.export_btn.clicked.connect(self._export_tree)
         self.import_btn.clicked.connect(self._import_tree)
+        self.fit_btn.clicked.connect(self._fit_to_content)
+        self.center_btn.clicked.connect(self._center_on_selection)
+        self.branch_btn.clicked.connect(self._compare_branches)
+
+        self.fit_btn.setToolTip("Fit viewport to all nodes")
+        self.center_btn.setToolTip("Center viewport on current selection")
+        self.branch_btn.setToolTip("Compare two branch roots in analysis")
         return layout
 
     def _build_left_panel(self) -> QWidget:
@@ -159,10 +173,12 @@ class SkillTreeDesigner(QWidget):
         search_box = QGroupBox("Search / Filter")
         search_layout = QFormLayout(search_box)
         self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search node ids, tags, class, or modifier")
         self.search_category = QComboBox()
         self.search_category.addItem("all")
         self.search_category.addItems(list(DEFAULT_CATEGORIES))
         self.node_browser = QListWidget()
+        self.node_browser.setToolTip("Filtered results from current tree. Select one or multiple to focus.")
         search_layout.addRow("Text", self.search_input)
         search_layout.addRow("Category", self.search_category)
         search_layout.addRow(self.node_browser)
@@ -225,6 +241,7 @@ class SkillTreeDesigner(QWidget):
         self.node_tags_input = QLineEdit()
         self.node_requires_input = QLineEdit()
         self.bulk_mode = QCheckBox("Apply to all selected nodes")
+        self.bulk_mode.setToolTip("Safer bulk mode. Disabled means only first selected node is edited.")
         apply_btn = QPushButton("Apply Inspector")
         bookmark_btn = QPushButton("Bookmark Selection")
         apply_btn.clicked.connect(self._apply_inspector)
@@ -260,9 +277,18 @@ class SkillTreeDesigner(QWidget):
         self.report_view.setReadOnly(True)
         analysis_layout.addWidget(self.report_view)
 
+        bookmark_box = QGroupBox("Bookmarks")
+        bookmark_layout = QVBoxLayout(bookmark_box)
+        self.bookmark_list = QListWidget()
+        open_bookmark_btn = QPushButton("Open Bookmark")
+        open_bookmark_btn.clicked.connect(self._open_selected_bookmark)
+        bookmark_layout.addWidget(self.bookmark_list)
+        bookmark_layout.addWidget(open_bookmark_btn)
+
         layout.addWidget(inspector_box)
         layout.addWidget(simulation_box)
         layout.addWidget(analysis_box)
+        layout.addWidget(bookmark_box)
         return panel
 
     def scene_set_connect_mode(self, enabled: bool) -> None:
@@ -347,6 +373,7 @@ class SkillTreeDesigner(QWidget):
         self.scene.load_document(self.current_tree)
         self._refresh_tree_list()
         self._refresh_node_browser()
+        self._refresh_bookmarks()
         self._update_report("Loaded", result.report.to_dict())
         self._save_preferences()
         self.log_requested.emit(f"Loaded skill tree: {name}")
@@ -363,6 +390,7 @@ class SkillTreeDesigner(QWidget):
         self.scene.load_document(tree)
         self._refresh_tree_list()
         self._refresh_node_browser()
+        self._refresh_bookmarks()
         self._update_report("Created", {"tree": tree.name})
         self._save_preferences()
         self.log_requested.emit(f"Created skill tree: {tree.name}")
@@ -409,6 +437,7 @@ class SkillTreeDesigner(QWidget):
         self.tree_class.setText(self.current_tree.class_id)
         self._refresh_tree_list()
         self._refresh_node_browser()
+        self._refresh_bookmarks()
         self._update_report("Imported", result.report.to_dict())
         self.log_requested.emit(f"Imported skill tree: {self.current_tree.name}")
 
@@ -525,6 +554,15 @@ class SkillTreeDesigner(QWidget):
         if self.current_tree is None or not self.selected_nodes:
             return
         target_nodes = self.selected_nodes if self.bulk_mode.isChecked() else [self.selected_nodes[0]]
+        if self.bulk_mode.isChecked() and len(target_nodes) >= 5:
+            decision = QMessageBox.question(
+                self,
+                "Bulk Edit Confirmation",
+                f"Apply inspector changes to {len(target_nodes)} nodes?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if decision != QMessageBox.StandardButton.Yes:
+                return
         rename_allowed = len(target_nodes) == 1
         self._record_history("Inspector edit")
         for node_id in target_nodes:
@@ -562,7 +600,34 @@ class SkillTreeDesigner(QWidget):
                 node_ids=list(self.selected_nodes),
             )
         )
+        self._refresh_bookmarks()
         self._mark_dirty()
+
+    def _refresh_bookmarks(self) -> None:
+        self.bookmark_list.clear()
+        if self.current_tree is None:
+            return
+        for bookmark in self.current_tree.bookmarks:
+            item = QListWidgetItem(f"{bookmark.label} ({len(bookmark.node_ids)} nodes)")
+            item.setData(256, bookmark.id)
+            self.bookmark_list.addItem(item)
+
+    def _open_selected_bookmark(self) -> None:
+        if self.current_tree is None:
+            return
+        item = self.bookmark_list.currentItem()
+        if item is None:
+            return
+        bookmark_id = str(item.data(256))
+        bookmark = next((entry for entry in self.current_tree.bookmarks if entry.id == bookmark_id), None)
+        if bookmark is None:
+            return
+        self.scene.clearSelection()
+        for node_id in bookmark.node_ids:
+            scene_item = self.scene.node_items.get(node_id)
+            if scene_item is not None:
+                scene_item.setSelected(True)
+        self._center_on_selection()
 
     def _browser_selection_changed(self) -> None:
         if self.current_tree is None:
@@ -581,6 +646,31 @@ class SkillTreeDesigner(QWidget):
         self.scene.clearSelection()
         item.setSelected(True)
         self.view.centerOn(item)
+
+    def _fit_to_content(self) -> None:
+        bounds = self.scene.itemsBoundingRect()
+        if bounds.isNull():
+            return
+        self.view.fitInView(bounds, Qt.AspectRatioMode.KeepAspectRatio)
+
+    def _center_on_selection(self) -> None:
+        if not self.selected_nodes:
+            self._fit_to_content()
+            return
+        first_id = self.selected_nodes[0]
+        item = self.scene.node_items.get(first_id)
+        if item is not None:
+            self.view.centerOn(item)
+
+    def _compare_branches(self) -> None:
+        if self.current_tree is None:
+            return
+        roots = [node.id for node in self.current_tree.nodes.values() if not node.requires]
+        if len(roots) < 2:
+            QMessageBox.information(self, "Branch Compare", "Need at least two root branches to compare.")
+            return
+        payload = self.engine.compare_branches(self.current_tree, roots[0], roots[1])
+        self._update_report("Branch Compare", payload)
 
     def _node_moved(self, node_id, old_pos, new_pos) -> None:  # noqa: ANN001
         if self.current_tree is None:
