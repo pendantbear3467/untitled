@@ -16,13 +16,17 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class GameplayMechanicsEvents {
     private static final long HAZARD_CACHE_TTL_TICKS = 20L;
+    private static final long HAZARD_CACHE_PRUNE_INTERVAL_TICKS = 200L;
     private static final int HAZARD_CACHE_MAX_ENTRIES = 4096;
     private static final Map<String, HazardSnapshot> HAZARD_SCAN_CACHE = new ConcurrentHashMap<>();
+
+    private static volatile long lastPruneTick;
 
     @SubscribeEvent
     public void onPlayerTick(TickEvent.PlayerTickEvent event) {
@@ -89,11 +93,28 @@ public final class GameplayMechanicsEvents {
             }
         }
 
-        if (HAZARD_SCAN_CACHE.size() > HAZARD_CACHE_MAX_ENTRIES) {
-            HAZARD_SCAN_CACHE.clear();
-        }
+        pruneHazardCache(now);
         HAZARD_SCAN_CACHE.put(cacheKey, new HazardSnapshot(now, activeMachines));
         return activeMachines;
+    }
+
+    private static void pruneHazardCache(long now) {
+        if ((now - lastPruneTick) < HAZARD_CACHE_PRUNE_INTERVAL_TICKS && HAZARD_SCAN_CACHE.size() < HAZARD_CACHE_MAX_ENTRIES) {
+            return;
+        }
+
+        lastPruneTick = now;
+        HAZARD_SCAN_CACHE.entrySet().removeIf(entry -> (now - entry.getValue().tick()) > HAZARD_CACHE_TTL_TICKS);
+
+        if (HAZARD_SCAN_CACHE.size() <= HAZARD_CACHE_MAX_ENTRIES) {
+            return;
+        }
+
+        Iterator<String> keys = HAZARD_SCAN_CACHE.keySet().iterator();
+        while (HAZARD_SCAN_CACHE.size() > HAZARD_CACHE_MAX_ENTRIES && keys.hasNext()) {
+            keys.next();
+            keys.remove();
+        }
     }
 
     @SubscribeEvent

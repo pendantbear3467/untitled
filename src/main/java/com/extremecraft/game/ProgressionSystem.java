@@ -29,6 +29,11 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * Legacy prototype progression stack retained only for historical reference.
+ * Canonical runtime progression authority lives under com.extremecraft.progression.
+ */
+@Deprecated(forRemoval = false)
 public class ProgressionSystem {
     private static final String TAG_LEVEL = "ec_level";
     private static final String TAG_XP = "ec_xp";
@@ -416,3 +421,5 @@ public class ProgressionSystem {
         attr.addTransientModifier(new AttributeModifier(id, name, amount, AttributeModifier.Operation.ADDITION));
     }
 }
+
+

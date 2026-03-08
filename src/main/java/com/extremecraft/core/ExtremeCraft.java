@@ -28,7 +28,6 @@ import com.extremecraft.magic.mana.ManaCapabilityEvents;
 import com.extremecraft.modules.loader.ModuleAbilityLoader;
 import com.extremecraft.modules.loader.ModuleDefinitionLoader;
 import com.extremecraft.modules.runtime.ModuleRuntimeEvents;
-import com.extremecraft.net.DwNetwork;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.sync.RuntimeSyncEvents;
 import com.extremecraft.platform.CompatibilityGate;
@@ -123,7 +122,6 @@ public final class ExtremeCraft {
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             ModNetwork.init();
-            DwNetwork.init();
 
             ExtremeCraftApiProviderImpl apiProvider = new ExtremeCraftApiProviderImpl();
             ExtremeCraftAPI.bootstrap(apiProvider);
@@ -220,6 +218,8 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
+
 
 
 

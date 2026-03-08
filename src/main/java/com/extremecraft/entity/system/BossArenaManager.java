@@ -29,12 +29,18 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 public final class BossArenaManager {
     private static final TagKey<Structure> ANCIENT_RESEARCH_LAB_ARENA = structureTag("ancient_research_lab_arena");
     private static final TagKey<Structure> VOID_TEMPLE_ARENA = structureTag("void_temple_arena");
     private static final TagKey<Structure> MACHINE_FORTRESS_ARENA = structureTag("machine_fortress_arena");
+
+    private static final long STRUCTURE_MISS_CACHE_TTL_TICKS = 200L;
+    private static final int STRUCTURE_MISS_CACHE_MAX_ENTRIES = 8192;
+    private static final Map<String, Long> STRUCTURE_MISS_CACHE = new ConcurrentHashMap<>();
 
     private static final List<ArenaDefinition> ARENAS = List.of(
             new ArenaDefinition(
@@ -80,21 +86,28 @@ public final class BossArenaManager {
         }
 
         ServerLevel level = player.serverLevel();
-        BossArenaState state = BossArenaState.get(level);
+        pruneStructureMissCache(level.getGameTime());
 
+        BossArenaState state = BossArenaState.get(level);
         for (ArenaDefinition arena : ARENAS) {
             attemptArenaSpawn(level, player, state, arena);
         }
     }
 
     private static void attemptArenaSpawn(ServerLevel level, ServerPlayer player, BossArenaState state, ArenaDefinition arena) {
-        StructureStart start = level.structureManager().getStructureWithPieceAt(player.blockPosition(), arena.structureTag());
+        BlockPos playerPos = player.blockPosition();
+        if (isArenaMissCached(level, arena, playerPos, level.getGameTime())) {
+            return;
+        }
+
+        StructureStart start = level.structureManager().getStructureWithPieceAt(playerPos, arena.structureTag());
         if (!start.isValid()) {
+            rememberArenaMiss(level, arena, playerPos, level.getGameTime());
             return;
         }
 
         BlockPos center = start.getBoundingBox().getCenter();
-        if (player.blockPosition().distSqr(center) > arena.triggerRadius() * arena.triggerRadius()) {
+        if (playerPos.distSqr(center) > arena.triggerRadius() * arena.triggerRadius()) {
             return;
         }
 
@@ -199,6 +212,31 @@ public final class BossArenaManager {
 
     private static String buildArenaKey(ServerLevel level, String id, BlockPos center) {
         return level.dimension().location() + "|" + id + "|" + center.asLong();
+    }
+
+    private static boolean isArenaMissCached(ServerLevel level, ArenaDefinition arena, BlockPos playerPos, long now) {
+        String key = buildMissCacheKey(level, arena, playerPos);
+        Long cachedTick = STRUCTURE_MISS_CACHE.get(key);
+        return cachedTick != null && (now - cachedTick) <= STRUCTURE_MISS_CACHE_TTL_TICKS;
+    }
+
+    private static void rememberArenaMiss(ServerLevel level, ArenaDefinition arena, BlockPos playerPos, long now) {
+        if (STRUCTURE_MISS_CACHE.size() >= STRUCTURE_MISS_CACHE_MAX_ENTRIES) {
+            pruneStructureMissCache(now);
+            if (STRUCTURE_MISS_CACHE.size() >= STRUCTURE_MISS_CACHE_MAX_ENTRIES) {
+                STRUCTURE_MISS_CACHE.clear();
+            }
+        }
+
+        STRUCTURE_MISS_CACHE.put(buildMissCacheKey(level, arena, playerPos), now);
+    }
+
+    private static String buildMissCacheKey(ServerLevel level, ArenaDefinition arena, BlockPos playerPos) {
+        return level.dimension().location() + "|" + arena.id() + "|" + (playerPos.getX() >> 4) + "|" + (playerPos.getZ() >> 4);
+    }
+
+    private static void pruneStructureMissCache(long now) {
+        STRUCTURE_MISS_CACHE.entrySet().removeIf(entry -> (now - entry.getValue()) > STRUCTURE_MISS_CACHE_TTL_TICKS);
     }
 
     private record ArenaDefinition(
