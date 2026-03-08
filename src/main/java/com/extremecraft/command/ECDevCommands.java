@@ -222,7 +222,8 @@ public final class ECDevCommands {
                                                         ctx.getSource().sendSuccess(() -> Component.literal("Granted " + amount + " class XP to " + classId + " (gained levels: " + gainedLevels + ", level: " + data.getClassLevel(classId) + ")"), false);
                                                         return 1;
                                                     }).orElse(0);
-                                                })))))                .then(Commands.literal("skill")
+                                                })))))
+                .then(Commands.literal("skill")
                         .then(Commands.literal("unlock")
                                 .then(Commands.argument("node", StringArgumentType.word())
                                         .executes(ctx -> {
@@ -360,5 +361,6 @@ public final class ECDevCommands {
         return 1;
     }
 }
+
 
 
