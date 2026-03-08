@@ -10,9 +10,7 @@ from typing import Iterable
 from PyQt6.QtCore import QRect, QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QPainter, QTextCharFormat, QTextCursor, QTextDocument, QTextFormat, QSyntaxHighlighter
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QFileDialog,
-    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -22,12 +20,12 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QPlainTextEdit,
     QSplitter,
-    QStackedWidget,
     QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from asset_studio.code.diagnostics import CodeDiagnostic
 from asset_studio.code.editor_service import EditorService
 
 
@@ -40,13 +38,6 @@ LANGUAGE_BY_SUFFIX = {
     ".toml": "toml",
     ".md": "markdown",
 }
-
-
-@dataclass
-class ProblemEntry:
-    severity: str
-    message: str
-    line: int
 
 
 class _LanguageHighlighter(QSyntaxHighlighter):
@@ -141,7 +132,6 @@ class StudioCodeEditor(QPlainTextEdit):
         super().__init__()
         self._line_number_area = _LineNumberArea(self)
         self._highlighter = _LanguageHighlighter(self.document())
-        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         self.setTabStopDistance(4 * self.fontMetrics().horizontalAdvance(" "))
 
         self.blockCountChanged.connect(self._update_line_number_width)
@@ -172,6 +162,7 @@ class StudioCodeEditor(QPlainTextEdit):
         block_number = block.blockNumber()
         top = int(self.blockBoundingGeometry(block).translated(self.contentOffset()).top())
         bottom = top + int(self.blockBoundingRect(block).height())
+
         while block.isValid() and top <= event.rect().bottom():
             if block.isVisible() and bottom >= event.rect().top():
                 painter.setPen(QColor("#7f8c98"))
@@ -208,141 +199,29 @@ class StudioCodeEditor(QPlainTextEdit):
 @dataclass
 class _CodeTab:
     document_id: str
-    path: Path | None
+    path: Path
     editor: StudioCodeEditor
     dirty: bool = False
-
-    @property
-    def display_name(self) -> str:
-        return self.path.name if self.path is not None else "untitled"
 
 
 class CodeStudioPanel(QWidget):
     status_message = pyqtSignal(str)
     notifications = pyqtSignal(str)
 
-    def __init__(self, editor_service: EditorService, workspace_root: Path) -> None:
+    def __init__(self, session, workspace_root: Path | None = None) -> None:
         super().__init__()
-        self.editor_service = editor_service
-        self.workspace_root = workspace_root
+        self.session = session if hasattr(session, "code_editor_service") else None
+        self.editor_service: EditorService = session.code_editor_service if hasattr(session, "code_editor_service") else session
+        self.workspace_root = workspace_root or (session.context.workspace_root if hasattr(session, "context") else Path.cwd())
         self._tabs: dict[StudioCodeEditor, _CodeTab] = {}
+        self._setting_editor_text = False
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(8)
-        root.addWidget(self._build_header())
-        root.addWidget(self._build_toolbar_host())
-        root.addWidget(self._build_path_bar())
 
-        self.stack = QStackedWidget()
-        self.empty_state = self._build_empty_state()
-        self.workspace_surface = self._build_workspace_surface()
-        self.stack.addWidget(self.empty_state)
-        self.stack.addWidget(self.workspace_surface)
-        root.addWidget(self.stack)
+        self.toolbar = self._build_toolbar()
+        root.addLayout(self.toolbar)
 
-        self._refresh_recent_files()
-        self._refresh_tab_details()
-
-    def _build_header(self) -> QWidget:
-        header = QFrame()
-        row = QHBoxLayout(header)
-        row.setContentsMargins(10, 8, 10, 8)
-        title = QLabel("Code Studio")
-        title.setObjectName("panelHeaderTitle")
-        title.setToolTip("Full-page text editing backed by EditorService, recovery snapshots, and diagnostics.")
-        helper = QLabel("Open files from Project Browser, use the search panel for in-file results, and keep problems visible while editing.")
-        helper.setWordWrap(True)
-        helper.setObjectName("panelHelpHint")
-        row.addWidget(title)
-        row.addSpacing(12)
-        row.addWidget(helper, 1)
-        return header
-
-    def _build_toolbar_host(self) -> QWidget:
-        host = QWidget()
-        row = QHBoxLayout(host)
-        row.setContentsMargins(10, 0, 10, 0)
-        row.setSpacing(8)
-
-        file_group = self._toolbar_group("Files")
-        for button in [
-            self._tool_button("New", self.new_document, "Create a new untitled buffer."),
-            self._tool_button("Open", self.open_file_dialog, "Open a file into the tabbed editor."),
-            self._tool_button("Save", self.save_current, "Save the active document."),
-            self._tool_button("Save All", self.save_all, "Save every open document."),
-        ]:
-            file_group.layout().addWidget(button)
-        row.addWidget(file_group)
-
-        search_group = self._toolbar_group("Search / Replace")
-        self.find_input = QLineEdit()
-        self.find_input.setPlaceholderText("Find in current file")
-        self.find_input.setToolTip("Search within the active file. Results update as you type.")
-        self.find_input.textChanged.connect(self._refresh_search_results)
-        self.replace_input = QLineEdit()
-        self.replace_input.setPlaceholderText("Replace with")
-        self.replace_input.setToolTip("Replacement text for Replace and Replace All.")
-        self.case_toggle = QCheckBox("Match Case")
-        self.case_toggle.setToolTip("When enabled, search and replace become case sensitive.")
-        self.case_toggle.toggled.connect(self._refresh_search_results)
-        for widget in [
-            self.find_input,
-            self.replace_input,
-            self.case_toggle,
-            self._tool_button("Prev", lambda: self.find_next(True), "Jump to the previous match."),
-            self._tool_button("Next", lambda: self.find_next(False), "Jump to the next match."),
-            self._tool_button("Replace", self.replace_one, "Replace the current selection."),
-            self._tool_button("Replace All", self.replace_all, "Replace all matches in the active file."),
-        ]:
-            search_group.layout().addWidget(widget)
-        row.addWidget(search_group, 1)
-
-        session_group = self._toolbar_group("Session")
-        self.open_count_label = QLabel("0 open files")
-        self.recovery_label = QLabel("Recovery snapshots: 0")
-        session_group.layout().addWidget(self.open_count_label)
-        session_group.layout().addWidget(self.recovery_label)
-        row.addWidget(session_group)
-        return host
-
-    def _build_path_bar(self) -> QWidget:
-        host = QWidget()
-        row = QHBoxLayout(host)
-        row.setContentsMargins(10, 0, 10, 0)
-        row.addWidget(QLabel("Path"))
-        self.path_label = QLabel("No file open")
-        self.path_label.setWordWrap(True)
-        self.path_label.setToolTip("Absolute path to the current file, or a note when the buffer is not saved yet.")
-        row.addWidget(self.path_label, 1)
-        return host
-
-    def _build_empty_state(self) -> QWidget:
-        page = QWidget()
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(24, 24, 24, 24)
-        title = QLabel("No file is open yet")
-        title.setObjectName("panelHeaderTitle")
-        text = QLabel(
-            "Open a file from Project Browser, use Open to choose a file, or create a new untitled buffer.\n"
-            "Recent files stay available here so the page is still useful when nothing is open."
-        )
-        text.setWordWrap(True)
-        layout.addWidget(title)
-        layout.addWidget(text)
-        actions = QHBoxLayout()
-        actions.addWidget(self._tool_button("New Document", self.new_document, "Create an untitled buffer."))
-        actions.addWidget(self._tool_button("Open File", self.open_file_dialog, "Open an existing file from disk."))
-        actions.addStretch(1)
-        layout.addLayout(actions)
-        layout.addWidget(QLabel("Recent Files"))
-        self.empty_recent = QListWidget()
-        self.empty_recent.setToolTip("Recent files tracked by EditorService. Double-click to reopen.")
-        self.empty_recent.itemDoubleClicked.connect(self._open_recent_item)
-        layout.addWidget(self.empty_recent)
-        return page
-
-    def _build_workspace_surface(self) -> QWidget:
         split = QSplitter(Qt.Orientation.Horizontal)
         self.tab_widget = QTabWidget()
         self.tab_widget.setDocumentMode(True)
@@ -351,143 +230,107 @@ class CodeStudioPanel(QWidget):
         self.tab_widget.currentChanged.connect(self._active_tab_changed)
         split.addWidget(self.tab_widget)
 
-        side = QTabWidget()
+        right = QWidget()
+        right_layout = QVBoxLayout(right)
+        right_layout.addWidget(QLabel("File Metadata"))
         self.file_meta = QLabel("No file open")
         self.file_meta.setWordWrap(True)
-        meta_page = QWidget()
-        meta_layout = QVBoxLayout(meta_page)
-        meta_layout.addWidget(self.file_meta)
-        meta_layout.addStretch(1)
-        side.addTab(meta_page, "Info")
+        right_layout.addWidget(self.file_meta)
 
+        right_layout.addWidget(QLabel("Outline"))
         self.outline = QListWidget()
-        self.outline.setToolTip("Outline generated from the active file. Double-click to jump.")
-        self.outline.itemDoubleClicked.connect(self._jump_to_line_from_item)
-        side.addTab(self.outline, "Outline")
+        self.outline.itemDoubleClicked.connect(self._jump_to_outline)
+        right_layout.addWidget(self.outline)
 
+        right_layout.addWidget(QLabel("Problems"))
         self.problems = QListWidget()
-        self.problems.setToolTip("Diagnostics for the active file. Double-click to jump.")
-        self.problems.itemDoubleClicked.connect(self._jump_to_line_from_item)
-        side.addTab(self.problems, "Problems")
+        self.problems.itemDoubleClicked.connect(self._jump_to_problem)
+        right_layout.addWidget(self.problems)
 
-        self.search_results = QListWidget()
-        self.search_results.setToolTip("Search results for the active file. Double-click to jump.")
-        self.search_results.itemDoubleClicked.connect(self._jump_to_line_from_item)
-        side.addTab(self.search_results, "Search")
-
+        right_layout.addWidget(QLabel("Recent Files"))
         self.recent_files = QListWidget()
-        self.recent_files.setToolTip("Recent files tracked by EditorService. Double-click to reopen.")
-        self.recent_files.itemDoubleClicked.connect(self._open_recent_item)
-        side.addTab(self.recent_files, "Recent")
+        self.recent_files.itemDoubleClicked.connect(self._open_recent_file)
+        right_layout.addWidget(self.recent_files)
 
-        split.addWidget(side)
-        split.setSizes([1040, 360])
-        return split
+        split.addWidget(right)
+        split.setSizes([980, 320])
+        root.addWidget(split)
 
-    def _toolbar_group(self, title: str) -> QFrame:
-        frame = QFrame()
-        layout = QHBoxLayout(frame)
-        layout.setContentsMargins(8, 6, 8, 6)
-        layout.setSpacing(6)
-        label = QLabel(f"{title}:")
-        label.setObjectName("panelHelpHint")
-        layout.addWidget(label)
-        return frame
+        self._update_recent_files()
+        self._set_empty_state()
 
-    def _tool_button(self, label: str, callback, help_text: str) -> QPushButton:
-        button = QPushButton(label)
-        button.setToolTip(help_text)
-        button.setStatusTip(help_text)
-        button.clicked.connect(callback)
-        return button
+    def _build_toolbar(self) -> QHBoxLayout:
+        row = QHBoxLayout()
 
-    def set_workspace_root(self, workspace_root: Path) -> None:
-        self.workspace_root = workspace_root
-        self._refresh_recent_files()
+        open_btn = QPushButton("Open")
+        open_btn.clicked.connect(self.open_file_dialog)
+        save_btn = QPushButton("Save")
+        save_btn.clicked.connect(self.save_current)
+        save_all = QPushButton("Save All")
+        save_all.clicked.connect(self.save_all)
 
-    def new_document(self) -> None:
-        document = self.editor_service.new_document(path=None, content="")
-        editor = StudioCodeEditor()
-        editor.setPlainText(document.content)
-        editor.set_language(document.syntax_mode)
-        editor.cursor_moved.connect(self._cursor_moved)
-        editor.textChanged.connect(lambda current_editor=editor: self._mark_dirty(current_editor))
-        self._tabs[editor] = _CodeTab(document_id=document.document_id, path=document.path, editor=editor, dirty=document.dirty)
-        index = self.tab_widget.addTab(editor, "untitled")
-        self.tab_widget.setCurrentIndex(index)
-        self._refresh_tab_details()
-        self.notifications.emit("Created new untitled document")
-        self.status_message.emit("New document ready")
+        self.find_input = QLineEdit()
+        self.find_input.setPlaceholderText("Find in current file")
+        self.replace_input = QLineEdit()
+        self.replace_input.setPlaceholderText("Replace with")
+
+        find_next = QPushButton("Find Next")
+        find_next.clicked.connect(lambda: self.find_next(False))
+        find_prev = QPushButton("Find Prev")
+        find_prev.clicked.connect(lambda: self.find_next(True))
+        replace_one = QPushButton("Replace")
+        replace_one.clicked.connect(self.replace_one)
+        replace_all = QPushButton("Replace All")
+        replace_all.clicked.connect(self.replace_all)
+
+        for widget in [open_btn, save_btn, save_all, self.find_input, self.replace_input, find_next, find_prev, replace_one, replace_all]:
+            row.addWidget(widget)
+        return row
 
     def open_file_dialog(self) -> None:
-        selected, _ = QFileDialog.getOpenFileName(self, "Open file", str(self.workspace_root))
-        if not selected:
-            self.notifications.emit("Open cancelled")
-            return
-        self.open_file(Path(selected))
+        selected, _ = QFileDialog.getOpenFileName(self, "Open file", str(self.workspace_root), "All Files (*.*)")
+        if selected:
+            self.open_file(Path(selected))
 
     def open_file(self, path: Path) -> None:
         if path.is_dir() or not path.exists():
-            self.notifications.emit(f"Cannot open {path.name}: file does not exist")
+            self.notifications.emit(f"File not found: {path}")
             return
-        existing_index = self._find_tab_index_by_path(path)
-        if existing_index is not None:
-            self.tab_widget.setCurrentIndex(existing_index)
-            self.status_message.emit(f"Focused: {path}")
+
+        existing_editor = self._find_editor_by_path(path)
+        if existing_editor is not None:
+            self.tab_widget.setCurrentWidget(existing_editor)
             return
 
         document = self.editor_service.open_document(path)
         editor = StudioCodeEditor()
-        editor.setPlainText(document.content)
         editor.set_language(document.syntax_mode)
+        self._set_editor_text(editor, document.content)
         editor.cursor_moved.connect(self._cursor_moved)
-        editor.textChanged.connect(lambda current_editor=editor: self._mark_dirty(current_editor))
+        editor.textChanged.connect(lambda editor=editor: self._editor_text_changed(editor))
+
         self._tabs[editor] = _CodeTab(document_id=document.document_id, path=path, editor=editor, dirty=document.dirty)
         index = self.tab_widget.addTab(editor, path.name)
         self.tab_widget.setCurrentIndex(index)
-        self._refresh_recent_files()
-        self._refresh_tab_details()
-        self.notifications.emit(f"Opened {path.name}")
+        self._refresh_meta(editor)
+        self._refresh_outline(editor)
+        self._refresh_problems(editor)
+        self._update_recent_files()
+        self._sync_session_state()
         self.status_message.emit(f"Opened: {path}")
 
     def save_current(self) -> bool:
-        tab = self._current_tab()
-        if tab is None:
-            self.notifications.emit("No active document to save")
+        editor = self._current_editor()
+        if editor is None:
             return True
-        try:
-            self.editor_service.set_document_text(tab.document_id, tab.editor.toPlainText())
-            target_path = tab.path
-            if target_path is None:
-                selected, _ = QFileDialog.getSaveFileName(self, "Save file", str(self.workspace_root / "untitled.txt"))
-                if not selected:
-                    self.notifications.emit("Save cancelled for untitled document")
-                    return False
-                target_path = Path(selected)
-            saved_path = self.editor_service.save_document(tab.document_id, target_path)
-        except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Save Failed", f"Could not save file.\n\n{exc}")
-            self.notifications.emit(f"ERROR: failed to save {tab.display_name}: {exc}")
-            return False
-
-        tab.path = saved_path
-        tab.dirty = False
-        tab.editor.set_language(LANGUAGE_BY_SUFFIX.get(saved_path.suffix.lower(), "text"))
-        self._update_tab_title(tab.editor)
-        self._refresh_recent_files()
-        self._refresh_tab_details()
-        self.status_message.emit(f"Saved: {saved_path}")
-        self.notifications.emit(f"Saved {saved_path.name}")
-        return True
+        return self._save_editor(editor)
 
     def save_all(self) -> int:
         count = 0
-        for index in range(self.tab_widget.count()):
-            self.tab_widget.setCurrentIndex(index)
-            if self.save_current():
+        for editor in list(self._tabs):
+            if self._save_editor(editor):
                 count += 1
-        if count:
-            self.notifications.emit(f"Saved {count} open documents")
+        self._sync_session_state()
         return count
 
     def autosave_dirty(self) -> int:
@@ -506,130 +349,146 @@ class CodeStudioPanel(QWidget):
         tab = self._tabs.get(editor)
         if tab is None:
             return
-        self.tab_widget.setCurrentIndex(index)
+        self.tab_widget.setCurrentWidget(editor)
         if tab.dirty:
             result = QMessageBox.question(
                 self,
                 "Unsaved Changes",
-                f"Save changes to {tab.display_name} before closing?",
+                f"Save changes to {tab.path.name} before closing?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel,
             )
             if result == QMessageBox.StandardButton.Cancel:
                 return
-            if result == QMessageBox.StandardButton.Yes and not self.save_current():
+            if result == QMessageBox.StandardButton.Yes and not self._save_editor(editor):
                 return
         self.editor_service.close_document(tab.document_id)
         self._tabs.pop(editor, None)
         self.tab_widget.removeTab(index)
-        self._refresh_tab_details()
-        self.notifications.emit(f"Closed {tab.display_name}")
+        self._update_recent_files()
+        self._sync_session_state()
+        self._active_tab_changed(self.tab_widget.currentIndex())
 
     def find_next(self, backward: bool) -> None:
+        editor = self._current_editor()
         tab = self._current_tab()
-        if tab is None:
-            self.notifications.emit("Open a file before searching")
+        if editor is None or tab is None:
             return
         query = self.find_input.text().strip()
         if not query:
-            self.notifications.emit("Enter search text first")
             return
-        flags = QTextDocument.FindFlag.FindBackward if backward else QTextDocument.FindFlag(0)
-        if self.case_toggle.isChecked():
-            flags |= QTextDocument.FindFlag.FindCaseSensitively
-        found = tab.editor.find(query, flags)
-        if not found:
-            cursor = tab.editor.textCursor()
-            cursor.movePosition(QTextCursor.MoveOperation.End if backward else QTextCursor.MoveOperation.Start)
-            tab.editor.setTextCursor(cursor)
-            tab.editor.find(query, flags)
+        results = self.editor_service.search(query, [tab.document_id])
+        if not results.matches:
+            self.status_message.emit(f"No matches for '{query}'")
+            return
+        cursor = editor.textCursor()
+        current_line = cursor.blockNumber() + 1
+        current_col = cursor.columnNumber() + 1
+        ordered = sorted(results.matches, key=lambda match: (match.line, match.column))
+        target = None
+        if backward:
+            for match in reversed(ordered):
+                if (match.line, match.column) < (current_line, current_col):
+                    target = match
+                    break
+            target = target or ordered[-1]
+        else:
+            for match in ordered:
+                if (match.line, match.column) > (current_line, current_col):
+                    target = match
+                    break
+            target = target or ordered[0]
+        self._jump_to_match(target.line, target.column, len(query))
+        self.status_message.emit(f"Match at line {target.line}, column {target.column}")
 
     def replace_one(self) -> None:
-        tab = self._current_tab()
-        if tab is None:
-            self.notifications.emit("Open a file before replacing text")
+        editor = self._current_editor()
+        if editor is None:
             return
-        if not self.find_input.text().strip():
-            self.notifications.emit("Enter search text before replacing")
-            return
-        cursor = tab.editor.textCursor()
+        cursor = editor.textCursor()
         if cursor.hasSelection():
             cursor.insertText(self.replace_input.text())
-            self._mark_dirty(tab.editor)
-        self.find_next(False)
+        else:
+            self.find_next(False)
 
     def replace_all(self) -> None:
         tab = self._current_tab()
-        if tab is None:
-            self.notifications.emit("Open a file before replacing text")
+        editor = self._current_editor()
+        if tab is None or editor is None:
             return
         query = self.find_input.text().strip()
+        replacement = self.replace_input.text()
         if not query:
-            self.notifications.emit("Enter search text before replacing")
             return
-        replaced = self.editor_service.replace_all(tab.document_id, query, self.replace_input.text(), case_sensitive=self.case_toggle.isChecked())
+        count = self.editor_service.replace_all(tab.document_id, query, replacement)
         document = self.editor_service.documents[tab.document_id]
-        tab.editor.blockSignals(True)
-        tab.editor.setPlainText(document.content)
-        tab.editor.blockSignals(False)
+        self._set_editor_text(editor, document.content)
         tab.dirty = document.dirty
-        self._update_tab_title(tab.editor)
-        self._refresh_tab_details()
-        self.notifications.emit(f"Replaced {replaced} matches in {tab.display_name}")
+        self._update_tab_title(editor)
+        self._refresh_outline(editor)
+        self._refresh_problems(editor)
+        self._sync_session_state()
+        self.notifications.emit(f"Replaced {count} occurrence(s) in {tab.path.name}")
 
-    def _mark_dirty(self, editor: StudioCodeEditor) -> None:
+    def _editor_text_changed(self, editor: StudioCodeEditor) -> None:
+        if self._setting_editor_text:
+            return
         tab = self._tabs.get(editor)
         if tab is None:
             return
         self.editor_service.set_document_text(tab.document_id, editor.toPlainText())
         tab.dirty = self.editor_service.documents[tab.document_id].dirty
         self._update_tab_title(editor)
-        if editor is self.current_editor():
-            self._refresh_tab_details()
+        if editor is self._current_editor():
+            self._refresh_meta(editor)
+            self._refresh_outline(editor)
+            self._refresh_problems(editor)
+        self._sync_session_state()
 
-    def _update_tab_title(self, editor: StudioCodeEditor) -> None:
-        index = self.tab_widget.indexOf(editor)
+    def _save_editor(self, editor: StudioCodeEditor) -> bool:
         tab = self._tabs.get(editor)
-        if index < 0 or tab is None:
-            return
-        suffix = " *" if tab.dirty else ""
-        self.tab_widget.setTabText(index, f"{tab.display_name}{suffix}")
-
-    def _refresh_tab_details(self) -> None:
-        self.open_count_label.setText(f"{self.tab_widget.count()} open files")
-        self.recovery_label.setText(f"Recovery snapshots: {self.autosave_dirty()}")
-        self.stack.setCurrentWidget(self.workspace_surface if self.tab_widget.count() else self.empty_state)
-        tab = self._current_tab()
         if tab is None:
-            self.path_label.setText("No file open")
+            return True
+        try:
+            self.editor_service.set_document_text(tab.document_id, editor.toPlainText())
+            saved_path = self.editor_service.save_document(tab.document_id)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.critical(self, "Save Failed", f"Could not save file:\n{tab.path}\n\n{exc}")
+            self.notifications.emit(f"ERROR: failed to save {tab.path.name}: {exc}")
+            return False
+
+        tab.path = saved_path
+        tab.dirty = False
+        self._update_tab_title(editor)
+        self._refresh_meta(editor)
+        self._refresh_problems(editor)
+        self._update_recent_files()
+        self._sync_session_state()
+        self.status_message.emit(f"Saved: {saved_path}")
+        self.notifications.emit(f"Saved {tab.path.name}")
+        return True
+
+    def _refresh_meta(self, editor: StudioCodeEditor | None) -> None:
+        if editor is None or editor not in self._tabs:
             self.file_meta.setText("No file open")
-            self.outline.clear()
-            self.problems.clear()
-            self.search_results.clear()
-            self._refresh_recent_files()
             return
+        tab = self._tabs[editor]
         document = self.editor_service.documents.get(tab.document_id)
-        text = document.content if document is not None else tab.editor.toPlainText()
-        language = document.syntax_mode if document is not None else LANGUAGE_BY_SUFFIX.get((tab.path.suffix if tab.path else "").lower(), "text")
-        self.path_label.setText(str(tab.path) if tab.path is not None else "Untitled buffer")
+        text = document.content if document is not None else editor.toPlainText()
+        line_count = text.count("\n") + 1
+        language = document.syntax_mode if document is not None else LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text")
+        recent = len(self.editor_service.recent_files)
         self.file_meta.setText(
-            f"Name: {tab.display_name}\n"
-            f"Path: {tab.path if tab.path else 'Not saved yet'}\n"
-            f"Language: {language}\n"
-            f"Lines: {text.count(chr(10)) + 1}\n"
-            f"Dirty: {'yes' if tab.dirty else 'no'}"
+            f"Path: {tab.path}\nLanguage: {language}\nLines: {line_count}\nDirty: {'yes' if tab.dirty else 'no'}\nRecent tracked: {recent}"
         )
-        self._refresh_outline()
-        self._refresh_problems()
-        self._refresh_search_results()
-        self._refresh_recent_files()
 
-    def _refresh_outline(self) -> None:
+    def _refresh_outline(self, editor: StudioCodeEditor | None) -> None:
         self.outline.clear()
-        tab = self._current_tab()
-        if tab is None:
+        if editor is None or editor not in self._tabs:
             return
-        language = LANGUAGE_BY_SUFFIX.get((tab.path.suffix if tab.path else "").lower(), "text")
-        lines = tab.editor.toPlainText().splitlines()
+        tab = self._tabs[editor]
+        language = LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text")
+        lines = editor.toPlainText().splitlines()
+
         if language == "python":
             for idx, line in enumerate(lines, start=1):
                 if line.lstrip().startswith(("def ", "class ")):
@@ -642,121 +501,157 @@ class CodeStudioPanel(QWidget):
                     item = QListWidgetItem(f"L{idx}: {line.strip()}")
                     item.setData(Qt.ItemDataRole.UserRole, idx)
                     self.outline.addItem(item)
+        elif language == "json":
+            for idx, line in enumerate(lines, start=1):
+                if '"' in line and ":" in line:
+                    match = re.search(r'"([^"]+)"\s*:', line)
+                    if match:
+                        item = QListWidgetItem(f"L{idx}: {match.group(1)}")
+                        item.setData(Qt.ItemDataRole.UserRole, idx)
+                        self.outline.addItem(item)
+        elif language == "java":
+            for idx, line in enumerate(lines, start=1):
+                stripped = line.strip()
+                if stripped.startswith(("class ", "public class", "private ", "protected ", "public ")) and ("(" in stripped or "class" in stripped):
+                    item = QListWidgetItem(f"L{idx}: {stripped}")
+                    item.setData(Qt.ItemDataRole.UserRole, idx)
+                    self.outline.addItem(item)
         else:
             item = QListWidgetItem("No outline provider for this file type yet")
             item.setFlags(Qt.ItemFlag.ItemIsEnabled)
             self.outline.addItem(item)
 
-    def _refresh_problems(self) -> None:
+    def _refresh_problems(self, editor: StudioCodeEditor | None) -> None:
         self.problems.clear()
-        tab = self._current_tab()
-        if tab is None:
+        if editor is None or editor not in self._tabs:
             return
-        entries = self._diagnose(tab)
-        if not entries:
-            item = QListWidgetItem("No problems detected")
-            item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+        tab = self._tabs[editor]
+        diagnostics = self._diagnose(tab)
+        self.editor_service.problems.set_document_issues(tab.document_id, diagnostics)
+        if not diagnostics:
+            ok_item = QListWidgetItem("No problems detected")
+            ok_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            self.problems.addItem(ok_item)
+            return
+
+        for diagnostic in diagnostics:
+            item = QListWidgetItem(f"[{diagnostic.severity.upper()}] L{diagnostic.line}: {diagnostic.message}")
+            item.setData(Qt.ItemDataRole.UserRole, diagnostic.line)
             self.problems.addItem(item)
-            return
-        for entry in entries:
-            item = QListWidgetItem(f"[{entry.severity.upper()}] L{entry.line}: {entry.message}")
-            item.setData(Qt.ItemDataRole.UserRole, entry.line)
-            self.problems.addItem(item)
 
-    def _refresh_search_results(self) -> None:
-        self.search_results.clear()
-        tab = self._current_tab()
-        query = self.find_input.text().strip()
-        if tab is None or not query:
-            item = QListWidgetItem("Type in Find to list matches in the active file")
-            item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-            self.search_results.addItem(item)
-            return
-        results = self.editor_service.search(query, [tab.document_id], case_sensitive=self.case_toggle.isChecked())
-        if not results.matches:
-            item = QListWidgetItem("No matches in current file")
-            item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-            self.search_results.addItem(item)
-            return
-        for match in results.matches:
-            item = QListWidgetItem(f"L{match.line}: {match.preview}")
-            item.setData(Qt.ItemDataRole.UserRole, match.line)
-            self.search_results.addItem(item)
-
-    def _refresh_recent_files(self) -> None:
-        recent = self.editor_service.recent_files
-        for widget in [self.recent_files, self.empty_recent]:
-            widget.clear()
-            if not recent:
-                item = QListWidgetItem("No recent files yet")
-                item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-                widget.addItem(item)
-                continue
-            for path in recent:
-                item = QListWidgetItem(path.name)
-                item.setToolTip(str(path))
-                item.setData(Qt.ItemDataRole.UserRole, str(path))
-                widget.addItem(item)
-
-    def _diagnose(self, tab: _CodeTab) -> list[ProblemEntry]:
+    def _diagnose(self, tab: _CodeTab) -> list[CodeDiagnostic]:
         text = tab.editor.toPlainText()
-        language = LANGUAGE_BY_SUFFIX.get((tab.path.suffix if tab.path else "").lower(), "text")
-        issues: list[ProblemEntry] = []
+        language = LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text")
+        issues: list[CodeDiagnostic] = []
+
         if language == "python":
             try:
                 ast.parse(text)
             except SyntaxError as exc:
-                issues.append(ProblemEntry(severity="error", message=exc.msg, line=exc.lineno or 1))
+                issues.append(CodeDiagnostic(severity="error", message=exc.msg, line=exc.lineno or 1, source="python", path=tab.path))
         elif language == "json":
             try:
                 json.loads(text)
             except json.JSONDecodeError as exc:
-                issues.append(ProblemEntry(severity="error", message=exc.msg, line=exc.lineno))
-        elif not text.strip():
-            issues.append(ProblemEntry(severity="warning", message="File is empty", line=1))
+                issues.append(CodeDiagnostic(severity="error", message=exc.msg, line=exc.lineno, source="json", path=tab.path))
+        elif language == "java":
+            if text.count("{") != text.count("}"):
+                issues.append(CodeDiagnostic(severity="warning", message="Brace count is unbalanced", line=1, source="java", path=tab.path))
+        if not text.strip():
+            issues.append(CodeDiagnostic(severity="warning", message="File is empty", line=1, source=language, path=tab.path))
         return issues
 
-    def _find_tab_index_by_path(self, path: Path) -> int | None:
-        for index in range(self.tab_widget.count()):
-            editor = self.tab_widget.widget(index)
-            if not isinstance(editor, StudioCodeEditor):
-                continue
-            tab = self._tabs.get(editor)
-            if tab is not None and tab.path == path:
-                return index
+    def _find_editor_by_path(self, path: Path) -> StudioCodeEditor | None:
+        for editor, tab in self._tabs.items():
+            if tab.path == path:
+                return editor
         return None
 
+    def _current_editor(self) -> StudioCodeEditor | None:
+        widget = self.tab_widget.currentWidget()
+        return widget if isinstance(widget, StudioCodeEditor) else None
+
+    def _current_tab(self) -> _CodeTab | None:
+        editor = self._current_editor()
+        return self._tabs.get(editor) if editor is not None else None
+
     def _active_tab_changed(self, index: int) -> None:
-        self._refresh_tab_details()
-        if index >= 0:
-            self.status_message.emit(f"Active file: {self.tab_widget.tabText(index)}")
+        _ = index
+        editor = self._current_editor()
+        self._refresh_meta(editor)
+        self._refresh_outline(editor)
+        self._refresh_problems(editor)
 
-    def _open_recent_item(self, item: QListWidgetItem) -> None:
-        path = item.data(Qt.ItemDataRole.UserRole)
-        if path:
-            self.open_file(Path(str(path)))
-
-    def _jump_to_line_from_item(self, item: QListWidgetItem) -> None:
-        line = item.data(Qt.ItemDataRole.UserRole)
-        if not isinstance(line, int):
-            return
-        tab = self._current_tab()
+    def _update_tab_title(self, editor: StudioCodeEditor) -> None:
+        tab = self._tabs.get(editor)
         if tab is None:
             return
-        cursor = tab.editor.textCursor()
+        suffix = " *" if tab.dirty else ""
+        index = self.tab_widget.indexOf(editor)
+        if index >= 0:
+            self.tab_widget.setTabText(index, f"{tab.path.name}{suffix}")
+
+    def _update_recent_files(self) -> None:
+        self.recent_files.clear()
+        for path in self.editor_service.recent_files:
+            item = QListWidgetItem(str(path))
+            item.setData(Qt.ItemDataRole.UserRole, str(path))
+            self.recent_files.addItem(item)
+
+    def _open_recent_file(self, item: QListWidgetItem) -> None:
+        value = item.data(Qt.ItemDataRole.UserRole)
+        if value:
+            self.open_file(Path(str(value)))
+
+    def _jump_to_outline(self, item: QListWidgetItem) -> None:
+        self._jump_to_line(item.data(Qt.ItemDataRole.UserRole))
+
+    def _jump_to_problem(self, item: QListWidgetItem) -> None:
+        self._jump_to_line(item.data(Qt.ItemDataRole.UserRole))
+
+    def _jump_to_line(self, line: int | None) -> None:
+        editor = self._current_editor()
+        if editor is None or not isinstance(line, int):
+            return
+        cursor = editor.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.Start)
         for _ in range(max(0, line - 1)):
             cursor.movePosition(QTextCursor.MoveOperation.Down)
-        tab.editor.setTextCursor(cursor)
-        tab.editor.setFocus()
+        editor.setTextCursor(cursor)
+        editor.setFocus()
+
+    def _jump_to_match(self, line: int, column: int, length: int) -> None:
+        editor = self._current_editor()
+        if editor is None:
+            return
+        cursor = editor.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.Start)
+        for _ in range(max(0, line - 1)):
+            cursor.movePosition(QTextCursor.MoveOperation.Down)
+        for _ in range(max(0, column - 1)):
+            cursor.movePosition(QTextCursor.MoveOperation.Right)
+        for _ in range(max(0, length)):
+            cursor.movePosition(QTextCursor.MoveOperation.Right, QTextCursor.MoveMode.KeepAnchor)
+        editor.setTextCursor(cursor)
+        editor.setFocus()
 
     def _cursor_moved(self, line: int, col: int) -> None:
         self.status_message.emit(f"Ln {line}, Col {col}")
 
-    def current_editor(self) -> StudioCodeEditor | None:
-        editor = self.tab_widget.currentWidget() if hasattr(self, "tab_widget") else None
-        return editor if isinstance(editor, StudioCodeEditor) else None
+    def _set_editor_text(self, editor: StudioCodeEditor, text: str) -> None:
+        self._setting_editor_text = True
+        editor.setPlainText(text)
+        self._setting_editor_text = False
 
-    def _current_tab(self) -> _CodeTab | None:
-        editor = self.current_editor()
-        return self._tabs.get(editor) if editor is not None else None
+    def _sync_session_state(self) -> None:
+        self._update_recent_files()
+        if self.session is not None and hasattr(self.session, "sync_code_session_state"):
+            self.session.sync_code_session_state()
+
+    def _set_empty_state(self) -> None:
+        self.problems.clear()
+        item = QListWidgetItem("Open a file from Project Browser or use Open to start coding")
+        item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+        self.problems.addItem(item)
+        self.outline.clear()
+        self.file_meta.setText("No file open")
