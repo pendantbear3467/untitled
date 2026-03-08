@@ -1,1 +1,1 @@
-"""Workspace and project services for Asset Studio."""
+"""Canonical workspace and project services for Asset Studio."""

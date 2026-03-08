@@ -1,5 +1,5 @@
-"""ExtremeCraft addon module compiler."""
+"""Compatibility exports for the canonical Asset Studio compiler package."""
 
-from compiler.module_builder import ModuleBuildResult, ModuleBuilder
+from asset_studio.compiler import ModuleBuildResult, ModuleBuilder
 
 __all__ = ["ModuleBuildResult", "ModuleBuilder"]
