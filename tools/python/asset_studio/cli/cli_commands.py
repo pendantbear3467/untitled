@@ -17,6 +17,7 @@ from asset_studio.cli.registry_commands import register_registry_commands, run_r
 from asset_studio.cli.release_commands import register_release_commands, run_release_command
 from asset_studio.cli.repair_commands import register_repair_commands, run_repair_command
 from asset_studio.cli.sdk_commands import register_sdk_commands, run_sdk_command
+from asset_studio.cli.skilltree_commands import register_skilltree_commands, run_skilltree_command
 from asset_studio.cli.validate_commands import register_validate_commands, run_validate_command
 from asset_studio.workspace.workspace_manager import WorkspaceManager
 
@@ -63,6 +64,9 @@ def register_subcommands(subparsers: argparse._SubParsersAction[argparse.Argumen
 
     graph = subparsers.add_parser("graph", help="Visual graph authoring and execution")
     register_graph_commands(graph)
+
+    skilltree = subparsers.add_parser("skilltree", help="Progression graph and skill tree authoring")
+    register_skilltree_commands(skilltree)
 
     export_cmd = subparsers.add_parser("export", help="Export operations")
     export_sub = export_cmd.add_subparsers(dest="export_target", required=True)
@@ -122,6 +126,9 @@ def run_cli(args: argparse.Namespace, workspace_path: Path) -> int:
 
     if args.command == "graph":
         return run_graph_command(args, context)
+
+    if args.command == "skilltree":
+        return run_skilltree_command(args, context)
 
     if args.command == "export" and args.export_target == "blockbench":
         path = export_bbmodel(args.model_id, context=context, kind=args.kind)

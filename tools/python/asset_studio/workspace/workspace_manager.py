@@ -12,6 +12,7 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency for non-re
 
 from asset_studio.plugins.marketplace import PluginMarketplace
 from asset_studio.plugins.plugin_loader import load_plugins
+from asset_studio.skilltree.user_profile import UserProfile, load_or_create_profile, save_profile
 from asset_studio.textures.procedural_texture_engine import ProceduralTextureEngine
 from asset_studio.workspace.asset_database import AssetDatabase
 
@@ -55,6 +56,15 @@ class AssetStudioContext:
         snapshot.parent.mkdir(parents=True, exist_ok=True)
         snapshot.write_text(f"Preview generated for {model_name}\n", encoding="utf-8")
 
+    def user_profile_path(self) -> Path:
+        return self.workspace_root / "user_profile.json"
+
+    def get_user_profile(self) -> UserProfile:
+        return load_or_create_profile(self.user_profile_path())
+
+    def save_user_profile(self, profile: UserProfile) -> None:
+        save_profile(self.user_profile_path(), profile)
+
 
 class WorkspaceManager:
     def __init__(self, workspace_root: Path, repo_root: Path) -> None:
@@ -93,15 +103,22 @@ class WorkspaceManager:
             "previews",
             "build",
             "exports",
+            "exports/skilltrees",
             "addons",
             "definitions",
             "modpacks",
             "releases",
             "registry_history",
             "graphs",
-            "addons",
+            "skilltrees",
+            "skilltrees/autosave",
+            "skilltrees/recovery",
+            "reports",
+            "reports/skilltree",
             "workspace_plugins",
             "plugin_marketplace",
+            "plugins",
+            "templates",
         ]:
             (self.workspace_root / rel).mkdir(parents=True, exist_ok=True)
 
@@ -124,6 +141,8 @@ class WorkspaceManager:
         snapshot_path = self.workspace_root / "registry_snapshot.json"
         if not snapshot_path.exists():
             snapshot_path.write_text(json.dumps({"files_scanned": 0}, indent=2) + "\n", encoding="utf-8")
+
+        load_or_create_profile(self.workspace_root / "user_profile.json")
 
         plugins = load_plugins(self._resolve_repo_plugins_dir())
         workspace_plugins_dir = self.workspace_root / "plugins"
