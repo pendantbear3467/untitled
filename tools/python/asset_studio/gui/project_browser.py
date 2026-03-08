@@ -168,30 +168,57 @@ class ProjectBrowser(QWidget):
     def set_current_file(self, path: Path | None) -> None:
         self._current_file = path.resolve(strict=False) if path is not None else None
         self._apply_current_selection()
+        self._sync_inspector()
 
     def refresh_view(self) -> None:
         self.tree.clear()
         self._path_to_item.clear()
         self._index_snapshot = None
         if self.workspace_root is None or self.index_service is None:
+            self.summary_label.setText("Open a workspace to build the index-backed explorer.")
+            self._sync_inspector()
             return
         try:
             self._index_snapshot = self.index_service.refresh()
             if self.relationship_service is not None:
                 self.relationship_service.refresh()
         except Exception as exc:  # noqa: BLE001
+            self.summary_label.setText(f"Refresh failed: {exc}")
             self.notifications.emit(f"Project Browser refresh failed: {exc}")
             return
+        self._update_summary()
         root_entry = self._index_snapshot.entry(self.workspace_root)
         if root_entry is None:
+            self.summary_label.setText("Workspace index is available, but the workspace root could not be resolved.")
             return
         root_item = self._build_item(root_entry)
         if root_item is None:
+            query = self.search_input.text().strip()
+            self.summary_label.setText(f"No entries match the current filter: {query}" if query else "Workspace is empty.")
+            self._sync_inspector()
             return
         self.tree.addTopLevelItem(root_item)
         root_item.setExpanded(True)
         self._apply_current_selection()
         self._sync_inspector()
+
+    def _update_summary(self) -> None:
+        index = self._index_snapshot
+        if index is None or self.workspace_root is None:
+            self.summary_label.setText("Open a workspace to build the index-backed explorer.")
+            return
+        workspace_entries = [
+            entry
+            for entry in index.entries.values()
+            if entry.path == self.workspace_root or entry.path.is_relative_to(self.workspace_root)
+        ]
+        file_count = sum(1 for entry in workspace_entries if not entry.is_dir)
+        linked_count = sum(1 for entry in workspace_entries if "linked" in entry.badges)
+        stale_count = sum(1 for entry in workspace_entries if "stale" in entry.badges)
+        invalid_count = sum(1 for entry in workspace_entries if "invalid" in entry.badges)
+        self.summary_label.setText(
+            f"{file_count} files indexed | {linked_count} linked | {stale_count} stale | {invalid_count} flagged"
+        )
 
     def _current_index(self) -> WorkspaceIndex | None:
         return self._index_snapshot
