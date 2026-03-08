@@ -73,11 +73,11 @@ public final class OffhandActionExecutor {
     }
 
     public static void attackEntityWithLegacyCharge(ServerPlayer player, Entity target) {
-        if (!(target instanceof Entity entity) || player == null || player.serverLevel().isClientSide()) {
+        if (target == null || player == null || player.serverLevel().isClientSide()) {
             return;
         }
 
-        if (isAttackTargetValid(player, entity) && performExplicitOffhandAttack(player, entity, 1.0F)) {
+        if (isAttackTargetValid(player, target) && performExplicitOffhandAttack(player, target, 1.0F)) {
             player.swing(InteractionHand.OFF_HAND, true);
         }
     }
@@ -193,9 +193,9 @@ public final class OffhandActionExecutor {
             knockback++;
             player.setSprinting(false);
         }
-        if (knockback > 0) {
+        if (knockback > 0 && livingTarget != null) {
             double yawRadians = player.getYRot() * (Math.PI / 180.0D);
-            target.knockback(knockback * 0.5D, Mth.sin((float) yawRadians), -Mth.cos((float) yawRadians));
+            livingTarget.knockback(knockback * 0.5D, Mth.sin((float) yawRadians), -Mth.cos((float) yawRadians));
         }
 
         if (livingTarget != null) {

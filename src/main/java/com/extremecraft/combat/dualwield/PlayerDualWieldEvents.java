@@ -12,7 +12,7 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public class PlayerDualWieldEvents {
-    public static final ResourceLocation ID = new ResourceLocation(ECConstants.MODID, "player_dual_wield");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "player_dual_wield");
 
     @SubscribeEvent
     public void attachCapabilities(AttachCapabilitiesEvent<Entity> event) {
