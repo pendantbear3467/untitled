@@ -173,10 +173,10 @@ public final class ModNetwork {
                 .consumerMainThread(OpenExtremeCraftDebugScreenS2CPacket::handle)
                 .add();
 
-        CHANNEL.messageBuilder(ManaSyncPacket.class, nextId())
-                .encoder(ManaSyncPacket::encode)
-                .decoder(ManaSyncPacket::decode)
-                .consumerMainThread(ManaSyncPacket::handle)
+        CHANNEL.messageBuilder(SyncManaStateS2CPacket.class, nextId())
+                .encoder(SyncManaStateS2CPacket::encode)
+                .decoder(SyncManaStateS2CPacket::decode)
+                .consumerMainThread(SyncManaStateS2CPacket::handle)
                 .add();
 
         CHANNEL.messageBuilder(SyncRuntimeStatsS2CPacket.class, nextId())
@@ -250,7 +250,6 @@ public final class ModNetwork {
         return initialized;
     }
 }
-
 
 
 
