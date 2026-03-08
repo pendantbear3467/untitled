@@ -10,7 +10,7 @@ from asset_studio.cli.cli_commands import register_subcommands, run_cli
 
 
 def _load_gui_launcher() -> Callable[[Path], int]:
-    module = import_module("asset_studio.gui.app_window")
+    module = import_module("asset_studio.gui")
     return module.launch_gui
 
 

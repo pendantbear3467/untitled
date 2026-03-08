@@ -1,17 +1,7 @@
-# Studio Source Index
+# Studio Namespace Compatibility
 
-This folder is the canonical place to find the desktop Studio source.
+`asset_studio.gui` is the canonical desktop UI/runtime namespace.
 
-Primary entry points:
-- `app_window.py`: main desktop shell window
-- `code_studio.py`: Code Studio page and editor widget
-- `studio_panels.py`: GUI Studio, Model Studio, and Build/Run panels
-- `studio_session.py`: authoritative Studio session/services bootstrap
-
-These files currently re-export the existing implementation from the legacy package layout so the rest of the project keeps working while giving you one place to start looking.
-
-Legacy implementation locations:
-- `../gui/app_window.py`
-- `../gui/code_studio.py`
-- `../gui/studio_panels.py`
-- `../core/studio_session.py`
+`asset_studio.studio` remains only as a compatibility surface for older imports.
+The wrapper modules in this folder intentionally re-export the canonical
+implementation instead of owning separate logic.

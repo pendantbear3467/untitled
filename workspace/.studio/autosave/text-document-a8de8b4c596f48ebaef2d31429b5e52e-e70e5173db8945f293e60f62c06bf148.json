@@ -1,0 +1,17 @@
+{
+  "snapshotId": "e70e5173db8945f293e60f62c06bf148",
+  "documentId": "a8de8b4c596f48ebaef2d31429b5e52e",
+  "documentType": "text-document",
+  "createdAt": "2026-03-08T12:09:37Z",
+  "sourcePath": null,
+  "metadata": {
+    "dirty": true,
+    "version": 15
+  },
+  "payload": {
+    "path": null,
+    "content": "java utile scan",
+    "encoding": "utf-8",
+    "syntaxMode": "text"
+  }
+}

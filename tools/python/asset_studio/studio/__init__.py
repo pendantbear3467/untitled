@@ -1,7 +1,7 @@
-"""Canonical access point for Asset Studio desktop components.
+"""Compatibility desktop UI namespace for ExtremeCraft Studio.
 
-The package intentionally uses lazy imports so non-GUI CLI workflows can import
-``asset_studio.studio`` without requiring optional Qt dependencies.
+Use ``asset_studio.gui`` for canonical live UI/runtime imports. This package is
+kept as a lazy compatibility shim for older call sites.
 """
 
 from importlib import import_module
@@ -18,14 +18,14 @@ __all__ = [
 ]
 
 _EXPORT_MAP = {
-    "AssetStudioWindow": ("asset_studio.studio.app_window", "AssetStudioWindow"),
-    "launch_gui": ("asset_studio.studio.app_window", "launch_gui"),
-    "CodeStudioPanel": ("asset_studio.studio.code_studio", "CodeStudioPanel"),
-    "StudioCodeEditor": ("asset_studio.studio.code_studio", "StudioCodeEditor"),
-    "BuildRunPanel": ("asset_studio.studio.studio_panels", "BuildRunPanel"),
-    "GuiStudioPanel": ("asset_studio.studio.studio_panels", "GuiStudioPanel"),
-    "ModelStudioPanel": ("asset_studio.studio.studio_panels", "ModelStudioPanel"),
-    "StudioSession": ("asset_studio.studio.studio_session", "StudioSession"),
+    "AssetStudioWindow": ("asset_studio.gui.app_window", "AssetStudioWindow"),
+    "launch_gui": ("asset_studio.gui.app_window", "launch_gui"),
+    "CodeStudioPanel": ("asset_studio.gui.code_studio", "CodeStudioPanel"),
+    "StudioCodeEditor": ("asset_studio.gui.code_studio", "StudioCodeEditor"),
+    "BuildRunPanel": ("asset_studio.gui.studio_panels", "BuildRunPanel"),
+    "GuiStudioPanel": ("asset_studio.gui.studio_panels", "GuiStudioPanel"),
+    "ModelStudioPanel": ("asset_studio.gui.studio_panels", "ModelStudioPanel"),
+    "StudioSession": ("asset_studio.core.studio_session", "StudioSession"),
 }
 
 

@@ -1,0 +1,17 @@
+{
+  "snapshotId": "0b89a5822a5e4356a1b70c19faee7f9b",
+  "documentId": "a8de8b4c596f48ebaef2d31429b5e52e",
+  "documentType": "text-document",
+  "createdAt": "2026-03-08T12:09:32Z",
+  "sourcePath": null,
+  "metadata": {
+    "dirty": true,
+    "version": 4
+  },
+  "payload": {
+    "path": null,
+    "content": "java",
+    "encoding": "utf-8",
+    "syntaxMode": "text"
+  }
+}

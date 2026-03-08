@@ -1,0 +1,17 @@
+{
+  "snapshotId": "df6fa69a73b64dddbf9d16923358e921",
+  "documentId": "a8de8b4c596f48ebaef2d31429b5e52e",
+  "documentType": "text-document",
+  "createdAt": "2026-03-08T12:09:46Z",
+  "sourcePath": null,
+  "metadata": {
+    "dirty": true,
+    "version": 51
+  },
+  "payload": {
+    "path": null,
+    "content": "java utile sca",
+    "encoding": "utf-8",
+    "syntaxMode": "text"
+  }
+}
