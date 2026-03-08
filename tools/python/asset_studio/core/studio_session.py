@@ -19,7 +19,9 @@ from asset_studio.runtime.build_service import BuildService
 from asset_studio.runtime.log_model import LogStreamModel
 from asset_studio.runtime.run_service import RunService
 from asset_studio.runtime.task_results import StudioTaskResult, utc_now
+from asset_studio.schema.migration_service import DocumentMigrationService
 from asset_studio.workspace.index_service import WorkspaceIndexService
+from asset_studio.workspace.relationship_service import RelationshipResolverService
 from asset_studio.workspace.workspace_manager import AssetStudioContext, WorkspaceManager
 
 
@@ -59,7 +61,10 @@ class StudioSession:
         self.build_service = BuildService(context)
         self.run_service = RunService(context, self.process_service, log_model=self.log_model)
         self.workspace_index_service = WorkspaceIndexService(context)
+        self.document_migration_service = DocumentMigrationService(context.workspace_root)
+        self.relationship_service = RelationshipResolverService(context, self.workspace_index_service)
         self.workspace_index_service.refresh()
+        self.relationship_service.refresh()
 
         for name, service in {
             "help_registry": self.help_registry,
@@ -77,6 +82,8 @@ class StudioSession:
             "build_service": self.build_service,
             "run_service": self.run_service,
             "workspace_index_service": self.workspace_index_service,
+            "document_migration_service": self.document_migration_service,
+            "relationship_service": self.relationship_service,
             "log_model": self.log_model,
         }.items():
             self.app_context.register_service(name, service)
@@ -112,7 +119,10 @@ class StudioSession:
         )
         self.run_service = RunService(self.context, self.process_service, log_model=self.log_model)
         self.workspace_index_service = WorkspaceIndexService(self.context)
+        self.document_migration_service = DocumentMigrationService(self.context.workspace_root)
+        self.relationship_service = RelationshipResolverService(self.context, self.workspace_index_service)
         self.workspace_index_service.refresh()
+        self.relationship_service.refresh()
         self.plugin_service = PluginService(self.context.plugins, crash_guard=self.crash_guard)
         self.gui_studio_engine = GuiStudioEngine(self.context.workspace_root / "gui_screens")
         self.model_studio_engine = ModelStudioEngine(self.context.workspace_root / "models" / "studio")
@@ -123,6 +133,8 @@ class StudioSession:
             "process_service": self.process_service,
             "run_service": self.run_service,
             "workspace_index_service": self.workspace_index_service,
+            "document_migration_service": self.document_migration_service,
+            "relationship_service": self.relationship_service,
             "plugin_service": self.plugin_service,
             "gui_studio_engine": self.gui_studio_engine,
             "model_studio_engine": self.model_studio_engine,
@@ -222,6 +234,22 @@ class StudioSession:
                 long_description="The model backend provides cube-first Minecraft model authoring contracts for block, item, and entity style assets.",
                 category="editors",
                 keywords=("model", "cube", "uv", "bone"),
+            ),
+            HelpEntry(
+                id="studio.relationships",
+                label="Relationship Graph",
+                short_tooltip="Canonical file, source, runtime, and Java linkage across the workspace.",
+                long_description="The relationship service resolves editor-to-editor links between Java, GUI sources, model sources, runtime exports, textures, and generated assets.",
+                category="studio",
+                keywords=("relationships", "links", "java", "runtime"),
+            ),
+            HelpEntry(
+                id="studio.schema",
+                label="Schema Migration",
+                short_tooltip="Safe schema normalization and diagnostic fallback for studio documents.",
+                long_description="The migration service previews and normalizes GUI/model studio documents, backs up on write when needed, and keeps malformed documents editable in diagnostic mode.",
+                category="studio",
+                keywords=("schema", "migration", "diagnostic", "recovery"),
             ),
         ]
         for entry in entries:
@@ -482,8 +510,3 @@ class StudioSession:
                     keywords=("plugin", "editor"),
                 )
             )
-
-
-
-
-

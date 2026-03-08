@@ -2,7 +2,6 @@ package com.extremecraft.net;
 
 import com.extremecraft.combat.dualwield.service.OffhandActionExecutor;
 import com.extremecraft.combat.dualwield.validation.OffhandActionValidator;
-import com.extremecraft.network.security.ServerPacketLimiter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.FriendlyByteBuf;
@@ -64,11 +63,6 @@ public record OffhandActionC2S(Action action, int entityId, BlockPos pos, Direct
             }
             ServerLevel level = sp.serverLevel();
 
-            if (!ServerPacketLimiter.allow(sp, "dualwield.offhand", 1, 10, 20)) {
-                LOGGER.debug("[Network] Rate-limited OffhandActionC2S from {}", sp.getScoreboardName());
-                return;
-            }
-
             if (msg == null || msg.action == null) {
                 LOGGER.debug("[Network] Dropped OffhandActionC2S with null action from {}", sp.getScoreboardName());
                 return;
@@ -76,8 +70,7 @@ public record OffhandActionC2S(Action action, int entityId, BlockPos pos, Direct
 
             if ((msg.action == Action.USE_ON_BLOCK
                     || msg.action == Action.TAP_BREAK
-                    || msg.action == Action.HOLD_START_BREAK
-                    || msg.action == Action.HOLD_ABORT_BREAK)
+                    || msg.action == Action.HOLD_START_BREAK)
                     && (msg.pos == null || msg.face == null)) {
                 LOGGER.debug("[Network] Dropped OffhandActionC2S action={} with missing block context from {}",
                         msg.action, sp.getScoreboardName());
@@ -90,13 +83,14 @@ public record OffhandActionC2S(Action action, int entityId, BlockPos pos, Direct
                 return;
             }
 
-            if (!OffhandActionValidator.canHandle(sp, msg)) {
+            OffhandActionValidator.ValidationResult validation = OffhandActionValidator.validate(sp, msg);
+            if (!validation.accepted()) {
                 LOGGER.debug("[Network] Dropped OffhandActionC2S failing validator action={} from {}",
                         msg.action, sp.getScoreboardName());
                 return;
             }
 
-            OffhandActionExecutor.execute(sp, level, msg);
+            OffhandActionExecutor.execute(sp, level, msg, validation);
         });
         context.setPacketHandled(true);
     }

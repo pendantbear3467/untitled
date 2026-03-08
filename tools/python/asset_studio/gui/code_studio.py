@@ -3,15 +3,17 @@ from __future__ import annotations
 import ast
 import json
 import re
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
 from PyQt6.QtCore import QRect, QSize, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QPainter, QTextCharFormat, QTextCursor, QTextDocument, QTextFormat, QSyntaxHighlighter
+from PyQt6.QtGui import QColor, QFont, QPainter, QTextCharFormat, QTextCursor, QTextFormat, QSyntaxHighlighter
 from PyQt6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -22,12 +24,16 @@ from PyQt6.QtWidgets import (
     QSplitter,
     QTabWidget,
     QTextEdit,
+    QTreeWidget,
+    QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
 from asset_studio.code.diagnostics import CodeDiagnostic
+from asset_studio.code.document import TextDocument
 from asset_studio.code.editor_service import EditorService
+from asset_studio.code.java_support import JavaAnalysis, JavaSymbol, analyze_java_source, render_java_scaffold, suggest_java_target_path
 
 
 LANGUAGE_BY_SUFFIX = {
@@ -39,6 +45,17 @@ LANGUAGE_BY_SUFFIX = {
     ".toml": "toml",
     ".md": "markdown",
 }
+
+SYMBOL_GROUP_TITLES = {
+    "class": "Classes",
+    "interface": "Interfaces",
+    "enum": "Enums",
+    "record": "Records",
+    "field": "Fields",
+    "method": "Methods",
+}
+
+SEVERITY_ORDER = {"error": 0, "warning": 1, "info": 2}
 
 
 class _LanguageHighlighter(QSyntaxHighlighter):
@@ -72,12 +89,7 @@ class _LanguageHighlighter(QSyntaxHighlighter):
         comment.setForeground(QColor("#7f8c98"))
         comment.setFontItalic(True)
 
-        return {
-            "keyword": keyword,
-            "number": number,
-            "string": string,
-            "comment": comment,
-        }
+        return {"keyword": keyword, "number": number, "string": string, "comment": comment}
 
     def _apply_numbers(self, text: str) -> None:
         for match in re.finditer(r"\b\d+(?:\.\d+)?\b", text):
@@ -104,7 +116,7 @@ class _LanguageHighlighter(QSyntaxHighlighter):
         keywords: dict[str, Iterable[str]] = {
             "python": ("def", "class", "import", "from", "for", "while", "if", "elif", "else", "return", "try", "except", "with", "as", "pass", "raise"),
             "json": ("true", "false", "null"),
-            "java": ("class", "public", "private", "protected", "static", "void", "if", "else", "for", "while", "return", "new", "import", "package"),
+            "java": ("class", "interface", "enum", "record", "public", "private", "protected", "static", "void", "if", "else", "for", "while", "return", "new", "import", "package"),
             "yaml": ("true", "false", "null"),
             "toml": ("true", "false"),
             "markdown": ("#", "##", "###"),
@@ -134,12 +146,10 @@ class StudioCodeEditor(QPlainTextEdit):
         self._line_number_area = _LineNumberArea(self)
         self._highlighter = _LanguageHighlighter(self.document())
         self.setTabStopDistance(4 * self.fontMetrics().horizontalAdvance(" "))
-
         self.blockCountChanged.connect(self._update_line_number_width)
         self.updateRequest.connect(self._update_line_number_area)
         self.cursorPositionChanged.connect(self._highlight_current_line)
         self.cursorPositionChanged.connect(self._emit_cursor)
-
         self._update_line_number_width(0)
         self._highlight_current_line()
 
@@ -158,12 +168,10 @@ class StudioCodeEditor(QPlainTextEdit):
     def line_number_area_paint_event(self, event) -> None:
         painter = QPainter(self._line_number_area)
         painter.fillRect(event.rect(), QColor("#1a1f2b"))
-
         block = self.firstVisibleBlock()
         block_number = block.blockNumber()
         top = int(self.blockBoundingGeometry(block).translated(self.contentOffset()).top())
         bottom = top + int(self.blockBoundingRect(block).height())
-
         while block.isValid() and top <= event.rect().bottom():
             if block.isVisible() and bottom >= event.rect().top():
                 painter.setPen(QColor("#7f8c98"))
@@ -213,20 +221,22 @@ class CodeStudioPanel(QWidget):
     status_message = pyqtSignal(str)
     notifications = pyqtSignal(str)
     current_file_changed = pyqtSignal(object)
+    open_link_requested = pyqtSignal(object)
 
     def __init__(self, session, workspace_root: Path | None = None) -> None:
         super().__init__()
         self.session = session if hasattr(session, "code_editor_service") else None
         self.editor_service: EditorService = session.code_editor_service if hasattr(session, "code_editor_service") else session
         self.workspace_root = workspace_root or (session.context.workspace_root if hasattr(session, "context") else Path.cwd())
+        self.relationship_service = getattr(session, "relationship_service", None) if hasattr(session, "relationship_service") else None
         self._tabs: dict[StudioCodeEditor, _CodeTab] = {}
         self._setting_editor_text = False
+        self._outline_cache: dict[StudioCodeEditor, list[JavaSymbol]] = {}
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
-
-        self.toolbar = self._build_toolbar()
-        root.addLayout(self.toolbar)
+        root.addLayout(self._build_primary_toolbar())
+        root.addLayout(self._build_search_toolbar())
 
         split = QSplitter(Qt.Orientation.Horizontal)
         self.tab_widget = QTabWidget()
@@ -238,18 +248,32 @@ class CodeStudioPanel(QWidget):
 
         right = QWidget()
         right_layout = QVBoxLayout(right)
+        right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.addWidget(QLabel("File Metadata"))
         self.file_meta = QLabel("No file open")
         self.file_meta.setWordWrap(True)
         right_layout.addWidget(self.file_meta)
 
+        self.symbol_filter = QLineEdit()
+        self.symbol_filter.setPlaceholderText("Go to symbol")
+        self.symbol_filter.returnPressed.connect(self.go_to_symbol)
+        right_layout.addWidget(self.symbol_filter)
+
+        right_layout.addWidget(QLabel("Linked Assets / Targets"))
+        self.relationships = QTreeWidget()
+        self.relationships.setHeaderLabels(["Relation", "Target"])
+        self.relationships.itemDoubleClicked.connect(self._open_relation_item)
+        right_layout.addWidget(self.relationships)
+
         right_layout.addWidget(QLabel("Outline"))
-        self.outline = QListWidget()
+        self.outline = QTreeWidget()
+        self.outline.setHeaderLabels(["Symbol", "Line"])
         self.outline.itemDoubleClicked.connect(self._jump_to_outline)
         right_layout.addWidget(self.outline)
 
         right_layout.addWidget(QLabel("Problems"))
-        self.problems = QListWidget()
+        self.problems = QTreeWidget()
+        self.problems.setHeaderLabels(["Problem", "Location"])
         self.problems.itemDoubleClicked.connect(self._jump_to_problem)
         right_layout.addWidget(self.problems)
 
@@ -259,7 +283,7 @@ class CodeStudioPanel(QWidget):
         right_layout.addWidget(self.recent_files)
 
         split.addWidget(right)
-        split.setSizes([980, 320])
+        split.setSizes([980, 420])
         root.addWidget(split)
 
         self._update_recent_files()
@@ -270,6 +294,7 @@ class CodeStudioPanel(QWidget):
     def set_session(self, session) -> None:
         self.session = session if hasattr(session, "code_editor_service") else None
         self.editor_service = session.code_editor_service if hasattr(session, "code_editor_service") else session
+        self.relationship_service = getattr(session, "relationship_service", None) if hasattr(session, "relationship_service") else None
         self._clear_tabs()
         self._update_recent_files()
         self._restore_tabs_from_service()
@@ -281,60 +306,110 @@ class CodeStudioPanel(QWidget):
     def set_workspace_root(self, workspace_root: Path) -> None:
         self.workspace_root = workspace_root
 
-    def _build_toolbar(self) -> QHBoxLayout:
+    def _build_primary_toolbar(self) -> QHBoxLayout:
         row = QHBoxLayout()
+        controls = [
+            ("New", self.new_document, "Create a new untitled document."),
+            ("Open", self.open_file_dialog, "Open a file from the current workspace or disk."),
+            ("Save", self.save_current, "Save the active file."),
+            ("Save All", self.save_all, "Save all open files."),
+            ("New Class", lambda: self.new_java_scaffold("class"), "Create a Java class scaffold in src/main/java."),
+            ("New Interface", lambda: self.new_java_scaffold("interface"), "Create a Java interface scaffold."),
+            ("New Enum", lambda: self.new_java_scaffold("enum"), "Create a Java enum scaffold."),
+            ("New Record", lambda: self.new_java_scaffold("record"), "Create a Java record scaffold."),
+            ("Go To Symbol", self.go_to_symbol, "Jump to a symbol in the active file."),
+        ]
+        for label, callback, help_text in controls:
+            button = QPushButton(label)
+            button.setToolTip(help_text)
+            button.clicked.connect(callback)
+            row.addWidget(button)
+        return row
 
-        new_btn = QPushButton("New")
-        new_btn.setToolTip("Create a new untitled document in Code Studio.")
-        new_btn.setStatusTip("Create a new untitled document in Code Studio.")
-        new_btn.clicked.connect(self.new_document)
-        open_btn = QPushButton("Open")
-        open_btn.setToolTip("Open a file from the current workspace or disk.")
-        open_btn.setStatusTip("Open a file from the current workspace or disk.")
-        open_btn.clicked.connect(self.open_file_dialog)
-        save_btn = QPushButton("Save")
-        save_btn.setToolTip("Save the active file. Untitled buffers prompt for a path.")
-        save_btn.setStatusTip("Save the active file. Untitled buffers prompt for a path.")
-        save_btn.clicked.connect(self.save_current)
-        save_all = QPushButton("Save All")
-        save_all.setToolTip("Save all open files and keep EditorService session state in sync.")
-        save_all.setStatusTip("Save all open files and keep EditorService session state in sync.")
-        save_all.clicked.connect(self.save_all)
-
+    def _build_search_toolbar(self) -> QHBoxLayout:
+        row = QHBoxLayout()
         self.find_input = QLineEdit()
         self.find_input.setPlaceholderText("Find in current file")
-        self.find_input.setToolTip("Search within the active file.")
         self.replace_input = QLineEdit()
         self.replace_input.setPlaceholderText("Replace with")
-        self.replace_input.setToolTip("Replacement text for Replace and Replace All.")
-
         find_next = QPushButton("Find Next")
-        find_next.setToolTip("Jump to the next match.")
         find_next.clicked.connect(lambda: self.find_next(False))
         find_prev = QPushButton("Find Prev")
-        find_prev.setToolTip("Jump to the previous match.")
         find_prev.clicked.connect(lambda: self.find_next(True))
         replace_one = QPushButton("Replace")
-        replace_one.setToolTip("Replace the current selection or jump to the next match.")
         replace_one.clicked.connect(self.replace_one)
         replace_all = QPushButton("Replace All")
-        replace_all.setToolTip("Replace all matches in the active file.")
         replace_all.clicked.connect(self.replace_all)
-
-        for widget in [new_btn, open_btn, save_btn, save_all, self.find_input, self.replace_input, find_next, find_prev, replace_one, replace_all]:
+        for widget in [self.find_input, self.replace_input, find_next, find_prev, replace_one, replace_all]:
             row.addWidget(widget)
         return row
 
     def new_document(self) -> None:
         document = self.editor_service.new_document(path=None, content="")
         editor = self._open_document_tab(document, document.name)
-        self._refresh_meta(editor)
-        self._refresh_outline(editor)
-        self._refresh_problems(editor)
+        self._refresh_sidebar(editor)
         self._sync_session_state()
         self._notify_current_file()
         self.notifications.emit("Created new untitled document")
         self.status_message.emit("New document ready")
+
+    def new_java_scaffold(self, kind: str) -> None:
+        qualified_name, accepted = QInputDialog.getText(self, f"New Java {kind.title()}", "Qualified type name (package.TypeName or TypeName):")
+        if not accepted or not qualified_name.strip():
+            return
+        raw_name = qualified_name.strip()
+        package_name = ""
+        type_name = raw_name
+        if "." in raw_name:
+            package_name, type_name = raw_name.rsplit(".", 1)
+        path_hint = suggest_java_target_path(
+            self.workspace_root,
+            package_name,
+            type_name,
+            repo_root=self.session.context.repo_root if self.session is not None else self.workspace_root,
+        )
+        scaffold = render_java_scaffold(kind, type_name, package_name=package_name)
+        document = self.editor_service.new_document(path=path_hint, content="")
+        document.syntax_mode = "java"
+        document.set_content(scaffold)
+        editor = self._open_document_tab(document, path_hint.name)
+        self._set_editor_text(editor, scaffold)
+        tab = self._tabs[editor]
+        tab.dirty = True
+        self._update_tab_title(editor)
+        self._refresh_sidebar(editor)
+        self._sync_session_state()
+        self._notify_current_file()
+        self.notifications.emit(f"Prepared Java {kind} scaffold: {type_name}")
+        self.status_message.emit(f"Java scaffold ready: {type_name}")
+
+    def open_generated_content(self, content: str, *, language: str = "text", path: Path | None = None, title: str | None = None) -> None:
+        document = self.editor_service.new_document(path=path, content="")
+        document.syntax_mode = language
+        document.set_content(content)
+        editor = self._open_document_tab(document, title or document.name)
+        self._set_editor_text(editor, content)
+        tab = self._tabs[editor]
+        tab.dirty = True
+        self._update_tab_title(editor)
+        self._refresh_sidebar(editor)
+        self._sync_session_state()
+        self._notify_current_file()
+
+    def apply_text_to_current(self, content: str) -> bool:
+        editor = self._current_editor()
+        if editor is None:
+            return False
+        tab = self._current_tab()
+        if tab is None:
+            return False
+        self.editor_service.set_document_text(tab.document_id, content)
+        self._set_editor_text(editor, content)
+        tab.dirty = self.editor_service.documents[tab.document_id].dirty
+        self._update_tab_title(editor)
+        self._refresh_sidebar(editor)
+        self._sync_session_state()
+        return True
 
     def open_file_dialog(self) -> None:
         selected, _ = QFileDialog.getOpenFileName(self, "Open file", str(self.workspace_root), "All Files (*.*)")
@@ -342,31 +417,27 @@ class CodeStudioPanel(QWidget):
             self.open_file(Path(selected))
 
     def open_file(self, path: Path) -> None:
-        if path.is_dir():
+        normalized = path.resolve(strict=False)
+        if normalized.is_dir() or not normalized.exists():
             self.notifications.emit(f"File not found: {path}")
             return
-
-        existing_editor = self._find_editor_by_path(path)
+        existing_editor = self._find_editor_by_path(normalized)
         if existing_editor is not None:
             self.tab_widget.setCurrentWidget(existing_editor)
             self._notify_current_file()
             return
-
         try:
-            document = self.editor_service.open_document(path)
+            document = self.editor_service.open_document(normalized)
         except Exception as exc:  # noqa: BLE001
-            self.notifications.emit(f"Failed to open {path}: {exc}")
-            self.status_message.emit(f"Open failed: {path.name}")
+            self.notifications.emit(f"Failed to open {normalized}: {exc}")
+            self.status_message.emit(f"Open failed: {normalized.name}")
             return
-
-        editor = self._open_document_tab(document, path.name)
-        self._refresh_meta(editor)
-        self._refresh_outline(editor)
-        self._refresh_problems(editor)
+        editor = self._open_document_tab(document, normalized.name)
+        self._refresh_sidebar(editor)
         self._update_recent_files()
         self._sync_session_state()
         self._notify_current_file()
-        self.status_message.emit(f"Opened: {path}")
+        self.status_message.emit(f"Opened: {normalized}")
 
     def _open_document_tab(self, document: TextDocument, title: str | None = None, *, make_current: bool = True) -> StudioCodeEditor:
         if document.path is not None:
@@ -376,13 +447,11 @@ class CodeStudioPanel(QWidget):
                     self.tab_widget.setCurrentWidget(existing_editor)
                     self._notify_current_file()
                 return existing_editor
-
         editor = StudioCodeEditor()
         editor.set_language(document.syntax_mode)
         self._set_editor_text(editor, document.content)
         editor.cursor_moved.connect(self._cursor_moved)
         editor.textChanged.connect(lambda editor=editor: self._editor_text_changed(editor))
-
         self._tabs[editor] = _CodeTab(document_id=document.document_id, path=document.path, editor=editor, dirty=document.dirty)
         index = self.tab_widget.addTab(editor, title or document.name)
         if make_current:
@@ -402,6 +471,7 @@ class CodeStudioPanel(QWidget):
     def _clear_tabs(self) -> None:
         self.tab_widget.clear()
         self._tabs.clear()
+        self._outline_cache.clear()
         self.current_file_changed.emit(None)
 
     def _notify_current_file(self) -> None:
@@ -456,6 +526,7 @@ class CodeStudioPanel(QWidget):
                 return
         self.editor_service.close_document(tab.document_id)
         self._tabs.pop(editor, None)
+        self._outline_cache.pop(editor, None)
         self.tab_widget.removeTab(index)
         self._update_recent_files()
         self._sync_session_state()
@@ -521,10 +592,33 @@ class CodeStudioPanel(QWidget):
         self._set_editor_text(editor, document.content)
         tab.dirty = document.dirty
         self._update_tab_title(editor)
-        self._refresh_outline(editor)
-        self._refresh_problems(editor)
+        self._refresh_sidebar(editor)
         self._sync_session_state()
         self.notifications.emit(f"Replaced {count} occurrence(s) in {tab.display_name}")
+
+    def go_to_symbol(self) -> None:
+        editor = self._current_editor()
+        if editor is None:
+            return
+        query = self.symbol_filter.text().strip().lower()
+        symbols = self._outline_symbols(editor)
+        if not symbols:
+            self.status_message.emit("No outline symbols available for the active file")
+            return
+        candidate = None
+        if not query:
+            candidate = symbols[0]
+        else:
+            for symbol in symbols:
+                haystack = f"{symbol.symbol_type} {symbol.name} {symbol.display_name}".lower()
+                if query in haystack:
+                    candidate = symbol
+                    break
+        if candidate is None:
+            self.status_message.emit(f"No symbol match for '{query}'")
+            return
+        self._jump_to_position(candidate.line, candidate.column, max(1, len(candidate.name)))
+        self.status_message.emit(f"Symbol: {candidate.display_name}")
 
     def _editor_text_changed(self, editor: StudioCodeEditor) -> None:
         if self._setting_editor_text:
@@ -534,11 +628,10 @@ class CodeStudioPanel(QWidget):
             return
         self.editor_service.set_document_text(tab.document_id, editor.toPlainText())
         tab.dirty = self.editor_service.documents[tab.document_id].dirty
+        self._outline_cache.pop(editor, None)
         self._update_tab_title(editor)
         if editor is self._current_editor():
-            self._refresh_meta(editor)
-            self._refresh_outline(editor)
-            self._refresh_problems(editor)
+            self._refresh_sidebar(editor)
         self._sync_session_state()
 
     def _save_editor(self, editor: StudioCodeEditor) -> bool:
@@ -548,13 +641,8 @@ class CodeStudioPanel(QWidget):
         try:
             self.editor_service.set_document_text(tab.document_id, editor.toPlainText())
             if tab.path is None:
-                suggested_name = f"{tab.display_name}.txt" if not tab.display_name.endswith('.txt') else tab.display_name
-                selected, _ = QFileDialog.getSaveFileName(
-                    self,
-                    "Save file",
-                    str(self.workspace_root / suggested_name),
-                    "All Files (*.*)",
-                )
+                suggested_name = f"{tab.display_name}.txt" if not tab.display_name.endswith(".txt") else tab.display_name
+                selected, _ = QFileDialog.getSaveFileName(self, "Save file", str(self.workspace_root / suggested_name), "All Files (*.*)")
                 if not selected:
                     self.status_message.emit("Save cancelled")
                     return False
@@ -566,21 +654,25 @@ class CodeStudioPanel(QWidget):
             QMessageBox.critical(self, "Save Failed", f"Could not save file:\n{path_label}\n\n{exc}")
             self.notifications.emit(f"ERROR: failed to save {tab.display_name}: {exc}")
             return False
-
-        tab.path = saved_path
+        tab.path = saved_path.resolve(strict=False)
         tab.dirty = False
         document = self.editor_service.documents.get(tab.document_id)
         if document is not None:
             editor.set_language(document.syntax_mode)
         self._update_tab_title(editor)
-        self._refresh_meta(editor)
-        self._refresh_problems(editor)
+        self._refresh_sidebar(editor)
         self._update_recent_files()
         self._sync_session_state()
         self.status_message.emit(f"Saved: {saved_path}")
         self.notifications.emit(f"Saved {saved_path.name}")
         self._notify_current_file()
         return True
+
+    def _refresh_sidebar(self, editor: StudioCodeEditor | None) -> None:
+        self._refresh_meta(editor)
+        self._refresh_relations(editor)
+        self._refresh_outline(editor)
+        self._refresh_problems(editor)
 
     def _refresh_meta(self, editor: StudioCodeEditor | None) -> None:
         if editor is None or editor not in self._tabs:
@@ -590,12 +682,71 @@ class CodeStudioPanel(QWidget):
         document = self.editor_service.documents.get(tab.document_id)
         text = document.content if document is not None else editor.toPlainText()
         line_count = text.count("\n") + 1
-        fallback_language = LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text") if tab.path is not None else "text"
-        language = document.syntax_mode if document is not None else fallback_language
+        language = self._document_language(tab, document)
         recent = len(self.editor_service.recent_files)
-        self.file_meta.setText(
-            f"Path: {tab.path if tab.path is not None else tab.display_name}\nLanguage: {language}\nLines: {line_count}\nDirty: {'yes' if tab.dirty else 'no'}\nRecent tracked: {recent}"
-        )
+        details = [
+            f"Path: {tab.path if tab.path is not None else tab.display_name}",
+            f"Language: {language}",
+            f"Lines: {line_count}",
+            f"Dirty: {'yes' if tab.dirty else 'no'}",
+            f"Recent tracked: {recent}",
+        ]
+        if language == "java":
+            analysis = self._analyze_java(tab, text)
+            if analysis.package_name:
+                details.append(f"Package: {analysis.package_name}")
+            if analysis.imports:
+                details.append(f"Imports: {len(analysis.imports)}")
+            if analysis.resource_ids:
+                details.append(f"Resource IDs: {', '.join(analysis.resource_ids[:3])}")
+        record = self._relationship_record(tab.path)
+        if record is not None:
+            if record.resource_id:
+                details.append(f"Relationship resource: {record.resource_id}")
+            if record.targets:
+                details.append(f"Linked targets: {len(record.targets)}")
+            linked_resource_ids = record.metadata.get("linkedJavaResourceIds")
+            if isinstance(linked_resource_ids, list) and linked_resource_ids:
+                details.append(f"Linked Java resources: {', '.join(str(item) for item in linked_resource_ids[:3])}")
+        self.file_meta.setText("\n".join(details))
+
+    def _refresh_relations(self, editor: StudioCodeEditor | None) -> None:
+        self.relationships.clear()
+        if editor is None or editor not in self._tabs:
+            return
+        tab = self._tabs[editor]
+        record = self._relationship_record(tab.path)
+        if record is None:
+            item = QTreeWidgetItem(["No relationship data", ""])
+            item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            self.relationships.addTopLevelItem(item)
+            return
+        grouped: dict[str, list[object]] = defaultdict(list)
+        for target in record.targets:
+            grouped[target.relation].append(target)
+        for relation in sorted(grouped):
+            group_item = QTreeWidgetItem([relation.replace("_", " ").title(), ""])
+            group_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            self.relationships.addTopLevelItem(group_item)
+            for target in grouped[relation]:
+                child = QTreeWidgetItem([target.kind, target.path.name])
+                child.setData(0, Qt.ItemDataRole.UserRole, str(target.path))
+                tooltip = [str(target.path)]
+                if target.resource_id:
+                    tooltip.append(f"resourceId: {target.resource_id}")
+                tooltip.append(f"confidence: {target.confidence}")
+                child.setToolTip(0, "\n".join(tooltip))
+                child.setToolTip(1, "\n".join(tooltip))
+                group_item.addChild(child)
+        if record.warnings:
+            warning_group = QTreeWidgetItem(["Warnings", ""])
+            warning_group.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            self.relationships.addTopLevelItem(warning_group)
+            for message in record.warnings[:8]:
+                warning_item = QTreeWidgetItem([message, ""])
+                warning_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                warning_group.addChild(warning_item)
+        self.relationships.expandAll()
 
     def _refresh_outline(self, editor: StudioCodeEditor | None) -> None:
         self.outline.clear()
@@ -603,40 +754,54 @@ class CodeStudioPanel(QWidget):
             return
         tab = self._tabs[editor]
         document = self.editor_service.documents.get(tab.document_id)
-        language = document.syntax_mode if document is not None else LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text") if tab.path is not None else "text"
-        lines = editor.toPlainText().splitlines()
+        language = self._document_language(tab, document)
+        text = editor.toPlainText()
+        if language == "java":
+            analysis = self._analyze_java(tab, text)
+            self._outline_cache[editor] = list(analysis.symbols)
+            for symbol_type in ["class", "interface", "enum", "record", "field", "method"]:
+                symbols = [symbol for symbol in analysis.symbols if symbol.symbol_type == symbol_type]
+                if not symbols:
+                    continue
+                group = QTreeWidgetItem([SYMBOL_GROUP_TITLES[symbol_type], str(len(symbols))])
+                group.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                self.outline.addTopLevelItem(group)
+                for symbol in symbols:
+                    child = QTreeWidgetItem([symbol.display_name, str(symbol.line)])
+                    child.setData(0, Qt.ItemDataRole.UserRole, (symbol.line, symbol.column, len(symbol.name)))
+                    group.addChild(child)
+            self.outline.expandAll()
+            return
 
+        self._outline_cache[editor] = []
+        lines = text.splitlines()
+        entries: list[tuple[str, int]] = []
         if language == "python":
             for idx, line in enumerate(lines, start=1):
                 if line.lstrip().startswith(("def ", "class ")):
-                    item = QListWidgetItem(f"L{idx}: {line.strip()}")
-                    item.setData(Qt.ItemDataRole.UserRole, idx)
-                    self.outline.addItem(item)
+                    entries.append((line.strip(), idx))
         elif language == "markdown":
             for idx, line in enumerate(lines, start=1):
                 if line.strip().startswith("#"):
-                    item = QListWidgetItem(f"L{idx}: {line.strip()}")
-                    item.setData(Qt.ItemDataRole.UserRole, idx)
-                    self.outline.addItem(item)
+                    entries.append((line.strip(), idx))
         elif language == "json":
             for idx, line in enumerate(lines, start=1):
-                if '"' in line and ":" in line:
-                    match = re.search(r'"([^"]+)"\s*:', line)
-                    if match:
-                        item = QListWidgetItem(f"L{idx}: {match.group(1)}")
-                        item.setData(Qt.ItemDataRole.UserRole, idx)
-                        self.outline.addItem(item)
-        elif language == "java":
-            for idx, line in enumerate(lines, start=1):
-                stripped = line.strip()
-                if stripped.startswith(("class ", "public class", "private ", "protected ", "public ")) and ("(" in stripped or "class" in stripped):
-                    item = QListWidgetItem(f"L{idx}: {stripped}")
-                    item.setData(Qt.ItemDataRole.UserRole, idx)
-                    self.outline.addItem(item)
-        else:
-            item = QListWidgetItem("No outline provider for this file type yet")
+                match = re.search(r'"([^"]+)"\s*:', line)
+                if match:
+                    entries.append((match.group(1), idx))
+        if not entries:
+            item = QTreeWidgetItem(["No outline symbols", ""])
             item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-            self.outline.addItem(item)
+            self.outline.addTopLevelItem(item)
+            return
+        group = QTreeWidgetItem(["Outline", str(len(entries))])
+        group.setFlags(Qt.ItemFlag.ItemIsEnabled)
+        self.outline.addTopLevelItem(group)
+        for label, line in entries:
+            child = QTreeWidgetItem([label, str(line)])
+            child.setData(0, Qt.ItemDataRole.UserRole, (line, 1, max(1, len(label))))
+            group.addChild(child)
+        self.outline.expandAll()
 
     def _refresh_problems(self, editor: StudioCodeEditor | None) -> None:
         self.problems.clear()
@@ -646,43 +811,84 @@ class CodeStudioPanel(QWidget):
         diagnostics = self._diagnose(tab)
         self.editor_service.problems.set_document_issues(tab.document_id, diagnostics)
         if not diagnostics:
-            ok_item = QListWidgetItem("No problems detected")
+            ok_item = QTreeWidgetItem(["No problems detected", ""])
             ok_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-            self.problems.addItem(ok_item)
+            self.problems.addTopLevelItem(ok_item)
             return
-
+        file_label = str(tab.path) if tab.path is not None else tab.display_name
+        file_item = QTreeWidgetItem([file_label, str(len(diagnostics))])
+        file_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+        self.problems.addTopLevelItem(file_item)
+        by_severity: dict[str, list[CodeDiagnostic]] = defaultdict(list)
         for diagnostic in diagnostics:
-            item = QListWidgetItem(f"[{diagnostic.severity.upper()}] L{diagnostic.line}: {diagnostic.message}")
-            item.setData(Qt.ItemDataRole.UserRole, diagnostic.line)
-            self.problems.addItem(item)
+            by_severity[diagnostic.severity].append(diagnostic)
+        for severity in sorted(by_severity, key=lambda value: SEVERITY_ORDER.get(value, 99)):
+            group = QTreeWidgetItem([severity.upper(), str(len(by_severity[severity]))])
+            group.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            file_item.addChild(group)
+            for diagnostic in by_severity[severity]:
+                location = f"L{diagnostic.line}:C{diagnostic.column}"
+                child = QTreeWidgetItem([diagnostic.message, location])
+                child.setData(0, Qt.ItemDataRole.UserRole, (diagnostic.line, diagnostic.column, 1))
+                group.addChild(child)
+        self.problems.expandAll()
 
     def _diagnose(self, tab: _CodeTab) -> list[CodeDiagnostic]:
         text = tab.editor.toPlainText()
         document = self.editor_service.documents.get(tab.document_id)
-        language = document.syntax_mode if document is not None else LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text") if tab.path is not None else "text"
+        language = self._document_language(tab, document)
         diagnostic_path = tab.path if tab.path is not None else Path(tab.display_name)
         issues: list[CodeDiagnostic] = []
-
         if language == "python":
             try:
                 ast.parse(text)
             except SyntaxError as exc:
-                issues.append(CodeDiagnostic(severity="error", message=exc.msg, line=exc.lineno or 1, source="python", path=diagnostic_path))
+                issues.append(CodeDiagnostic(severity="error", message=exc.msg, line=exc.lineno or 1, column=exc.offset or 1, source="python", path=diagnostic_path))
         elif language == "json":
             try:
                 json.loads(text)
             except json.JSONDecodeError as exc:
-                issues.append(CodeDiagnostic(severity="error", message=exc.msg, line=exc.lineno, source="json", path=diagnostic_path))
+                issues.append(CodeDiagnostic(severity="error", message=exc.msg, line=exc.lineno, column=exc.colno, source="json", path=diagnostic_path))
         elif language == "java":
-            if text.count("{") != text.count("}"):
-                issues.append(CodeDiagnostic(severity="warning", message="Brace count is unbalanced", line=1, source="java", path=diagnostic_path))
+            analysis = self._analyze_java(tab, text)
+            issues.extend(analysis.diagnostics)
+            if tab.path is not None:
+                record = self._relationship_record(tab.path)
+                if record is not None:
+                    for warning in record.warnings[:6]:
+                        issues.append(CodeDiagnostic(severity="info", message=warning, line=1, column=1, source="relationship", path=diagnostic_path))
         if not text.strip():
-            issues.append(CodeDiagnostic(severity="warning", message="File is empty", line=1, source=language, path=diagnostic_path))
+            issues.append(CodeDiagnostic(severity="warning", message="File is empty", line=1, column=1, source=language, path=diagnostic_path))
         return issues
 
+    def _outline_symbols(self, editor: StudioCodeEditor) -> list[JavaSymbol]:
+        cached = self._outline_cache.get(editor)
+        if cached is not None:
+            return cached
+        tab = self._tabs.get(editor)
+        if tab is None:
+            return []
+        analysis = self._analyze_java(tab, editor.toPlainText())
+        self._outline_cache[editor] = list(analysis.symbols)
+        return self._outline_cache[editor]
+
+    def _analyze_java(self, tab: _CodeTab, text: str) -> JavaAnalysis:
+        path = tab.path if tab.path is not None else self.workspace_root / f"{tab.display_name}.java"
+        return analyze_java_source(text, path=path)
+
+    def _document_language(self, tab: _CodeTab, document: TextDocument | None) -> str:
+        fallback_language = LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text") if tab.path is not None else "text"
+        return document.syntax_mode if document is not None else fallback_language
+
+    def _relationship_record(self, path: Path | None):
+        if path is None or self.relationship_service is None:
+            return None
+        return self.relationship_service.resolve_path(path)
+
     def _find_editor_by_path(self, path: Path) -> StudioCodeEditor | None:
+        normalized = path.resolve(strict=False)
         for editor, tab in self._tabs.items():
-            if tab.path == path:
+            if tab.path == normalized:
                 return editor
         return None
 
@@ -697,9 +903,7 @@ class CodeStudioPanel(QWidget):
     def _active_tab_changed(self, index: int) -> None:
         _ = index
         editor = self._current_editor()
-        self._refresh_meta(editor)
-        self._refresh_outline(editor)
-        self._refresh_problems(editor)
+        self._refresh_sidebar(editor)
         self._notify_current_file()
 
     def _update_tab_title(self, editor: StudioCodeEditor) -> None:
@@ -723,24 +927,22 @@ class CodeStudioPanel(QWidget):
         if value:
             self.open_file(Path(str(value)))
 
-    def _jump_to_outline(self, item: QListWidgetItem) -> None:
-        self._jump_to_line(item.data(Qt.ItemDataRole.UserRole))
+    def _jump_to_outline(self, item: QTreeWidgetItem) -> None:
+        payload = item.data(0, Qt.ItemDataRole.UserRole)
+        if isinstance(payload, tuple) and len(payload) == 3:
+            self._jump_to_position(payload[0], payload[1], payload[2])
 
-    def _jump_to_problem(self, item: QListWidgetItem) -> None:
-        self._jump_to_line(item.data(Qt.ItemDataRole.UserRole))
+    def _jump_to_problem(self, item: QTreeWidgetItem) -> None:
+        payload = item.data(0, Qt.ItemDataRole.UserRole)
+        if isinstance(payload, tuple) and len(payload) == 3:
+            self._jump_to_position(payload[0], payload[1], payload[2])
 
-    def _jump_to_line(self, line: int | None) -> None:
-        editor = self._current_editor()
-        if editor is None or not isinstance(line, int):
-            return
-        cursor = editor.textCursor()
-        cursor.movePosition(QTextCursor.MoveOperation.Start)
-        for _ in range(max(0, line - 1)):
-            cursor.movePosition(QTextCursor.MoveOperation.Down)
-        editor.setTextCursor(cursor)
-        editor.setFocus()
+    def _open_relation_item(self, item: QTreeWidgetItem) -> None:
+        value = item.data(0, Qt.ItemDataRole.UserRole)
+        if value:
+            self.open_link_requested.emit(Path(str(value)))
 
-    def _jump_to_match(self, line: int, column: int, length: int) -> None:
+    def _jump_to_position(self, line: int, column: int, length: int) -> None:
         editor = self._current_editor()
         if editor is None:
             return
@@ -754,6 +956,9 @@ class CodeStudioPanel(QWidget):
             cursor.movePosition(QTextCursor.MoveOperation.Right, QTextCursor.MoveMode.KeepAnchor)
         editor.setTextCursor(cursor)
         editor.setFocus()
+
+    def _jump_to_match(self, line: int, column: int, length: int) -> None:
+        self._jump_to_position(line, column, length)
 
     def _cursor_moved(self, line: int, col: int) -> None:
         self.status_message.emit(f"Ln {line}, Col {col}")
@@ -770,15 +975,9 @@ class CodeStudioPanel(QWidget):
 
     def _set_empty_state(self) -> None:
         self.problems.clear()
-        item = QListWidgetItem("Open a file from Project Browser or use Open to start coding")
-        item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-        self.problems.addItem(item)
         self.outline.clear()
+        self.relationships.clear()
+        item = QTreeWidgetItem(["Open a file from Project Browser or use Open to start coding", ""])
+        item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+        self.problems.addTopLevelItem(item)
         self.file_meta.setText("No file open")
-
-
-
-
-
-
-

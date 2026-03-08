@@ -2,7 +2,7 @@ package com.extremecraft.server;
 
 import com.extremecraft.ability.AbilityCooldownManager;
 import com.extremecraft.ability.AbilityEngine;
-import com.extremecraft.combat.dualwield.validation.OffhandActionValidator;
+import com.extremecraft.combat.dualwield.service.OffhandRuntimeService;
 import com.extremecraft.magic.SpellExecutor;
 import com.extremecraft.modules.runtime.ModuleRuntimeService;
 import com.extremecraft.network.security.ServerPacketLimiter;
@@ -27,7 +27,6 @@ public class PlayerRuntimeCleanupEvents {
         ModuleRuntimeService.clearPlayer(player);
         SpellExecutor.clearPlayer(player);
         ServerPacketLimiter.clearPlayer(player);
-        OffhandActionValidator.clearPlayer(player);
-        DwServerTicker.abortOffhandBreak(player, false);
+        OffhandRuntimeService.clearPlayer(player, false);
     }
 }

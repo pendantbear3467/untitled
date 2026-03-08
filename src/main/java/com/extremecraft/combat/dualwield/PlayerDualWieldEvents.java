@@ -1,6 +1,6 @@
 package com.extremecraft.combat.dualwield;
 
-import com.extremecraft.combat.dualwield.validation.OffhandActionValidator;
+import com.extremecraft.combat.dualwield.service.OffhandRuntimeService;
 import com.extremecraft.core.ECConstants;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -33,11 +33,19 @@ public class PlayerDualWieldEvents {
         } finally {
             event.getOriginal().invalidateCaps();
         }
+
+        if (event.getOriginal() instanceof ServerPlayer originalPlayer) {
+            OffhandRuntimeService.clearPlayer(originalPlayer, false);
+        }
+        if (event.getEntity() instanceof ServerPlayer newPlayer) {
+            OffhandRuntimeService.clearPlayer(newPlayer, false);
+        }
     }
 
     @SubscribeEvent
     public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
+            OffhandRuntimeService.clearPlayer(player, false);
             syncState(player);
         }
     }
@@ -45,13 +53,14 @@ public class PlayerDualWieldEvents {
     @SubscribeEvent
     public void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            OffhandActionValidator.clearPlayer(player);
+            OffhandRuntimeService.clearPlayer(player, false);
         }
     }
 
     @SubscribeEvent
     public void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
+            OffhandRuntimeService.clearPlayer(player, false);
             syncState(player);
         }
     }
@@ -59,6 +68,7 @@ public class PlayerDualWieldEvents {
     @SubscribeEvent
     public void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
+            OffhandRuntimeService.clearPlayer(player, false);
             syncState(player);
         }
     }
