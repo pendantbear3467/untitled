@@ -67,9 +67,13 @@ class AssetStudioWindow(QMainWindow):
 
         self.log = self._create_editor("console_panel", ConsolePanel)
         self.browser = self._create_editor("project_browser", ProjectBrowser)
+        if hasattr(self.browser, "bind_session"):
+            self.browser.bind_session(self.session)
         self.browser.load_workspace(self.context.workspace_root)
         if hasattr(self.browser, "file_open_requested"):
             self.browser.file_open_requested.connect(self._open_file_from_browser)
+        if hasattr(self.browser, "notifications"):
+            self.browser.notifications.connect(lambda message: self._publish_notification("warning", "browser", message))
 
         self.preview = self._create_editor("preview_renderer", PreviewRenderer)
         self.preview_tab_renderer = self._create_editor("preview_renderer", PreviewRenderer)
@@ -78,6 +82,10 @@ class AssetStudioWindow(QMainWindow):
         self.code_studio = CodeStudioPanel(self.session, self.context.workspace_root)
         self.code_studio.status_message.connect(self._set_cursor_status)
         self.code_studio.notifications.connect(lambda message: self._publish_notification("info", "code", message))
+        if hasattr(self.code_studio, "current_file_changed"):
+            self.code_studio.current_file_changed.connect(self.browser.set_current_file)
+        if hasattr(self.code_studio, "current_file"):
+            self.browser.set_current_file(self.code_studio.current_file())
 
         self.wizard = self._create_editor("asset_wizard", AssetWizardPanel)
         self.wizard.generate_tool_requested.connect(self._on_generate_tool)
@@ -332,9 +340,10 @@ class AssetStudioWindow(QMainWindow):
             if not handle.done():
                 continue
             result = handle.result()
-            level = "info" if result.success else "error"
+            level = self._task_severity(result)
             self._publish_notification(level, "task", result.message)
             self._write_log(result.message)
+            self._record_task_report(result)
             finished.append(task_id)
         for task_id in finished:
             self._running_tasks.pop(task_id, None)
@@ -345,9 +354,10 @@ class AssetStudioWindow(QMainWindow):
                 continue
             result = handle.result
             if result is not None:
-                level = "info" if result.success else "error"
+                level = self._task_severity(result)
                 self._publish_notification(level, result.name, result.message)
                 self.statusBar().showMessage(result.message, 5000)
+                self._record_task_report(result)
             finished_processes.append(task_id)
         for task_id in finished_processes:
             self._running_processes.pop(task_id, None)
@@ -362,6 +372,24 @@ class AssetStudioWindow(QMainWindow):
 
     def _set_cursor_status(self, message: str) -> None:
         self._cursor_status.setText(message)
+
+    def _task_severity(self, result) -> str:
+        if getattr(result, "cancelled", False):
+            return "warning"
+        return "info" if getattr(result, "success", False) else "error"
+
+    def _record_task_report(self, result) -> None:
+        report = getattr(result, "report", None)
+        if report is None:
+            return
+        for artifact in getattr(report, "artifacts", []):
+            if getattr(artifact, "path", None) is not None:
+                self._write_log(f"[{report.category}] {artifact.kind}: {artifact.path}")
+        for issue in getattr(report, "issues", []):
+            prefix = str(getattr(issue, "path", None) or report.operation)
+            self._write_log(f"[{issue.severity}] {prefix}: {issue.message}")
+        if getattr(report, "category", "") in {"build", "export", "compile", "validation", "release", "modpack"} and hasattr(self.browser, "refresh_view"):
+            self.browser.refresh_view()
 
     def _show_output(self) -> None:
         self.output_dock.show()
@@ -382,6 +410,8 @@ class AssetStudioWindow(QMainWindow):
     def _rebind_workspace(self) -> None:
         self.workspace_manager = self.session.workspace_manager
         self.context = self.session.context
+        if hasattr(self.browser, "bind_session"):
+            self.browser.bind_session(self.session)
         self.browser.load_workspace(self.context.workspace_root)
         if hasattr(self.code_studio, "set_session"):
             self.code_studio.set_session(self.session)
@@ -389,6 +419,8 @@ class AssetStudioWindow(QMainWindow):
             self.code_studio.set_workspace_root(self.context.workspace_root)
         else:
             self.code_studio.workspace_root = self.context.workspace_root
+        if hasattr(self.code_studio, "current_file"):
+            self.browser.set_current_file(self.code_studio.current_file())
         if hasattr(self.build_run_panel, "set_session"):
             self.build_run_panel.set_session(self.session)
         if hasattr(self.gui_studio, "set_engine"):
@@ -698,4 +730,5 @@ def launch_gui(workspace_root: Path) -> int:
     window = AssetStudioWindow(workspace_root)
     window.show()
     return app.exec()
+
 

@@ -276,6 +276,7 @@ class CodeStudioPanel(QWidget):
         if not self._tabs:
             self._set_empty_state()
         self._sync_session_state()
+        self._notify_current_file()
 
     def set_workspace_root(self, workspace_root: Path) -> None:
         self.workspace_root = workspace_root
@@ -331,6 +332,7 @@ class CodeStudioPanel(QWidget):
         self._refresh_outline(editor)
         self._refresh_problems(editor)
         self._sync_session_state()
+        self._notify_current_file()
         self.notifications.emit("Created new untitled document")
         self.status_message.emit("New document ready")
 
@@ -363,6 +365,7 @@ class CodeStudioPanel(QWidget):
         self._refresh_problems(editor)
         self._update_recent_files()
         self._sync_session_state()
+        self._notify_current_file()
         self.status_message.emit(f"Opened: {path}")
 
     def _open_document_tab(self, document: TextDocument, title: str | None = None, *, make_current: bool = True) -> StudioCodeEditor:
@@ -404,6 +407,10 @@ class CodeStudioPanel(QWidget):
     def _notify_current_file(self) -> None:
         tab = self._current_tab()
         self.current_file_changed.emit(tab.path if tab is not None else None)
+
+    def current_file(self) -> Path | None:
+        tab = self._current_tab()
+        return tab.path if tab is not None else None
 
     def save_current(self) -> bool:
         editor = self._current_editor()
@@ -768,6 +775,7 @@ class CodeStudioPanel(QWidget):
         self.problems.addItem(item)
         self.outline.clear()
         self.file_meta.setText("No file open")
+
 
 
 

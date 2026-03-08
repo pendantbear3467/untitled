@@ -312,8 +312,7 @@ class WorkspaceIndexService:
                 self._link_pair(entry, "generated_artifact", target)
                 if self._is_stale(entry.path, target):
                     self._add_issue(entry, "warning", "stale_generated_artifact", f"Generated artifact is older than graph source: {target}", related_path=target)
-            if not linked_any:
-                self._add_issue(entry, "warning", "missing_runtime_export", f"Generated artifact not found for graph: {entry.path}")
+
 
         self._apply_badges(entry)
 
@@ -533,3 +532,4 @@ class WorkspaceIndexService:
             if candidate.exists():
                 return candidate.resolve(strict=False)
         return None
+
