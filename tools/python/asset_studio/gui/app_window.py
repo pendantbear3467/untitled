@@ -75,7 +75,7 @@ class AssetStudioWindow(QMainWindow):
         self.preview_tab_renderer = self._create_editor("preview_renderer", PreviewRenderer)
         self._last_preview_texture: Path | None = None
 
-        self.code_studio = CodeStudioPanel(self.session.code_editor_service, self.context.workspace_root)
+        self.code_studio = CodeStudioPanel(self.session, self.context.workspace_root)
         self.code_studio.status_message.connect(self._set_cursor_status)
         self.code_studio.notifications.connect(lambda message: self._publish_notification("info", "code", message))
 
@@ -103,7 +103,7 @@ class AssetStudioWindow(QMainWindow):
             self.model_studio.status_message.connect(self._set_cursor_status)
         if hasattr(self.model_studio, "notifications"):
             self.model_studio.notifications.connect(lambda message: self._publish_notification("info", "model", message))
-        self.build_run_panel = BuildRunPanel(self._callbacks())
+        self.build_run_panel = BuildRunPanel(self.session, self._callbacks())
 
         self.editor_tabs = self._build_editor_tabs()
         self.main_tabs = self._build_main_tabs()
@@ -139,13 +139,14 @@ class AssetStudioWindow(QMainWindow):
         try:
             return factory()
         except Exception as exc:  # noqa: BLE001
+            self.session.crash_guard.capture_exception(f"panel.{label}", exc)
             holder = QWidget()
             layout = QVBoxLayout(holder)
             layout.addWidget(QLabel(f"{label} failed to load."))
             detail = QLabel(str(exc))
             detail.setWordWrap(True)
             layout.addWidget(detail)
-            self._publish_notification("error", "ui", f"{label} failed to load")
+            self._publish_notification("error", "ui", f"{label} failed to load: {exc}")
             return holder
 
     def _build_main_tabs(self) -> QTabWidget:
@@ -212,12 +213,27 @@ class AssetStudioWindow(QMainWindow):
         self._add_toolbar_action(toolbar, "Notifications", self._show_notifications, "Reveal the output dock and focus notifications.")
 
     def _add_toolbar_action(self, toolbar: QToolBar, label: str, callback, description: str) -> None:
-        action = toolbar.addAction(label, callback)
+        action = toolbar.addAction(label, self._safe_action(label, callback))
         action.setToolTip(description)
         action.setStatusTip(description)
 
+    def _safe_action(self, name: str, callback):
+        def runner(*_args, **_kwargs):
+            try:
+                return callback()
+            except Exception as exc:  # noqa: BLE001
+                self.session.crash_guard.capture_exception(f"action.{name}", exc)
+                message = f"{name} failed: {exc}"
+                self.session.log_model.append("studio", "error", message, stream="stderr")
+                self._publish_notification("error", "ui", message)
+                self._write_log(message)
+                self._show_output()
+                return None
+
+        return runner
+
     def _callbacks(self):
-        return {
+        callbacks = {
             "new_project": self._new_project,
             "open_project": self._open_project,
             "import_blockbench": self._import_blockbench,
@@ -243,12 +259,17 @@ class AssetStudioWindow(QMainWindow):
             "export_datapack": lambda: self._export_target("datapack"),
             "release_build": self._release_build,
             "modpack_build": self._modpack_build,
+            "run_client": lambda: self._run_named_configuration("client"),
+            "run_server": lambda: self._run_named_configuration("server"),
+            "latest_log": self._open_latest_log,
+            "clear_logs": self._clear_logs,
             "preview_models": self._preview_models,
             "preview_animations": self._preview_animations,
             "texture_viewer": self._texture_viewer,
             "documentation": lambda: webbrowser.open("https://github.com/pendantbear3467/untitled/tree/main/docs"),
             "github": lambda: webbrowser.open("https://github.com/pendantbear3467/untitled"),
         }
+        return {key: self._safe_action(key, callback) for key, callback in callbacks.items()}
 
     def _build_editor_tabs(self) -> QTabWidget:
         tabs = QTabWidget()
@@ -280,7 +301,13 @@ class AssetStudioWindow(QMainWindow):
         return result
 
     def _run_task(self, name: str, fn, *args):
-        handle = self.session.task_service.submit(name, fn, *args)
+        try:
+            handle = self.session.task_service.submit(name, fn, *args)
+        except Exception as exc:  # noqa: BLE001
+            self.session.crash_guard.capture_exception(f"task.{name}", exc)
+            self._publish_notification("error", "task", f"{name} failed to start: {exc}")
+            self._show_notifications()
+            return
         self._running_tasks[handle.task_id] = handle
         self._publish_notification("info", "task", f"Queued: {name}")
 
@@ -356,10 +383,14 @@ class AssetStudioWindow(QMainWindow):
         self.workspace_manager = self.session.workspace_manager
         self.context = self.session.context
         self.browser.load_workspace(self.context.workspace_root)
+        if hasattr(self.code_studio, "set_session"):
+            self.code_studio.set_session(self.session)
         if hasattr(self.code_studio, "set_workspace_root"):
             self.code_studio.set_workspace_root(self.context.workspace_root)
         else:
             self.code_studio.workspace_root = self.context.workspace_root
+        if hasattr(self.build_run_panel, "set_session"):
+            self.build_run_panel.set_session(self.session)
         if hasattr(self.gui_studio, "set_engine"):
             self.gui_studio.set_engine(self.session.gui_studio_engine)
         if hasattr(self.model_studio, "set_engine"):
@@ -533,9 +564,9 @@ class AssetStudioWindow(QMainWindow):
         self._switch_tab("Code")
 
     def _open_latest_log(self) -> None:
-        latest = self.context.repo_root / "run" / "logs" / "latest.log"
-        if not latest.exists():
-            self._publish_notification("warning", "logs", "No latest.log found")
+        latest = self.session.latest_log_path()
+        if latest is None or not latest.exists():
+            self._publish_notification("warning", "logs", "No latest log found for this workspace or runtime session")
             self._show_notifications()
             return
         self.code_studio.open_file(latest)
@@ -552,14 +583,17 @@ class AssetStudioWindow(QMainWindow):
         if result != QMessageBox.StandardButton.Yes:
             self._publish_notification("warning", "logs", "Clear logs cancelled")
             return
+        command_result = self._execute_command("logs.clear")
         if hasattr(self.log, "clear_logs"):
             self.log.clear_logs()
-        self.session.log_model.clear()
-        self.session.notification_service.clear()
         self._console_cache.clear()
         self.notifications.clear()
-        self.notifications.addItem(QListWidgetItem("Logs cleared. New messages will appear here."))
-        self.statusBar().showMessage("Logs cleared", 3000)
+        if command_result.success:
+            self.notifications.addItem(QListWidgetItem("Logs cleared. New messages will appear here."))
+            self.statusBar().showMessage("Logs cleared", 3000)
+        else:
+            self._publish_notification("error", "logs", command_result.message)
+            self._show_notifications()
 
     def _set_preview_texture(self, texture_path: Path, mode: str) -> None:
         self._last_preview_texture = texture_path
@@ -611,11 +645,12 @@ class AssetStudioWindow(QMainWindow):
 
     def _run_named_configuration(self, name: str) -> None:
         result = self.session.run_service.run_named(name)
-        if hasattr(result, "process"):
+        if hasattr(result, "process") and hasattr(result, "task_id"):
             self._running_processes[result.task_id] = result
             self._publish_notification("info", "run", f"Started {name} configuration")
             self._show_output()
             return
+        self.session.log_model.append("run", "warning", result.message)
         self._publish_notification("warning", "run", result.message)
         self._show_notifications()
 

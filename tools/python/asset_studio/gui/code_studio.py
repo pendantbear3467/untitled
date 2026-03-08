@@ -264,6 +264,15 @@ class CodeStudioPanel(QWidget):
         self._update_recent_files()
         self._set_empty_state()
 
+    def set_session(self, session) -> None:
+        self.session = session if hasattr(session, "code_editor_service") else None
+        self.editor_service = session.code_editor_service if hasattr(session, "code_editor_service") else session
+        self._update_recent_files()
+        self._sync_session_state()
+
+    def set_workspace_root(self, workspace_root: Path) -> None:
+        self.workspace_root = workspace_root
+
     def _build_toolbar(self) -> QHBoxLayout:
         row = QHBoxLayout()
 
@@ -317,7 +326,7 @@ class CodeStudioPanel(QWidget):
         editor.textChanged.connect(lambda editor=editor: self._editor_text_changed(editor))
 
         self._tabs[editor] = _CodeTab(document_id=document.document_id, path=document.path, editor=editor, dirty=document.dirty)
-        index = self.tab_widget.addTab(editor, "untitled")
+        index = self.tab_widget.addTab(editor, document.name)
         self.tab_widget.setCurrentIndex(index)
         self._refresh_meta(editor)
         self._refresh_outline(editor)
@@ -490,13 +499,15 @@ class CodeStudioPanel(QWidget):
         try:
             self.editor_service.set_document_text(tab.document_id, editor.toPlainText())
             if tab.path is None:
+                suggested_name = f"{tab.display_name}.txt" if not tab.display_name.endswith('.txt') else tab.display_name
                 selected, _ = QFileDialog.getSaveFileName(
                     self,
                     "Save file",
-                    str(self.workspace_root),
+                    str(self.workspace_root / suggested_name),
                     "All Files (*.*)",
                 )
                 if not selected:
+                    self.status_message.emit("Save cancelled")
                     return False
                 saved_path = self.editor_service.save_document(tab.document_id, Path(selected))
             else:
@@ -509,13 +520,16 @@ class CodeStudioPanel(QWidget):
 
         tab.path = saved_path
         tab.dirty = False
+        document = self.editor_service.documents.get(tab.document_id)
+        if document is not None:
+            editor.set_language(document.syntax_mode)
         self._update_tab_title(editor)
         self._refresh_meta(editor)
         self._refresh_problems(editor)
         self._update_recent_files()
         self._sync_session_state()
         self.status_message.emit(f"Saved: {saved_path}")
-        self.notifications.emit(f"Saved {tab.display_name}")
+        self.notifications.emit(f"Saved {saved_path.name}")
         return True
 
     def _refresh_meta(self, editor: StudioCodeEditor | None) -> None:
@@ -538,7 +552,8 @@ class CodeStudioPanel(QWidget):
         if editor is None or editor not in self._tabs:
             return
         tab = self._tabs[editor]
-        language = LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text") if tab.path is not None else "text"
+        document = self.editor_service.documents.get(tab.document_id)
+        language = document.syntax_mode if document is not None else LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text") if tab.path is not None else "text"
         lines = editor.toPlainText().splitlines()
 
         if language == "python":
@@ -593,7 +608,8 @@ class CodeStudioPanel(QWidget):
 
     def _diagnose(self, tab: _CodeTab) -> list[CodeDiagnostic]:
         text = tab.editor.toPlainText()
-        language = LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text") if tab.path is not None else "text"
+        document = self.editor_service.documents.get(tab.document_id)
+        language = document.syntax_mode if document is not None else LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text") if tab.path is not None else "text"
         diagnostic_path = tab.path if tab.path is not None else Path(tab.display_name)
         issues: list[CodeDiagnostic] = []
 
