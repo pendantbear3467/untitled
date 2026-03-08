@@ -15,17 +15,20 @@ from asset_studio.skilltree.models import (
     Modifier,
     NodePaletteEntry,
     ProgressionDocument,
-    ProgressionLink,
     ProgressionNode,
     SimulationRequest,
     ValidationReport,
 )
 from asset_studio.skilltree.serializer import (
+    LEGACY_PROJECT_FORMAT,
     LoadResult,
+    ProjectLoadResult,
     RUNTIME_EXPORT_FORMAT,
     STUDIO_EXPORT_FORMAT,
+    STUDIO_PROJECT_FORMAT,
     WORKSPACE_EXPORT_FORMAT,
     load_payload,
+    load_project_file,
     load_tree_file,
     read_tree,
     tree_to_dict,
@@ -79,7 +82,7 @@ class SkillTreeEngine:
             requires=[],
             required_level=1,
             required_class="",
-            modifiers=[Modifier(type="skill_points", value=0.0)],
+            modifiers=[],
             tags=["root"],
         )
         tree.nodes[starter.id] = starter
@@ -123,6 +126,9 @@ class SkillTreeEngine:
     def load_tree_with_report(self, name: str) -> LoadResult:
         return load_tree_file(self.root / f"{name}.json")
 
+    def load_project_file(self, path: Path) -> ProjectLoadResult:
+        return load_project_file(path)
+
     def import_tree(self, file_path: Path) -> ProgressionDocument:
         result = self.safe_import_tree(file_path)
         self.save_tree(result.document)
@@ -134,14 +140,27 @@ class SkillTreeEngine:
         result.report.extend(validation.issues)
         return result
 
+    def import_project(self, file_path: Path) -> ProjectLoadResult:
+        result = load_project_file(file_path)
+        for document in result.documents:
+            self.save_tree(document)
+        return result
+
     def export_tree(self, name: str, target: Path, *, format: str = WORKSPACE_EXPORT_FORMAT) -> Path:
         tree = self.load_tree(name)
         write_tree(target, tree, format=format)
         return target
 
-    def export_project(self, target: Path, tree_names: list[str] | None = None) -> Path:
+    def export_project(
+        self,
+        target: Path,
+        tree_names: list[str] | None = None,
+        *,
+        format: str = STUDIO_PROJECT_FORMAT,
+        active_tree_name: str = "",
+    ) -> Path:
         documents = [self.load_tree(name) for name in (tree_names or self.list_trees())]
-        write_project(target, documents)
+        write_project(target, documents, format=format, active_tree_name=active_tree_name)
         return target
 
     def export_validation_report(self, tree: ProgressionDocument, target: Path) -> Path:
@@ -263,7 +282,13 @@ class SkillTreeEngine:
         payload = {
             "schemaVersion": 1,
             "graphType": "skilltree-selection",
-            "nodes": [tree_to_dict(ProgressionDocument(name=tree.name, nodes={node_id: tree.nodes[node_id].clone()}), format=STUDIO_EXPORT_FORMAT)["nodes"][0] for node_id in sorted(selected)],
+            "nodes": [
+                tree_to_dict(
+                    ProgressionDocument(name=tree.name, nodes={node_id: tree.nodes[node_id].clone()}),
+                    format=STUDIO_EXPORT_FORMAT,
+                )["nodes"][0]
+                for node_id in sorted(selected)
+            ],
             "links": [
                 link.to_dict()
                 for link in tree.normalized_links()
@@ -421,6 +446,10 @@ class SkillTreeEngine:
     def default_export_target(self, tree_name: str, *, runtime: bool = False) -> Path:
         suffix = "runtime" if runtime else "workspace"
         return self.export_root / f"{tree_name}.{suffix}.json"
+
+    def default_project_export_target(self, *, legacy: bool = False) -> Path:
+        name = ".extremecraft_project.json" if legacy else "skilltree.project.json"
+        return self.export_root / name
 
     def _autosave_path(self, tree_name: str) -> Path:
         timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")

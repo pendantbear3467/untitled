@@ -22,6 +22,8 @@ from asset_studio.skilltree.models import (
 WORKSPACE_EXPORT_FORMAT = "workspace"
 RUNTIME_EXPORT_FORMAT = "runtime"
 STUDIO_EXPORT_FORMAT = "studio"
+STUDIO_PROJECT_FORMAT = "studio"
+LEGACY_PROJECT_FORMAT = "legacy"
 
 
 @dataclass(slots=True)
@@ -30,10 +32,20 @@ class LoadResult:
     report: ValidationReport = field(default_factory=ValidationReport)
 
 
+@dataclass(slots=True)
+class ProjectLoadResult:
+    documents: list[ProgressionDocument]
+    active_tree_name: str = ""
+    report: ValidationReport = field(default_factory=ValidationReport)
+
+
 def tree_to_dict(tree: ProgressionDocument, format: str = WORKSPACE_EXPORT_FORMAT) -> dict[str, Any]:
     tree = tree.clone()
     tree.sync_links_and_requires(prefer="requires")
-    ordered_nodes = [_node_to_payload(tree.nodes[node_id], include_editor_fields=format == STUDIO_EXPORT_FORMAT) for node_id in tree.deterministic_node_ids()]
+    ordered_nodes = [
+        _node_to_payload(tree.nodes[node_id], include_editor_fields=format == STUDIO_EXPORT_FORMAT)
+        for node_id in tree.deterministic_node_ids()
+    ]
 
     if format == RUNTIME_EXPORT_FORMAT:
         return {
@@ -65,11 +77,33 @@ def tree_to_dict(tree: ProgressionDocument, format: str = WORKSPACE_EXPORT_FORMA
     }
 
 
-def project_to_dict(documents: list[ProgressionDocument]) -> dict[str, Any]:
+def project_to_dict(
+    documents: list[ProgressionDocument],
+    *,
+    format: str = STUDIO_PROJECT_FORMAT,
+    active_tree_name: str = "",
+) -> dict[str, Any]:
     ordered_documents = sorted(documents, key=lambda document: document.name)
+    resolved_active_tree = active_tree_name or (ordered_documents[0].name if ordered_documents else "")
+
+    if format == LEGACY_PROJECT_FORMAT:
+        return {
+            "version": 1,
+            "ui": {
+                "currentTree": resolved_active_tree,
+                "snapX": 60,
+                "snapY": 40,
+            },
+            "trees": {
+                document.name: tree_to_dict(document, format=RUNTIME_EXPORT_FORMAT)
+                for document in ordered_documents
+            },
+        }
+
     return {
         "schemaVersion": 2,
         "graphType": "skilltree-project",
+        "activeTree": resolved_active_tree,
         "trees": [tree_to_dict(document, format=STUDIO_EXPORT_FORMAT) for document in ordered_documents],
     }
 
@@ -161,6 +195,47 @@ def load_payload(payload: dict[str, Any]) -> LoadResult:
     return LoadResult(document=document, report=report)
 
 
+def load_project_payload(payload: dict[str, Any]) -> ProjectLoadResult:
+    report = ValidationReport(source="project")
+    documents: list[ProgressionDocument] = []
+
+    if str(payload.get("graphType", "")) == "skilltree-project":
+        raw_trees = payload.get("trees", [])
+        if not isinstance(raw_trees, list):
+            report.add("error", "invalid-project-trees", "Project 'trees' field must be a list.")
+            return ProjectLoadResult(documents=[], active_tree_name="", report=report)
+        for index, raw in enumerate(raw_trees):
+            if not isinstance(raw, dict):
+                report.add("error", "invalid-project-tree", f"Project tree at index {index} is not an object.")
+                continue
+            result = load_payload(raw)
+            documents.append(result.document)
+            report.extend(result.report.issues)
+        return ProjectLoadResult(
+            documents=documents,
+            active_tree_name=str(payload.get("activeTree", documents[0].name if documents else "")),
+            report=report,
+        )
+
+    raw_trees = payload.get("trees", {})
+    if isinstance(raw_trees, dict):
+        for tree_name, raw_tree in sorted(raw_trees.items()):
+            if not isinstance(raw_tree, dict):
+                report.add("error", "invalid-project-tree", f"Legacy project tree '{tree_name}' is not an object.")
+                continue
+            tree_payload = dict(raw_tree)
+            tree_payload.setdefault("tree", str(tree_name))
+            result = load_payload(tree_payload)
+            result.document.name = str(tree_name)
+            documents.append(result.document)
+            report.extend(result.report.issues)
+        active_tree = str(payload.get("ui", {}).get("currentTree", documents[0].name if documents else ""))
+        return ProjectLoadResult(documents=documents, active_tree_name=active_tree, report=report)
+
+    report.add("error", "invalid-project-format", "Project payload does not contain a supported 'trees' collection.")
+    return ProjectLoadResult(documents=[], active_tree_name="", report=report)
+
+
 def tree_from_dict(payload: dict[str, Any]) -> ProgressionDocument:
     return load_payload(payload).document
 
@@ -168,6 +243,13 @@ def tree_from_dict(payload: dict[str, Any]) -> ProgressionDocument:
 def load_tree_file(path: Path) -> LoadResult:
     payload = json.loads(path.read_text(encoding="utf-8"))
     result = load_payload(payload)
+    result.report.source = str(path)
+    return result
+
+
+def load_project_file(path: Path) -> ProjectLoadResult:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    result = load_project_payload(payload)
     result.report.source = str(path)
     return result
 
@@ -182,9 +264,18 @@ def write_tree(path: Path, tree: ProgressionDocument, format: str = WORKSPACE_EX
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
-def write_project(path: Path, documents: list[ProgressionDocument]) -> None:
+def write_project(
+    path: Path,
+    documents: list[ProgressionDocument],
+    *,
+    format: str = STUDIO_PROJECT_FORMAT,
+    active_tree_name: str = "",
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(project_to_dict(documents), indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(project_to_dict(documents, format=format, active_tree_name=active_tree_name), indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def write_validation_report(path: Path, document: ProgressionDocument, report: ValidationReport) -> None:

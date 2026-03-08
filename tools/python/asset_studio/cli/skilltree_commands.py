@@ -6,8 +6,10 @@ from pathlib import Path
 
 from asset_studio.skilltree.engine import SkillTreeEngine
 from asset_studio.skilltree.serializer import (
+    LEGACY_PROJECT_FORMAT,
     RUNTIME_EXPORT_FORMAT,
     STUDIO_EXPORT_FORMAT,
+    STUDIO_PROJECT_FORMAT,
     WORKSPACE_EXPORT_FORMAT,
 )
 from asset_studio.skilltree.simulator import SimulationRequest
@@ -44,9 +46,14 @@ def register_skilltree_commands(parser: argparse.ArgumentParser) -> None:
     analyze_cmd.add_argument("name")
     analyze_cmd.add_argument("--out", default=None)
 
-    project_cmd = sub.add_parser("export-project", help="Export all or selected skill trees as a versioned project file")
+    project_cmd = sub.add_parser("export-project", help="Export all or selected skill trees as a project file")
     project_cmd.add_argument("--out", required=True)
+    project_cmd.add_argument("--format", default=STUDIO_PROJECT_FORMAT, choices=[STUDIO_PROJECT_FORMAT, LEGACY_PROJECT_FORMAT])
+    project_cmd.add_argument("--active-tree", default="")
     project_cmd.add_argument("names", nargs="*")
+
+    import_project_cmd = sub.add_parser("import-project", help="Import a legacy or versioned skill tree project file")
+    import_project_cmd.add_argument("path")
 
     sub.add_parser("list", help="List workspace skill trees")
 
@@ -115,9 +122,23 @@ def run_skilltree_command(args: argparse.Namespace, context: AssetStudioContext)
         return 0
 
     if args.skilltree_action == "export-project":
-        output = engine.export_project(Path(args.out), tree_names=list(args.names))
+        output = engine.export_project(
+            Path(args.out),
+            tree_names=list(args.names),
+            format=args.format,
+            active_tree_name=args.active_tree,
+        )
         print(f"Exported skill tree project to {output}")
         return 0
+
+    if args.skilltree_action == "import-project":
+        result = engine.import_project(Path(args.path))
+        print(f"Imported {len(result.documents)} skill tree(s) from project")
+        if result.active_tree_name:
+            print(f"Active tree: {result.active_tree_name}")
+        for issue in result.report.issues:
+            print(f"[{issue.severity}] {issue.code}: {issue.message}")
+        return 0 if not result.report.has_errors else 1
 
     if args.skilltree_action == "list":
         trees = engine.list_trees()

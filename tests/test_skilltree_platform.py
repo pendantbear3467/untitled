@@ -14,7 +14,13 @@ if str(TOOLS_PYTHON) not in sys.path:
 from asset_studio.main import main
 from asset_studio.skilltree.engine import SkillTreeEngine
 from asset_studio.skilltree.models import Modifier, ProgressionDocument, ProgressionNode, SimulationRequest
-from asset_studio.skilltree.serializer import RUNTIME_EXPORT_FORMAT, STUDIO_EXPORT_FORMAT, load_payload, tree_to_dict
+from asset_studio.skilltree.serializer import (
+    LEGACY_PROJECT_FORMAT,
+    RUNTIME_EXPORT_FORMAT,
+    STUDIO_EXPORT_FORMAT,
+    load_payload,
+    tree_to_dict,
+)
 
 
 class SkillTreePlatformTests(unittest.TestCase):
@@ -157,6 +163,37 @@ class SkillTreePlatformTests(unittest.TestCase):
         diff = self.engine.diff_trees(loaded, other)
         self.assertIn("strike", diff.changed_nodes)
 
+    def test_legacy_project_export_and_import_preserve_tree_collection(self) -> None:
+        combat = self.engine.create_tree("combat_tree", owner="tester", class_id="warrior")
+        combat.nodes["strike"] = ProgressionNode(id="strike", display_name="Strike", requires=["starter"])
+        combat.sync_links_and_requires(prefer="requires")
+        self.engine.save_tree(combat)
+
+        magic = self.engine.create_tree("magic_tree", owner="tester", class_id="mage")
+        magic.nodes["focus"] = ProgressionNode(id="focus", display_name="Focus", requires=["starter"])
+        magic.sync_links_and_requires(prefer="requires")
+        self.engine.save_tree(magic)
+
+        legacy_path = self.workspace / ".extremecraft_project.json"
+        self.engine.export_project(
+            legacy_path,
+            tree_names=["combat_tree", "magic_tree"],
+            format=LEGACY_PROJECT_FORMAT,
+            active_tree_name="magic_tree",
+        )
+        legacy_payload = json.loads(legacy_path.read_text(encoding="utf-8"))
+        self.assertEqual(legacy_payload["version"], 1)
+        self.assertEqual(legacy_payload["ui"]["currentTree"], "magic_tree")
+        self.assertIn("combat_tree", legacy_payload["trees"])
+
+        imported_workspace = self.temp_root / uuid.uuid4().hex
+        imported_workspace.mkdir(parents=True, exist_ok=True)
+        imported_engine = SkillTreeEngine(imported_workspace / "skilltrees")
+        result = imported_engine.import_project(legacy_path)
+        self.assertEqual(sorted(document.name for document in result.documents), ["combat_tree", "magic_tree"])
+        self.assertEqual(result.active_tree_name, "magic_tree")
+        self.assertEqual(sorted(imported_engine.list_trees()), ["combat_tree", "magic_tree"])
+
     def test_cli_skilltree_commands_still_work(self) -> None:
         code = main(["--workspace", str(self.workspace), "skilltree", "new", "combat_tree", "--class-id", "mage"])
         self.assertEqual(code, 0)
@@ -180,6 +217,32 @@ class SkillTreePlatformTests(unittest.TestCase):
 
         payload = json.loads(runtime_export.read_text(encoding="utf-8"))
         self.assertEqual(payload["tree"], "combat_tree")
+
+        legacy_project = self.workspace / ".extremecraft_project.json"
+        code = main([
+            "--workspace",
+            str(self.workspace),
+            "skilltree",
+            "export-project",
+            "--out",
+            str(legacy_project),
+            "--format",
+            LEGACY_PROJECT_FORMAT,
+            "--active-tree",
+            "combat_tree",
+            "combat_tree",
+        ])
+        self.assertEqual(code, 0)
+
+        imported_workspace = self.temp_root / uuid.uuid4().hex
+        code = main([
+            "--workspace",
+            str(imported_workspace),
+            "skilltree",
+            "import-project",
+            str(legacy_project),
+        ])
+        self.assertEqual(code, 0)
 
 
 if __name__ == "__main__":
