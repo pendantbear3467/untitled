@@ -2,7 +2,6 @@ package com.extremecraft.progression;
 
 import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.stage.ProgressionStage;
-import com.extremecraft.progression.stage.StageManager;
 import com.extremecraft.quest.QuestDefinition;
 import com.extremecraft.quest.QuestManager;
 import com.mojang.brigadier.CommandDispatcher;
@@ -34,12 +33,13 @@ public final class ProgressCommands {
                                     int value = IntegerArgumentType.getInteger(ctx, "value");
                                     ProgressionMutationService.setLevel(p, value);
                                     return 1;
-                                }))))
+                                })))))
                 .then(Commands.literal("class")
                         .then(Commands.literal("list").executes(ctx -> {
                             ServerPlayer p = ctx.getSource().getPlayerOrException();
                             return ProgressApi.get(p).map(data -> {
                                 ctx.getSource().sendSuccess(() -> Component.literal("Unlocked: " + String.join(", ", data.unlockedClasses())), false);
+                                ctx.getSource().sendSuccess(() -> Component.literal("Current class mastery: " + data.currentClass() + " L" + data.getClassLevel(data.currentClass()) + " XP " + data.getClassExperience(data.currentClass()) + "/" + PlayerProgressData.classXpForNextLevel(data.getClassLevel(data.currentClass()))), false);
                                 return 1;
                             }).orElse(0);
                         }))
@@ -53,7 +53,7 @@ public final class ProgressCommands {
                                     }
                                     ctx.getSource().sendFailure(Component.literal("Class not unlocked: " + id));
                                     return 0;
-                                }))))
+                                })))))
                 .then(Commands.literal("quest")
                         .then(Commands.literal("list").executes(ctx -> {
                             ServerPlayer p = ctx.getSource().getPlayerOrException();
@@ -77,37 +77,25 @@ public final class ProgressCommands {
                                         return 0;
                                     }
 
-                                    return ProgressApi.get(p).map(data -> {
-                                        if (data.isQuestCompleted(id)) {
-                                            ctx.getSource().sendFailure(Component.literal("Quest already claimed."));
+                                    if (!ProgressionFacade.claimGuildQuestReward(p, q)) {
+                                        return ProgressApi.get(p).map(data -> {
+                                            if (data.isQuestCompleted(id)) {
+                                                ctx.getSource().sendFailure(Component.literal("Quest already claimed."));
+                                                return 0;
+                                            }
+
+                                            int prog = data.getQuestProgress(id);
+                                            if (prog < q.target()) {
+                                                ctx.getSource().sendFailure(Component.literal("Quest incomplete: " + prog + "/" + q.target()));
+                                                return 0;
+                                            }
                                             return 0;
-                                        }
+                                        }).orElse(0);
+                                    }
 
-                                        int prog = data.getQuestProgress(id);
-                                        if (prog < q.target()) {
-                                            ctx.getSource().sendFailure(Component.literal("Quest incomplete: " + prog + "/" + q.target()));
-                                            return 0;
-                                        }
-
-                                        data.setQuestCompleted(id);
-                                        ProgressionMutationService.grantXp(p, q.rewardXp());
-                                        data.addPlayerSkillPoints(q.rewardPlayerSkillPoints());
-                                        data.addClassSkillPoints(q.rewardClassSkillPoints());
-                                        if (!q.rewardUnlockClass().isBlank()) {
-                                            data.unlockClass(q.rewardUnlockClass());
-                                        }
-
-                                        if (!q.rewardUnlockStage().isBlank()) {
-                                            ProgressionStage.byName(q.rewardUnlockStage())
-                                                    .ifPresent(stage -> StageManager.upgradePlayerStage(p, stage));
-                                        }
-
-                                        ProgressionService.flushDirty(p);
-                                        ctx.getSource().sendSuccess(() -> Component.literal("Quest claimed: " + q.title()), false);
-                                        return 1;
-                                    }).orElse(0);
-                                }))))
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Quest claimed: " + q.title()), false);
+                                    return 1;
+                                })))))
         );
     }
 }
-

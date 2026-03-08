@@ -33,11 +33,17 @@ import com.extremecraft.platform.data.registry.UpgradeDataRegistry;
 import com.extremecraft.platform.data.registry.WorldGenerationDataRegistry;
 import com.extremecraft.platform.data.validator.PlatformValidationRunner;
 import com.extremecraft.platform.module.ModuleRegistry;
+import com.extremecraft.progression.ClassProgressionService;
+import com.extremecraft.progression.ProgressionFacade;
 import com.extremecraft.progression.ProgressionService;
+import com.extremecraft.progression.SkillProgressionService;
+import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.level.LevelService;
 import com.extremecraft.progression.level.PlayerLevelApi;
 import com.extremecraft.progression.skilltree.SkillTreeManager;
 import com.extremecraft.progression.skilltree.SkillTreeService;
+import com.extremecraft.skills.SkillRegistry;
+import com.extremecraft.skills.SkillsApi;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -174,8 +180,49 @@ public final class ECDevCommands {
                                             int levelUps = LevelService.grantXp(player, amount);
                                             ctx.getSource().sendSuccess(() -> Component.literal("Granted " + amount + " XP (level ups: " + levelUps + ")"), false);
                                             return 1;
-                                        }))))
-                .then(Commands.literal("skill")
+                                        })))
+                        .then(Commands.literal("skill")
+                                .then(Commands.argument("skill", StringArgumentType.word())
+                                        .then(Commands.argument("amount", IntegerArgumentType.integer(1, 100000))
+                                                .executes(ctx -> {
+                                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                                    String skillId = StringArgumentType.getString(ctx, "skill").trim().toLowerCase();
+                                                    int amount = IntegerArgumentType.getInteger(ctx, "amount");
+                                                    if (SkillRegistry.byId(skillId) == null) {
+                                                        ctx.getSource().sendFailure(Component.literal("Unknown skill: " + skillId));
+                                                        return 0;
+                                                    }
+
+                                                    int gainedLevels = ProgressionFacade.grantSkillXp(player, skillId, amount, SkillProgressionService.Source.DEBUG_COMMAND);
+                                                    int level = SkillsApi.get(player).map(data -> data.getSkillLevel(skillId)).orElse(0);
+                                                    int next = SkillProgressionService.xpUntilNextLevel(player, skillId);
+                                                    ctx.getSource().sendSuccess(() -> Component.literal("Granted " + amount + " skill XP to " + skillId + " (gained levels: " + gainedLevels + ", level: " + level + ", next in: " + next + ")"), false);
+                                                    return 1;
+                                                })))))
+                        .then(Commands.literal("class")
+                                .then(Commands.argument("amount", IntegerArgumentType.integer(1, 100000))
+                                        .executes(ctx -> {
+                                            ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                            int amount = IntegerArgumentType.getInteger(ctx, "amount");
+                                            String classId = ProgressApi.get(player).map(data -> data.currentClass()).orElse("");
+                                            int gainedLevels = ProgressionFacade.grantClassXp(player, classId, amount, ClassProgressionService.Source.DEBUG_COMMAND);
+                                            return ProgressApi.get(player).map(data -> {
+                                                ctx.getSource().sendSuccess(() -> Component.literal("Granted " + amount + " class XP to " + data.currentClass() + " (gained levels: " + gainedLevels + ", level: " + data.getClassLevel(data.currentClass()) + ")"), false);
+                                                return 1;
+                                            }).orElse(0);
+                                        }))
+                                .then(Commands.argument("class", StringArgumentType.word())
+                                        .then(Commands.argument("amount", IntegerArgumentType.integer(1, 100000))
+                                                .executes(ctx -> {
+                                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+                                                    String classId = StringArgumentType.getString(ctx, "class").trim().toLowerCase();
+                                                    int amount = IntegerArgumentType.getInteger(ctx, "amount");
+                                                    int gainedLevels = ProgressionFacade.grantClassXp(player, classId, amount, ClassProgressionService.Source.DEBUG_COMMAND);
+                                                    return ProgressApi.get(player).map(data -> {
+                                                        ctx.getSource().sendSuccess(() -> Component.literal("Granted " + amount + " class XP to " + classId + " (gained levels: " + gainedLevels + ", level: " + data.getClassLevel(classId) + ")"), false);
+                                                        return 1;
+                                                    }).orElse(0);
+                                                })))))                .then(Commands.literal("skill")
                         .then(Commands.literal("unlock")
                                 .then(Commands.argument("node", StringArgumentType.word())
                                         .executes(ctx -> {
@@ -313,3 +360,5 @@ public final class ECDevCommands {
         return 1;
     }
 }
+
+

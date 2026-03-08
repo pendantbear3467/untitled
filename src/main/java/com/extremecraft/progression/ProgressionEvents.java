@@ -5,7 +5,6 @@ import com.extremecraft.progression.classsystem.ability.ClassAbilityService;
 import com.extremecraft.quest.QuestDefinition;
 import com.extremecraft.quest.QuestManager;
 import com.extremecraft.quest.QuestType;
-import com.extremecraft.skills.SkillsApi;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.TickEvent;
@@ -54,10 +53,9 @@ public class ProgressionEvents {
             String regionKey = player.level().dimension().location() + "|" + rx + "|" + rz;
             ProgressApi.get(player).ifPresent(data -> {
                 if (data.discoverRegion(regionKey)) {
-                    ProgressionMutationService.grantXp(player, 8);
+                    ProgressionFacade.grantPlayerXp(player, 8);
                     incrementQuest(player, QuestType.EXPLORATION, 1);
-                    SkillsApi.get(player).ifPresent(skills -> skills.addSkillLevel("engineering", 1));
-
+                    ProgressionFacade.grantSkillXp(player, "engineering", 10, SkillProgressionService.Source.EXPLORATION);
                 }
             });
         }
@@ -69,8 +67,8 @@ public class ProgressionEvents {
         if (!(event.getSource().getEntity() instanceof ServerPlayer player)) return;
 
         int xp = Math.max(5, (int) (event.getEntity().getMaxHealth() * 2.0D));
-        ProgressionMutationService.grantXp(player, xp);
-        SkillsApi.get(player).ifPresent(skills -> skills.addSkillLevel("combat", 1));
+        ProgressionFacade.grantPlayerXp(player, xp);
+        ProgressionFacade.grantCombatSkillXp(player, event.getEntity());
 
         incrementQuest(player, QuestType.KILL, 1);
         if (event.getEntity().getMaxHealth() >= 100.0F) {
@@ -82,19 +80,17 @@ public class ProgressionEvents {
     public void onCraft(PlayerEvent.ItemCraftedEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         int count = Math.max(1, event.getCrafting().getCount());
-        ProgressionMutationService.grantXp(player, count * 2);
+        ProgressionFacade.grantPlayerXp(player, count * 2);
         incrementQuest(player, QuestType.CRAFTING, count);
 
         ItemStack crafted = event.getCrafting();
         String itemId = crafted.getItem().builtInRegistryHolder().key().location().getPath();
-        SkillsApi.get(player).ifPresent(skills -> {
-            if (itemId.contains("rune") || itemId.contains("mana") || itemId.contains("arcane")) {
-                skills.addSkillLevel("arcane", 1);
-            }
-            if (itemId.contains("machine") || itemId.contains("generator") || itemId.contains("reactor") || itemId.contains("cable")) {
-                skills.addSkillLevel("engineering", 1);
-            }
-        });
+        if (itemId.contains("rune") || itemId.contains("mana") || itemId.contains("arcane")) {
+            ProgressionFacade.grantSkillXp(player, "arcane", Math.max(6, count * 4), SkillProgressionService.Source.ARCANE);
+        }
+        if (itemId.contains("machine") || itemId.contains("generator") || itemId.contains("reactor") || itemId.contains("cable")) {
+            ProgressionFacade.grantSkillXp(player, "engineering", Math.max(6, count * 4), SkillProgressionService.Source.ENGINEERING);
+        }
     }
 
     @SubscribeEvent
@@ -108,7 +104,7 @@ public class ProgressionEvents {
     public void onBlockBreak(BlockEvent.BreakEvent event) {
         if (event.getPlayer() instanceof ServerPlayer player) {
             incrementQuest(player, QuestType.COLLECTION, 1);
-            SkillsApi.get(player).ifPresent(skills -> skills.addSkillLevel("mining", 1));
+            ProgressionFacade.grantSkillXp(player, "mining", 4, SkillProgressionService.Source.MINING);
         }
     }
 
@@ -137,7 +133,3 @@ public class ProgressionEvents {
         }
     }
 }
-
-
-
-
