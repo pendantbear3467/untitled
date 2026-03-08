@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 
-from compiler.module_builder import ModuleBuilder
-from extremecraft_sdk.api.sdk import ExtremeCraftSDK
+from asset_studio.runtime.build_service import BuildService
+from asset_studio.runtime.task_results import StudioTaskResult
 
 
 def register_compile_commands(parser: argparse.ArgumentParser) -> None:
@@ -17,35 +17,20 @@ def run_compile_command(args: argparse.Namespace, context) -> int:
     if args.compile_target != "expansion":
         raise ValueError(f"Unsupported compile target: {args.compile_target}")
 
-    sdk = ExtremeCraftSDK(
-        addons_root=context.workspace_root / "addons",
-        context=context,
-        plugin_api=context.plugins,
-    )
-    builder = ModuleBuilder(context=context, sdk=sdk)
-    result = builder.build_expansion(args.addon_name)
+    result = BuildService(context).compile_expansion(args.addon_name)
+    _print_result(result)
+    return 0 if result.success else 1
 
-    print(f"Addon: {result.addon_name}")
-    print(f"Java source: {result.java_source}")
-    print(f"Artifact: {result.jar_path}")
 
-    if result.dependency_load_order:
-        print("Dependency load order:")
-        for dependency in result.dependency_load_order:
-            print(f"- {dependency}")
-
-    if result.generated_java_sources:
-        print("Generated Forge registry classes:")
-        for source in result.generated_java_sources:
-            print(f"- {source}")
-
-    if result.documentation_paths:
-        print("Generated documentation:")
-        for doc in result.documentation_paths:
-            print(f"- {doc}")
-
-    if result.conflicts:
-        print("Conflicts detected:")
-        for conflict in result.conflicts:
-            print(f"- [{conflict.kind}] {conflict.identifier}: {conflict.message}")
-    return 0
+def _print_result(result: StudioTaskResult) -> None:
+    print(result.message)
+    if result.data and isinstance(result.data, dict):
+        for key in ["addon", "jar", "outputRoot"]:
+            if key in result.data:
+                print(f"{key}: {result.data[key]}")
+    if result.report is not None:
+        for artifact in result.report.artifacts:
+            if artifact.path is not None and artifact.kind not in {"module_output", "jar"}:
+                print(f"- {artifact.kind}: {artifact.path}")
+        for issue in result.report.issues:
+            print(f"[{issue.severity}] {issue.code}: {issue.message}")

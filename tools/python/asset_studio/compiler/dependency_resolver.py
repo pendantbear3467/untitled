@@ -55,7 +55,7 @@ class _AddonManifest:
 
 
 _VERSION_TOKEN_RE = re.compile(r"[0-9]+")
-_DEPENDENCY_RE = re.compile(r"^(?P<id>[a-zA-Z0-9_.\\-/]+)\s*(?:@|\s+)?\s*(?P<version>[<>=~^!].+)?$")
+_DEPENDENCY_RE = re.compile(r"^(?P<id>[a-zA-Z0-9_.\\/-]+)\s*(?:@|\s+)?\s*(?P<version>[<>=~^!].+)?$")
 
 
 class DependencyResolver:

@@ -4,7 +4,7 @@ import argparse
 import shutil
 from pathlib import Path
 
-from extremecraft_sdk.api.sdk import ExtremeCraftSDK
+from asset_studio.sdk_support import OptionalDependencyUnavailableError, load_sdk_class, sdk_status
 
 
 def register_sdk_commands(parser: argparse.ArgumentParser) -> None:
@@ -21,14 +21,26 @@ def register_sdk_commands(parser: argparse.ArgumentParser) -> None:
 
 
 def run_sdk_command(args: argparse.Namespace, context) -> int:
-    sdk = ExtremeCraftSDK(
-        addons_root=context.workspace_root / "addons",
-        context=context,
-        plugin_api=context.plugins,
-    )
-
     if args.sdk_command == "init-addon":
         return _init_addon(args.addon_name, context)
+
+    status = sdk_status(args.sdk_command)
+    if not status.available:
+        print(status.message)
+        if status.error:
+            print(status.error)
+        return 2
+
+    try:
+        sdk_class = load_sdk_class(f"sdk {args.sdk_command}")
+        sdk = sdk_class(
+            addons_root=context.workspace_root / "addons",
+            context=context,
+            plugin_api=context.plugins,
+        )
+    except OptionalDependencyUnavailableError as exc:
+        print(str(exc))
+        return 2
 
     addon = sdk.load_addon(args.addon_name)
     report = sdk.validate_addon(addon)
@@ -50,6 +62,8 @@ def run_sdk_command(args: argparse.Namespace, context) -> int:
             return 1
         result = sdk.generate_addon(addon)
         print(f"Generated {len(result.generated_paths)} paths for addon '{addon.name}'")
+        for path in result.generated_paths:
+            print(f"- {path}")
         return 0
 
     raise ValueError(f"Unsupported sdk command: {args.sdk_command}")
@@ -77,12 +91,29 @@ def _init_addon(addon_name: str, context) -> int:
     }
     context.write_json(addon_root / "addon.json", manifest)
 
-    templates_root = context.repo_root / "extremecraft_sdk" / "templates"
-    if templates_root.exists():
+    templates_root = _sdk_templates_root(context.repo_root)
+    copied = 0
+    if templates_root is not None and templates_root.exists():
         for template in templates_root.glob("*.json"):
             destination = definitions_root / template.name
             if not destination.exists():
                 shutil.copy2(template, destination)
+                copied += 1
+    else:
+        print("SDK templates are unavailable; created addon manifest only.")
 
     print(f"Initialized addon scaffold: {addon_root}")
+    if copied:
+        print(f"Copied {copied} template definition(s)")
     return 0
+
+
+def _sdk_templates_root(repo_root: Path) -> Path | None:
+    candidates = [
+        repo_root / "tools" / "python" / "extremecraft_sdk" / "templates",
+        repo_root / "extremecraft_sdk" / "templates",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
