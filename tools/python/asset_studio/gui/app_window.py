@@ -90,6 +90,7 @@ class AssetStudioWindow(QMainWindow):
         if hasattr(self.code_studio, "current_file_changed"):
             self.code_studio.current_file_changed.connect(self.browser.set_current_file)
             self.code_studio.current_file_changed.connect(lambda _path: self._sync_workspace_context())
+            self.code_studio.current_file_changed.connect(lambda _path: self._refresh_shell_header())
         if hasattr(self.code_studio, "open_link_requested"):
             self.code_studio.open_link_requested.connect(self._open_path)
         if hasattr(self.code_studio, "current_file"):
@@ -146,7 +147,18 @@ class AssetStudioWindow(QMainWindow):
 
         self.editor_tabs = self._build_editor_tabs()
         self.main_tabs = self._build_main_tabs()
-        self.setCentralWidget(self.main_tabs)
+        self._shell_workspace_name = QLabel()
+        self._shell_workspace_name.setObjectName("shellTitle")
+        self._shell_workspace_path = QLabel()
+        self._shell_workspace_path.setObjectName("shellMeta")
+        self._shell_context_title = QLabel()
+        self._shell_context_title.setObjectName("shellTitle")
+        self._shell_context_target = QLabel()
+        self._shell_context_target.setObjectName("shellMeta")
+        self._output_summary_label = QLabel("Logs and notifications will appear here.")
+        self._output_summary_label.setObjectName("panelHelpHint")
+        self._output_summary_label.setWordWrap(True)
+        self.setCentralWidget(self._build_shell_host())
 
         self.notifications = QListWidget()
         self.notifications.setAlternatingRowColors(True)
@@ -205,6 +217,44 @@ class AssetStudioWindow(QMainWindow):
             self._publish_notification("error", "ui", f"{label} failed to load: {exc}")
             return holder
 
+    def _build_shell_host(self) -> QWidget:
+        host = QWidget()
+        layout = QVBoxLayout(host)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(8)
+
+        header = QWidget()
+        header.setObjectName("shellHeader")
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(14, 12, 14, 12)
+        header_layout.setSpacing(18)
+
+        workspace_column = QVBoxLayout()
+        workspace_column.setContentsMargins(0, 0, 0, 0)
+        workspace_column.setSpacing(2)
+        workspace_eyebrow = QLabel("Workspace")
+        workspace_eyebrow.setObjectName("shellEyebrow")
+        workspace_column.addWidget(workspace_eyebrow)
+        workspace_column.addWidget(self._shell_workspace_name)
+        workspace_column.addWidget(self._shell_workspace_path)
+
+        context_column = QVBoxLayout()
+        context_column.setContentsMargins(0, 0, 0, 0)
+        context_column.setSpacing(2)
+        context_eyebrow = QLabel("Active Workbench")
+        context_eyebrow.setObjectName("shellEyebrow")
+        context_column.addWidget(context_eyebrow)
+        context_column.addWidget(self._shell_context_title)
+        context_column.addWidget(self._shell_context_target)
+
+        header_layout.addLayout(workspace_column, 3)
+        header_layout.addLayout(context_column, 2)
+
+        layout.addWidget(header)
+        layout.addWidget(self.main_tabs, 1)
+        self._refresh_shell_header()
+        return host
+
     def _build_main_tabs(self) -> QTabWidget:
         tabs = QTabWidget()
         tabs.setDocumentMode(True)
@@ -226,40 +276,40 @@ class AssetStudioWindow(QMainWindow):
             return
         self.statusBar().showMessage(f"Studio: {self.main_tabs.tabText(index)}", 2500)
         self._refresh_context_toolbar()
+        self._refresh_shell_header()
 
     def _build_docks(self) -> None:
-        self.project_dock = QDockWidget("Project Browser", self)
+        self.project_dock = QDockWidget("Workspace", self)
         self.project_dock.setWidget(self.browser)
-        self.project_dock.setMinimumWidth(360)
+        self.project_dock.setMinimumWidth(420)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.project_dock)
-
-        browser_inspector = self.browser.take_inspector_widget() if hasattr(self.browser, "take_inspector_widget") else QWidget()
-        self.inspector_dock = QDockWidget("Inspector", self)
-        self.inspector_dock.setWidget(browser_inspector)
-        self.inspector_dock.setMinimumWidth(340)
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.inspector_dock)
 
         preview_host = QWidget()
         preview_layout = QVBoxLayout(preview_host)
-        preview_layout.setContentsMargins(6, 6, 6, 6)
+        preview_layout.setContentsMargins(8, 8, 8, 8)
         preview_layout.setSpacing(8)
-        preview_layout.addWidget(QLabel("Focused Preview"))
-        preview_layout.addWidget(self.preview)
+        preview_title = QLabel("Focused Preview")
+        preview_title.setObjectName("panelHeaderTitle")
+        preview_hint = QLabel("Use the active workbench to drive source/runtime context. Preview controls stay attached to the viewport.")
+        preview_hint.setObjectName("panelHelpHint")
+        preview_hint.setWordWrap(True)
+        preview_layout.addWidget(preview_title)
+        preview_layout.addWidget(preview_hint)
+        preview_layout.addWidget(self.preview, 1)
         preview_layout.addWidget(self._build_preview_controls())
         self.preview_dock = QDockWidget("Preview", self)
         self.preview_dock.setWidget(preview_host)
-        self.preview_dock.setMinimumWidth(360)
+        self.preview_dock.setMinimumWidth(400)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.preview_dock)
-        self.tabifyDockWidget(self.inspector_dock, self.preview_dock)
-        self.inspector_dock.raise_()
 
         self.output_tabs = QTabWidget()
         output_host = QWidget()
         output_layout = QVBoxLayout(output_host)
-        output_layout.setContentsMargins(6, 6, 6, 6)
+        output_layout.setContentsMargins(8, 8, 8, 8)
         output_layout.setSpacing(6)
         output_header = QHBoxLayout()
         output_label = QLabel("Run Output")
+        output_label.setObjectName("panelHeaderTitle")
         output_label.setToolTip("Process logs, runtime stream output, and workflow notifications.")
         output_header.addWidget(output_label)
         output_header.addStretch(1)
@@ -269,15 +319,18 @@ class AssetStudioWindow(QMainWindow):
         clear_button.clicked.connect(self._clear_logs)
         output_header.addWidget(clear_button)
         output_layout.addLayout(output_header)
+        output_layout.addWidget(self._output_summary_label)
         self.output_tabs.addTab(self.log, "Logs")
         self.output_tabs.addTab(self.notifications, "Events")
         self.output_tabs.setToolTip("Runtime output and non-fatal diagnostics")
         output_layout.addWidget(self.output_tabs, 1)
         self.output_dock = QDockWidget("Output", self)
         self.output_dock.setWidget(output_host)
-        self.output_dock.setMinimumHeight(210)
+        self.output_dock.setMinimumHeight(220)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.output_dock)
 
+        self.resizeDocks([self.project_dock, self.preview_dock], [460, 420], Qt.Orientation.Horizontal)
+        self.resizeDocks([self.output_dock], [240], Qt.Orientation.Vertical)
         self.setCorner(Qt.Corner.BottomLeftCorner, Qt.DockWidgetArea.LeftDockWidgetArea)
         self.setCorner(Qt.Corner.BottomRightCorner, Qt.DockWidgetArea.RightDockWidgetArea)
 
@@ -293,10 +346,8 @@ class AssetStudioWindow(QMainWindow):
         self._add_toolbar_action(global_toolbar, "Save", self._save_workspace, "Save the active page and persist workspace state.")
         self._add_toolbar_action(global_toolbar, "Save All", self._save_all_pages, "Save all supported pages and flush workspace state.")
         global_toolbar.addSeparator()
-        self._add_toolbar_action(global_toolbar, "Code", lambda: self._switch_tab("Code"), "Switch to Code Studio.")
-        self._add_toolbar_action(global_toolbar, "GUI", lambda: self._switch_tab("GUI Studio"), "Switch to GUI Studio.")
-        self._add_toolbar_action(global_toolbar, "Model", lambda: self._switch_tab("Model Studio"), "Switch to Model Studio.")
-        self._add_toolbar_action(global_toolbar, "Build/Run", lambda: self._switch_tab("Build/Run"), "Switch to Build/Run Studio.")
+        self._add_toolbar_action(global_toolbar, "Output", self._show_output, "Reveal output and focus logs.")
+        self._add_toolbar_action(global_toolbar, "Events", self._show_notifications, "Reveal output and focus notifications.")
 
         context_toolbar = QToolBar("Workbench Context")
         context_toolbar.setMovable(False)
@@ -447,6 +498,12 @@ class AssetStudioWindow(QMainWindow):
         for task_id in finished_processes:
             self._running_processes.pop(task_id, None)
 
+        running_count = sum(1 for handle in self._running_tasks.values() if not handle.done())
+        running_count += sum(1 for handle in self._running_processes.values() if not handle.done())
+        self._output_summary_label.setText(
+            f"{running_count} running task(s) | {len(recent)} recent event(s) | {len(self._console_cache)} cached log line(s)"
+        )
+
     def _write_log(self, message: str) -> None:
         if hasattr(self.log, "append_line"):
             self.log.append_line(message)
@@ -485,6 +542,31 @@ class AssetStudioWindow(QMainWindow):
         self.output_dock.show()
         self.output_dock.raise_()
         self.output_tabs.setCurrentIndex(1)
+
+    def _refresh_shell_header(self) -> None:
+        workspace_root = self.context.workspace_root.resolve(strict=False)
+        self._shell_workspace_name.setText(workspace_root.name or str(workspace_root))
+        self._shell_workspace_path.setText(str(workspace_root))
+        tab_name = self._tab_name() or "Workspace"
+        self._shell_context_title.setText(self._main_tab_aliases.get(tab_name, tab_name))
+        self._shell_context_target.setText(self._current_context_target_label())
+
+    def _current_context_target_label(self) -> str:
+        tab_name = self._tab_name()
+        if tab_name == "Code":
+            current_path = self.code_studio.current_file() if hasattr(self.code_studio, "current_file") else None
+            return str(current_path) if current_path is not None else "No file open in Code Studio"
+        if tab_name == "GUI Studio":
+            current_path = getattr(self.gui_studio, "current_path", None)
+            return str(current_path) if current_path is not None else "No GUI document open"
+        if tab_name == "Model Studio":
+            current_path = getattr(self.model_studio, "current_path", None)
+            return str(current_path) if current_path is not None else "No model document open"
+        if tab_name == "Preview":
+            state = self.preview.preview_state()
+            source_label = str(state.get("texturePath") or self.preview.preview_state().get("mode") or "Preview idle")
+            return source_label
+        return "Use the active workbench toolbar for editor-specific actions"
 
     def _switch_tab(self, title: str) -> None:
         for idx in range(self.main_tabs.count()):
@@ -562,8 +644,13 @@ class AssetStudioWindow(QMainWindow):
         specs = self._context_action_specs(tab_name)
         title = self._main_tab_aliases.get(tab_name, "Workbench")
         self._context_toolbar.setWindowTitle(f"{title} Actions")
-        for index, (label, callback, description) in enumerate(specs):
-            action = self._context_toolbar.addAction(label, self._safe_action(f"context.{label}", callback))
+        label = QLabel(f"{title} Actions")
+        label.setObjectName("toolbarSectionLabel")
+        self._context_toolbar.addWidget(label)
+        if specs:
+            self._context_toolbar.addSeparator()
+        for index, (action_label, callback, description) in enumerate(specs):
+            action = self._context_toolbar.addAction(action_label, self._safe_action(f"context.{action_label}", callback))
             action.setToolTip(description)
             action.setStatusTip(description)
             self._context_actions.append(action)
@@ -611,11 +698,13 @@ class AssetStudioWindow(QMainWindow):
                 self.main_tabs.insertTab(idx, self.editor_tabs, "Data Editors")
                 break
         self._sync_workspace_context()
+        self._refresh_shell_header()
 
     def _new_project(self) -> None:
         self.session.reload_workspace(self.context.workspace_root)
         self._rebind_workspace()
         self._write_log("New project initialized")
+        self._refresh_shell_header()
 
     def _open_project(self) -> None:
         selected = QFileDialog.getExistingDirectory(self, "Open workspace", str(self.context.workspace_root))
@@ -625,6 +714,7 @@ class AssetStudioWindow(QMainWindow):
         self.session.reload_workspace(Path(selected))
         self._rebind_workspace()
         self._write_log(f"Opened workspace: {selected}")
+        self._refresh_shell_header()
 
     def _save_workspace(self) -> None:
         current_page = self._current_studio_page()
@@ -772,15 +862,18 @@ class AssetStudioWindow(QMainWindow):
             self.gui_studio.open_document(normalized)
             self._switch_tab("GUI Studio")
             self._sync_workspace_context()
+            self._refresh_shell_header()
             return
         if entry is not None and entry.kind == "model_source" and hasattr(self.model_studio, "open_document"):
             self.model_studio.open_document(normalized)
             self._switch_tab("Model Studio")
             self._sync_workspace_context()
+            self._refresh_shell_header()
             return
         self.code_studio.open_file(normalized)
         self._switch_tab("Code")
         self._sync_workspace_context()
+        self._refresh_shell_header()
 
     def _preview_renderers(self) -> list[PreviewRenderer]:
         return [self.preview, self.preview_tab_renderer]
@@ -887,6 +980,7 @@ class AssetStudioWindow(QMainWindow):
                 preview_payload=runtime_payload,
                 relationship_context=self.session.relationship_service.inspector_payload(current_path) if current_path is not None else {},
             )
+            self._refresh_shell_header()
             return
         if current_tab == "Model Studio" and getattr(self.model_studio, "current_document", None) is not None:
             document = self.model_studio.current_document
@@ -926,11 +1020,13 @@ class AssetStudioWindow(QMainWindow):
                 preview_payload=runtime_payload,
                 relationship_context=self.session.relationship_service.inspector_payload(current_path) if current_path is not None else {},
             )
+            self._refresh_shell_header()
             return
         current_path, current_text = self._current_code_text()
         relationship_context = self.session.relationship_service.inspector_payload(current_path) if current_path is not None else {}
         self.ai_workbench.set_context(current_path=current_path, current_text=current_text, preview_payload=None, relationship_context=relationship_context)
         if current_path is None:
+            self._refresh_shell_header()
             return
         entry = self.session.workspace_index_service.entry(current_path)
         preview_payload = None
@@ -953,6 +1049,7 @@ class AssetStudioWindow(QMainWindow):
                     }
                 },
             )
+            self._refresh_shell_header()
             return
         if entry is not None and entry.kind == "gui_runtime":
             self._set_preview_variants(
@@ -965,6 +1062,7 @@ class AssetStudioWindow(QMainWindow):
                     }
                 },
             )
+            self._refresh_shell_header()
             return
         if entry is not None and entry.kind == "gui_source":
             self._set_preview_variants(
@@ -977,6 +1075,7 @@ class AssetStudioWindow(QMainWindow):
                     }
                 },
             )
+            self._refresh_shell_header()
             return
         if entry is not None and entry.kind in {"model_runtime", "item_model", "block_model"}:
             self._set_preview_variants(
@@ -989,6 +1088,7 @@ class AssetStudioWindow(QMainWindow):
                     }
                 },
             )
+            self._refresh_shell_header()
             return
         if entry is not None and entry.kind == "model_source":
             self._set_preview_variants(
@@ -1001,6 +1101,7 @@ class AssetStudioWindow(QMainWindow):
                     }
                 },
             )
+            self._refresh_shell_header()
 
     def _apply_ai_artifact(self, artifact) -> None:
         if getattr(artifact, "validation_blockers", None):
@@ -1012,21 +1113,25 @@ class AssetStudioWindow(QMainWindow):
             if self.code_studio.apply_text_to_current(artifact.candidate_content):
                 self._switch_tab("Code")
                 self._sync_workspace_context()
+                self._refresh_shell_header()
             return
         if artifact.target_kind == "gui" and artifact.candidate_payload is not None and hasattr(self.gui_studio, "load_draft_payload"):
             self.gui_studio.load_draft_payload(artifact.candidate_payload)
             self._switch_tab("GUI Studio")
             self._sync_workspace_context()
+            self._refresh_shell_header()
             return
         if artifact.target_kind == "model" and artifact.candidate_payload is not None and hasattr(self.model_studio, "load_draft_payload"):
             self.model_studio.load_draft_payload(artifact.candidate_payload)
             self._switch_tab("Model Studio")
             self._sync_workspace_context()
+            self._refresh_shell_header()
             return
         language = "java" if artifact.target_kind == "java" else "json" if artifact.target_kind in {"gui", "model", "json"} else "text"
         self.code_studio.open_generated_content(artifact.candidate_content, language=language, title=artifact.title)
         self._switch_tab("Code")
         self._sync_workspace_context()
+        self._refresh_shell_header()
 
     def _open_latest_log(self) -> None:
         latest = self.session.latest_log_path()
