@@ -1,20 +1,54 @@
-EXTREMECRAFT COMMANDS
+EXTREMECRAFT COMMANDS (CANONICAL REFERENCE)
+
+Use this file as the single command catalog for runtime, tooling, and build workflows.
 
 ==================================================
-IN-GAME COMMANDS (Forge Runtime)
+DISCOVERY / HELP
 ==================================================
+
+python assetstudio.py --help
+python assetstudio.py <command> --help
+python assetstudio.py <command> <subcommand> --help
+
+Example:
+python assetstudio.py skilltree --help
+python assetstudio.py skilltree export --help
+
+
+==================================================
+GRADLE / FORGE DEV
+==================================================
+
+.\gradlew.bat runClient
+.\gradlew.bat runServer
+.\gradlew.bat compileJava
+.\gradlew.bat check
+.\gradlew.bat build
+
+
+==================================================
+IN-GAME COMMANDS (REGISTERED ROOTS)
+==================================================
+
+Root: /ecvalidate
+/ecvalidate
 
 Root: /ec
 
 /ec debug
-/ec validate                      (requires permission level 2)
-/ec dump_registry                 (requires permission level 2)
+/ec validate
+/ec validate_runtime
+/ec dump_registry
 /ec modules
 
 /ec ability test <ability>
 /ec ability give <ability>
 
 /ec xp give <amount>
+/ec xp skill give <skill> <amount>
+/ec xp class give <amount>
+/ec xp class give_to <class> <amount>
+
 /ec skill unlock <node>
 /ec level set <level>
 
@@ -24,51 +58,174 @@ Root: /ec
 
 /ec machine debug
 
-/ec reload                        (requires permission level 2)
-/ec reload_data                   (requires permission level 2)
-
+/ec reload
+/ec reload_data
 /ec debug_screen
 
-
+Legacy/alternate runtime root seen in codebase:
 Root: /extremecraft
-
 /extremecraft level get
-/extremecraft level set <value>   (requires permission level 2)
-
-/extremecraft class list
+/extremecraft level set <value>
+/extremecraft xp add <amount>
 /extremecraft class set <id>
-
+/extremecraft class unlock <id>
+/extremecraft class list
+/extremecraft skills get
 /extremecraft quest list
+/extremecraft quest status <id>
 /extremecraft quest claim <id>
 
 
 ==================================================
-ASSET / TOOLING COMMANDS
+PYTHON / TOOL ENV
 ==================================================
 
-Primary generator:
-.\.venv\Scripts\python tools/generate_assets.py --materials --export-blockbench --preview
-
-Asset Studio CLI:
-python assetstudio.py --help
-python assetstudio.py generate tool mythril_pickaxe
-python assetstudio.py generate material mythril
-python assetstudio.py generate ore mythril
-python assetstudio.py import blockbench workspace\blockbench\mythril_pickaxe.bbmodel
-python assetstudio.py export blockbench mythril_pickaxe --kind item
-python assetstudio.py scan-registry
-python assetstudio.py validate
-python assetstudio.py project init --name extremecraft-assets
-python assetstudio.py project build --target datapack
-python assetstudio.py skilltree new demo_tree
-python assetstudio.py skilltree list
-python assetstudio.py skilltree validate demo_tree
-python assetstudio.py skilltree export demo_tree --out workspace\exports\demo_tree.json
-python assetstudio.py skilltree import workspace\exports\demo_tree.json
-python assetstudio.py --gui
-
-Pip setup:
 pip install -e .
 pip install -e .[core]
 pip install -e .[gui]
 pip install -e .[all]
+
+
+==================================================
+TOOLS GENERATOR (tools/generate_assets.py)
+==================================================
+
+.\.venv\Scripts\python tools/generate_assets.py --materials
+.\.venv\Scripts\python tools/generate_assets.py --ores
+.\.venv\Scripts\python tools/generate_assets.py --items
+.\.venv\Scripts\python tools/generate_assets.py --machines
+.\.venv\Scripts\python tools/generate_assets.py --gui
+.\.venv\Scripts\python tools/generate_assets.py --all
+
+Options:
+--export-blockbench
+--export-minecraft
+--preview
+--seed <int>
+--workers <int>
+--watch
+--dry-run
+--force
+--core           (alias for --materials)
+--editor         (launch progression studio)
+
+
+==================================================
+ASSET STUDIO GUI
+==================================================
+
+python assetstudio.py --gui
+python assetstudio.py --workspace workspace --gui
+
+
+==================================================
+ASSET STUDIO CLI (TOP-LEVEL)
+==================================================
+
+python assetstudio.py --workspace workspace generate ...
+python assetstudio.py --workspace workspace validate [--strict] [--no-repair]
+python assetstudio.py --workspace workspace project ...
+python assetstudio.py --workspace workspace build <assets|resourcepack|datapack|expansion> [name]
+python assetstudio.py --workspace workspace registry ...
+python assetstudio.py --workspace workspace scan-registry [--source src/main/java] [--output <path>] [--save-history <name>]
+python assetstudio.py --workspace workspace sdk ...
+python assetstudio.py --workspace workspace compile expansion <addon_name>
+python assetstudio.py --workspace workspace repair run
+python assetstudio.py --workspace workspace release ...
+python assetstudio.py --workspace workspace modpack build <modpack_name>
+python assetstudio.py --workspace workspace addon ...
+python assetstudio.py --workspace workspace graph ...
+python assetstudio.py --workspace workspace skilltree ...
+python assetstudio.py --workspace workspace export blockbench <model_id> [--kind block|item]
+python assetstudio.py --workspace workspace export pack <resourcepack|datapack|forge|fabric>
+python assetstudio.py --workspace workspace import blockbench <bbmodel_path>
+
+
+==================================================
+GENERATE COMMANDS
+==================================================
+
+python assetstudio.py generate material <material_name>
+python assetstudio.py generate material_set <material> [--tier <int>] [--style <style>]
+python assetstudio.py generate item <item_name> [--material <material>] [--style <style>]
+python assetstudio.py generate tool <tool_name> [--material <m>] [--durability <int>] [--attack-damage <float>] [--mining-speed <float>] [--tier <int>] [--texture-style <style>]
+python assetstudio.py generate ore <material> [--tier <int>] [--style <style>]
+python assetstudio.py generate armor <material> [--tier <int>] [--style <style>]
+python assetstudio.py generate machine <machine_name> [--material <m>] [--style <style>]
+python assetstudio.py generate block <block_name> [--material <m>] [--style <style>]
+
+
+==================================================
+PROJECT COMMANDS
+==================================================
+
+python assetstudio.py project init [--name <project_name>]
+python assetstudio.py project open [--path <workspace_path>]
+python assetstudio.py project build [--target assets|resourcepack|datapack]
+
+
+==================================================
+REGISTRY COMMANDS
+==================================================
+
+python assetstudio.py registry scan [--source src/main/java] [--output <path>] [--save-history <name>]
+python assetstudio.py registry diff <before_snapshot_name> <after_snapshot_name>
+python assetstudio.py registry history list
+
+
+==================================================
+SDK / ADDON / RELEASE COMMANDS
+==================================================
+
+python assetstudio.py sdk init-addon <addon_name>
+python assetstudio.py sdk validate <addon_name>
+python assetstudio.py sdk generate <addon_name>
+
+python assetstudio.py addon install <source>
+python assetstudio.py addon list
+python assetstudio.py addon build <addon_name>
+python assetstudio.py addon build-all
+python assetstudio.py addon remove <addon_name>
+python assetstudio.py addon publish <addon_name>
+
+python assetstudio.py release build [--name <release_name>]
+python assetstudio.py release publish [--name <release_name>] [--live]
+
+python assetstudio.py modpack build <modpack_name>
+
+
+==================================================
+GRAPH COMMANDS
+==================================================
+
+python assetstudio.py graph new <name>
+python assetstudio.py graph list [--json]
+python assetstudio.py graph show <name> [--json]
+python assetstudio.py graph add <name> <node_type> [--param key=value] [--x <float>] [--y <float>]
+python assetstudio.py graph link <name> <src> <dst> [--from-port <id>] [--to-port <id>]
+python assetstudio.py graph validate <name>
+python assetstudio.py graph execute <name>
+python assetstudio.py graph execute-all
+python assetstudio.py graph auto-layout <name> [--algorithm layered|dag|force]
+python assetstudio.py graph export <name> [--format json|yaml|package]
+python assetstudio.py graph template-export <name> <template_name>
+python assetstudio.py graph template-import <name> <template_name>
+python assetstudio.py graph template-list
+
+
+==================================================
+SKILLTREE / PROGRESSION COMMANDS
+==================================================
+
+python assetstudio.py skilltree new <name> [--class-id <class_id>]
+python assetstudio.py skilltree list
+python assetstudio.py skilltree validate <name> [--report-out <path>]
+python assetstudio.py skilltree import <path>
+python assetstudio.py skilltree export <name> --out <path> [--format workspace|runtime|studio]
+python assetstudio.py skilltree simulate <name> [--level <int>] [--points <int>] [--class-id <id>] [--unlock <node_id> ...]
+python assetstudio.py skilltree analyze <name> [--out <path>]
+python assetstudio.py skilltree export-project --out <path> [--format studio_project|legacy_project] [--active-tree <name>] [names ...]
+python assetstudio.py skilltree import-project <path>
+
+In-game datapack export (recommended):
+python assetstudio.py skilltree export <name> --out src/main/resources/data/extremecraft/skill_trees/<name>.json --format runtime
