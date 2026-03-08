@@ -119,6 +119,19 @@ class WorkspaceManager:
             "plugin_marketplace",
             "plugins",
             "templates",
+            ".studio",
+            ".studio/autosave",
+            ".studio/recovery",
+            ".studio/recovery/crashes",
+            ".studio/recovery/sessions",
+            ".studio/logs",
+            "gui_screens",
+            "models",
+            "models/studio",
+            "models/imported",
+            "logs",
+            "exports/gui",
+            "exports/models",
         ]:
             (self.workspace_root / rel).mkdir(parents=True, exist_ok=True)
 
@@ -176,3 +189,4 @@ class WorkspaceManager:
         marker = context.workspace_root / "project.json"
         if not marker.exists():
             self.initialize_workspace()
+

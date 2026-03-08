@@ -1,0 +1,391 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from asset_studio.code.editor_service import EditorService
+from asset_studio.core.app_context import StudioAppContext
+from asset_studio.core.command_registry import CommandRegistry, StudioCommand
+from asset_studio.core.crash_guard import CrashGuard
+from asset_studio.core.editor_registry import EditorDescriptor, EditorRegistry
+from asset_studio.core.help_registry import HelpEntry, HelpRegistry
+from asset_studio.core.notification_service import NotificationService
+from asset_studio.core.plugin_service import PluginService
+from asset_studio.core.process_service import ProcessService
+from asset_studio.core.recovery_service import RecoveryService
+from asset_studio.core.task_service import TaskService
+from asset_studio.gui_studio.engine import GuiStudioEngine
+from asset_studio.model_studio.engine import ModelStudioEngine
+from asset_studio.runtime.build_service import BuildService
+from asset_studio.runtime.log_model import LogStreamModel
+from asset_studio.runtime.run_service import RunService
+from asset_studio.workspace.workspace_manager import AssetStudioContext, WorkspaceManager
+
+
+class StudioSession:
+    def __init__(self, workspace_manager: WorkspaceManager, context: AssetStudioContext) -> None:
+        self.workspace_manager = workspace_manager
+        self.context = context
+        self.app_context = StudioAppContext(context=context, workspace_manager=workspace_manager)
+
+        self.help_registry = HelpRegistry()
+        self.notification_service = NotificationService()
+        self.recovery_service = RecoveryService(context.workspace_root)
+        self.crash_guard = CrashGuard(
+            recovery_service=self.recovery_service,
+            notification_service=self.notification_service,
+        )
+        self.command_registry = CommandRegistry(
+            help_registry=self.help_registry,
+            crash_guard=self.crash_guard,
+            notification_service=self.notification_service,
+        )
+        self.editor_registry = EditorRegistry()
+        self.log_model = LogStreamModel()
+        self.task_service = TaskService(
+            crash_guard=self.crash_guard,
+            notification_service=self.notification_service,
+        )
+        self.process_service = ProcessService(
+            crash_guard=self.crash_guard,
+            log_model=self.log_model,
+        )
+        self.plugin_service = PluginService(context.plugins, crash_guard=self.crash_guard)
+        self.code_editor_service = EditorService(recovery_service=self.recovery_service)
+        self.gui_studio_engine = GuiStudioEngine(context.workspace_root / "gui_screens")
+        self.model_studio_engine = ModelStudioEngine(context.workspace_root / "models" / "studio")
+        self.build_service = BuildService(context)
+        self.run_service = RunService(context, self.process_service, log_model=self.log_model)
+
+        for name, service in {
+            "help_registry": self.help_registry,
+            "notification_service": self.notification_service,
+            "recovery_service": self.recovery_service,
+            "crash_guard": self.crash_guard,
+            "command_registry": self.command_registry,
+            "editor_registry": self.editor_registry,
+            "task_service": self.task_service,
+            "process_service": self.process_service,
+            "plugin_service": self.plugin_service,
+            "code_editor_service": self.code_editor_service,
+            "gui_studio_engine": self.gui_studio_engine,
+            "model_studio_engine": self.model_studio_engine,
+            "build_service": self.build_service,
+            "run_service": self.run_service,
+            "log_model": self.log_model,
+        }.items():
+            self.app_context.register_service(name, service)
+
+        self.session_id = self.recovery_service.start_session()
+        self._register_builtin_help()
+        self._register_builtin_commands()
+        self._register_builtin_editors()
+        self._register_plugin_editors()
+
+    @classmethod
+    def open(cls, workspace_root: Path, repo_root: Path) -> "StudioSession":
+        workspace_manager = WorkspaceManager(workspace_root=workspace_root, repo_root=repo_root)
+        context = workspace_manager.load_context()
+        return cls(workspace_manager, context)
+
+    def reload_workspace(self, workspace_root: Path | None = None) -> None:
+        if workspace_root is not None:
+            self.workspace_manager = WorkspaceManager(workspace_root=workspace_root, repo_root=self.context.repo_root)
+        self.context = self.workspace_manager.load_context()
+        self.app_context.context = self.context
+        self.build_service = BuildService(self.context)
+        self.run_service = RunService(self.context, self.process_service, log_model=self.log_model)
+        self.plugin_service = PluginService(self.context.plugins, crash_guard=self.crash_guard)
+        self.app_context.register_service("build_service", self.build_service)
+        self.app_context.register_service("run_service", self.run_service)
+        self.app_context.register_service("plugin_service", self.plugin_service)
+        self._register_plugin_editors()
+        self.recovery_service.update_session(workspace=str(self.context.workspace_root))
+
+    def save_workspace(self) -> None:
+        self.workspace_manager.save_context(self.context)
+        self.recovery_service.update_session(lastSavedWorkspace=str(self.context.workspace_root))
+
+    def instantiate_editor(self, editor_id: str):
+        return self.editor_registry.create(editor_id, self.app_context)
+
+    def shutdown(self) -> None:
+        self.task_service.shutdown(wait=False)
+
+    def _register_builtin_help(self) -> None:
+        entries = [
+            HelpEntry(
+                id="studio.shell",
+                label="Studio Shell",
+                short_tooltip="Workspace-aware shell services for embedded tools.",
+                long_description="Provides service lookup, command dispatch, recovery, tasks, and editor registration for ExtremeCraft Studio.",
+                category="studio",
+                keywords=("workspace", "services", "shell"),
+            ),
+            HelpEntry(
+                id="studio.code",
+                label="Code Studio",
+                short_tooltip="Open, edit, search, and save text documents with tracked buffers.",
+                long_description="The code backend manages text documents, dirty state, diagnostics, recent files, and split editor sessions.",
+                category="editors",
+                keywords=("code", "editor", "diagnostics"),
+            ),
+            HelpEntry(
+                id="studio.gui",
+                label="GUI Studio",
+                short_tooltip="Versioned Minecraft GUI documents, preview payloads, and validation.",
+                long_description="The GUI backend provides document models, widget schemas, preview contracts, export/import, and validation for mod screens.",
+                category="editors",
+                keywords=("gui", "screen", "widget"),
+            ),
+            HelpEntry(
+                id="studio.model",
+                label="Model Studio",
+                short_tooltip="Cube model documents with hierarchy, UV data, and preview payloads.",
+                long_description="The model backend provides cube-first Minecraft model authoring contracts for block, item, and entity style assets.",
+                category="editors",
+                keywords=("model", "cube", "uv", "bone"),
+            ),
+        ]
+        for entry in entries:
+            self.help_registry.register(entry)
+
+    def _register_builtin_commands(self) -> None:
+        commands = [
+            StudioCommand(
+                id="workspace.save",
+                label="Save Workspace",
+                handler=self.save_workspace,
+                category="workspace",
+                short_tooltip="Persist the current workspace marker and session state.",
+                long_description="Saves workspace metadata and keeps the current Studio session aligned with the loaded workspace.",
+            ),
+            StudioCommand(
+                id="workspace.validate",
+                label="Validate Workspace",
+                handler=self.build_service.validate_workspace,
+                category="build",
+                short_tooltip="Run the validation pipeline for the current workspace.",
+                long_description="Executes the asset, model, texture, datapack, registry, and plugin validation pipeline for the active workspace.",
+            ),
+            StudioCommand(
+                id="build.export.resourcepack",
+                label="Export ResourcePack",
+                handler=lambda: self.build_service.export_pack("resourcepack"),
+                category="build",
+                short_tooltip="Export the current workspace assets into the resource pack export folder.",
+                long_description="Copies workspace assets into the deterministic export location used by Asset Studio.",
+            ),
+            StudioCommand(
+                id="build.export.datapack",
+                label="Export Datapack",
+                handler=lambda: self.build_service.export_pack("datapack"),
+                category="build",
+                short_tooltip="Export the current workspace data into the datapack export folder.",
+                long_description="Copies workspace datapack content into the deterministic export location used by Asset Studio.",
+            ),
+            StudioCommand(
+                id="build.project.assets",
+                label="Build Assets",
+                handler=lambda: self.build_service.build_workspace("assets"),
+                category="build",
+                short_tooltip="Build workspace asset outputs.",
+                long_description="Creates the standard workspace build tree for assets without changing the existing CLI contract.",
+            ),
+        ]
+        for command in commands:
+            self.command_registry.register(command)
+
+    def _register_builtin_editors(self) -> None:
+        descriptors = [
+            EditorDescriptor(
+                id="asset_wizard",
+                label="Asset Wizard",
+                category="tools",
+                area="main_tab",
+                order=10,
+                factory_ref="asset_studio.gui.asset_wizard:AssetWizardPanel",
+                context_mode="none",
+            ),
+            EditorDescriptor(
+                id="visual_builder",
+                label="Visual Builder",
+                category="tools",
+                area="main_tab",
+                order=20,
+                factory_ref="asset_studio.gui.graph_editor:GraphEditor",
+                context_mode="asset_context",
+            ),
+            EditorDescriptor(
+                id="progression_studio",
+                label="Skill Tree Designer",
+                category="editors",
+                area="main_tab",
+                order=30,
+                factory_ref="asset_studio.gui.skilltree_designer:SkillTreeDesigner",
+                context_mode="asset_context",
+                document_types=("skilltree",),
+            ),
+            EditorDescriptor(
+                id="project_browser",
+                label="Project Browser",
+                category="panels",
+                area="main_tab",
+                order=50,
+                factory_ref="asset_studio.gui.project_browser:ProjectBrowser",
+                context_mode="none",
+            ),
+            EditorDescriptor(
+                id="console_panel",
+                label="Console",
+                category="panels",
+                area="main_tab",
+                order=60,
+                factory_ref="asset_studio.gui.console_panel:ConsolePanel",
+                context_mode="none",
+            ),
+            EditorDescriptor(
+                id="preview_renderer",
+                label="Preview Renderer",
+                category="panels",
+                area="main_tab",
+                order=70,
+                factory_ref="asset_studio.gui.preview_renderer:PreviewRenderer",
+                context_mode="none",
+            ),
+            EditorDescriptor(
+                id="material_editor",
+                label="Materials",
+                category="content",
+                area="content_editor",
+                order=100,
+                factory_ref="asset_studio.gui.editors:MaterialEditor",
+                context_mode="asset_context",
+            ),
+            EditorDescriptor(
+                id="machine_editor",
+                label="Machines",
+                category="content",
+                area="content_editor",
+                order=110,
+                factory_ref="asset_studio.gui.editors:MachineEditor",
+                context_mode="asset_context",
+            ),
+            EditorDescriptor(
+                id="weapon_editor",
+                label="Weapons",
+                category="content",
+                area="content_editor",
+                order=120,
+                factory_ref="asset_studio.gui.editors:WeaponEditor",
+                context_mode="asset_context",
+            ),
+            EditorDescriptor(
+                id="worldgen_editor",
+                label="Worldgen",
+                category="content",
+                area="content_editor",
+                order=130,
+                factory_ref="asset_studio.gui.editors:WorldgenEditor",
+                context_mode="asset_context",
+            ),
+            EditorDescriptor(
+                id="quest_editor",
+                label="Quests",
+                category="content",
+                area="content_editor",
+                order=140,
+                factory_ref="asset_studio.gui.editors:QuestEditor",
+                context_mode="asset_context",
+            ),
+            EditorDescriptor(
+                id="skill_tree_editor",
+                label="Skill Trees",
+                category="content",
+                area="content_editor",
+                order=150,
+                factory_ref="asset_studio.gui.editors:SkillTreeEditor",
+                context_mode="asset_context",
+            ),
+            EditorDescriptor(
+                id="code_studio",
+                label="Code Studio",
+                category="editors",
+                area="registered_backend",
+                order=200,
+                document_types=("text", "json", "java", "python"),
+                tags=("backend", "code"),
+            ),
+            EditorDescriptor(
+                id="gui_studio",
+                label="GUI Studio",
+                category="editors",
+                area="registered_backend",
+                order=210,
+                document_types=("gui-screen",),
+                tags=("backend", "gui"),
+            ),
+            EditorDescriptor(
+                id="model_studio",
+                label="Model Studio",
+                category="editors",
+                area="registered_backend",
+                order=220,
+                document_types=("cube-model",),
+                tags=("backend", "model"),
+            ),
+            EditorDescriptor(
+                id="debug_studio",
+                label="Debug Studio",
+                category="editors",
+                area="registered_backend",
+                order=230,
+                tags=("backend", "logs"),
+            ),
+            EditorDescriptor(
+                id="build_studio",
+                label="Build Studio",
+                category="editors",
+                area="registered_backend",
+                order=240,
+                tags=("backend", "build"),
+            ),
+        ]
+        for descriptor in descriptors:
+            self.editor_registry.register(descriptor)
+            self.help_registry.register(
+                HelpEntry(
+                    id=f"editor.{descriptor.id}",
+                    label=descriptor.label,
+                    short_tooltip=f"Open {descriptor.label}.",
+                    long_description=f"Registered studio editor '{descriptor.label}' in category '{descriptor.category}'.",
+                    category="editors",
+                    keywords=descriptor.tags,
+                )
+            )
+
+    def _register_plugin_editors(self) -> None:
+        self.editor_registry.unregister_prefix("plugin.")
+        for editor_name, editor_factory in self.context.plugins.gui_editors.items():
+            self.editor_registry.register(
+                EditorDescriptor(
+                    id=f"plugin.{editor_name}",
+                    label=editor_name,
+                    category="plugins",
+                    area="content_editor",
+                    order=500,
+                    factory=editor_factory,
+                    context_mode="asset_context",
+                    tags=("plugin",),
+                )
+            )
+            self.help_registry.register(
+                HelpEntry(
+                    id=f"editor.plugin.{editor_name}",
+                    label=editor_name,
+                    short_tooltip=f"Plugin-provided editor: {editor_name}.",
+                    long_description=f"This editor is registered by a plugin and loaded through the studio editor registry.",
+                    category="plugins",
+                    keywords=("plugin", "editor"),
+                )
+            )
+
