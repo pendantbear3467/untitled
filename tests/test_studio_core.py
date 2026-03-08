@@ -138,5 +138,68 @@ class StudioCoreTests(unittest.TestCase):
         self.assertIn("hello studio", session.log_model.to_text())
 
 
+    def test_runtime_exports_and_log_safety(self) -> None:
+        session = StudioSession.open(self.workspace, Path.cwd())
+
+        gui_document = session.gui_studio_engine.create_document("player_screen", screen_type="player")
+        session.gui_studio_engine.add_widget(
+            gui_document,
+            session.gui_studio_engine.create_widget("player_inventory_grid", widget_id="player_inventory", x=8, y=18),
+            parent_id="root_panel",
+        )
+        session.gui_studio_engine.add_widget(
+            gui_document,
+            session.gui_studio_engine.create_widget("hotbar", widget_id="player_hotbar", x=8, y=76),
+            parent_id="root_panel",
+        )
+        session.gui_studio_engine.add_widget(
+            gui_document,
+            session.gui_studio_engine.create_widget("armor_slots", widget_id="player_armor", x=154, y=18),
+            parent_id="root_panel",
+        )
+        session.gui_studio_engine.add_widget(
+            gui_document,
+            session.gui_studio_engine.create_widget("offhand_slot", widget_id="player_offhand", x=154, y=94),
+            parent_id="root_panel",
+        )
+        gui_runtime_path = session.gui_studio_engine.export_runtime_document(gui_document)
+        gui_runtime = json.loads(gui_runtime_path.read_text(encoding="utf-8"))
+        self.assertEqual(gui_runtime["documentType"], "extremecraft-gui-runtime")
+        self.assertTrue(gui_runtime_path.exists())
+        self.assertEqual(len(gui_runtime["inventoryBindings"]), 41)
+        self.assertEqual(gui_runtime_path.name, "player_screen.json")
+        self.assertEqual(gui_runtime_path.parent.name, "gui")
+        self.assertEqual(gui_runtime_path.parent.parent.name, "studio")
+
+        model_document = session.model_studio_engine.create_document("crusher_block", model_type="block")
+        model_runtime_path = session.model_studio_engine.export_runtime_document(model_document)
+        model_runtime = json.loads(model_runtime_path.read_text(encoding="utf-8"))
+        self.assertEqual(model_runtime["documentType"], "extremecraft-model-runtime")
+        self.assertEqual(model_runtime["resourceId"], "extremecraft:studio/models/crusher_block")
+        self.assertTrue(model_runtime_path.exists())
+
+        session.run_service.save_configuration(
+            RunConfiguration(
+                name="client",
+                command=[sys.executable, "-c", "print('hello studio runtime')"],
+                kind="client",
+            )
+        )
+        handle = session.run_service.run_client()
+        result = handle.wait(10)
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertTrue(result.success)
+        latest_log = session.latest_log_path()
+        self.assertIsNotNone(latest_log)
+        assert latest_log is not None
+        self.assertTrue(latest_log.exists())
+        self.assertIn("hello studio runtime", latest_log.read_text(encoding="utf-8"))
+
+        cleared = session.clear_runtime_state()
+        self.assertTrue(cleared.success)
+        self.assertEqual(session.log_model.tail(), [])
+        self.assertEqual(session.notification_service.recent(), [])
+
 if __name__ == "__main__":
     unittest.main()

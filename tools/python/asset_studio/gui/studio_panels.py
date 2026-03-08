@@ -4,7 +4,7 @@ import copy
 import json
 from pathlib import Path
 
-from PyQt6.QtCore import QPoint, QRect, QRectF, QSize, Qt, pyqtSignal
+from PyQt6.QtCore import QPoint, QRect, QRectF, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QPainter, QPen
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -29,7 +29,7 @@ from PyQt6.QtWidgets import (
 )
 
 from asset_studio.gui_studio.engine import GuiStudioEngine
-from asset_studio.gui_studio.models import GuiBounds, GuiDocument, GuiWidget
+from asset_studio.gui_studio.models import GuiAnchor, GuiBinding, GuiBounds, GuiDocument, GuiWidget
 from asset_studio.model_studio.engine import ModelStudioEngine
 from asset_studio.model_studio.models import FaceMapping, ModelBone, ModelCube, ModelDocument, Vec3
 
@@ -41,12 +41,15 @@ def _safe_int(text: str, fallback: int = 0) -> int:
         return fallback
 
 
-def _safe_json(text: str) -> dict:
-    try:
-        payload = json.loads(text.strip() or "{}")
-    except json.JSONDecodeError:
+def _safe_json(text: str) -> dict | None:
+    stripped = text.strip()
+    if not stripped:
         return {}
-    return payload if isinstance(payload, dict) else {}
+    try:
+        payload = json.loads(stripped)
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
 
 
 class _PanelHeader(QFrame):
@@ -190,7 +193,7 @@ class _GuiCanvas(QWidget):
         painter.drawRect(rect)
         painter.setPen(QColor("#ffffff"))
         painter.drawText(rect.adjusted(4, 4, -4, -4), Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft, widget.label or widget.id)
-        if widget.widget_type in {"player_inventory_grid", "hotbar", "armor_slots", "offhand", "inventory_slot", "machine_slot", "slot"}:
+        if widget.widget_type in {"player_inventory_grid", "hotbar", "armor_slots", "offhand_slot", "inventory_slot", "machine_slot", "slot"}:
             self._paint_slot_widget(painter, rect, widget)
         elif widget.widget_type == "progress":
             self._paint_progress_widget(painter, rect, widget)
@@ -245,7 +248,7 @@ class _GuiCanvas(QWidget):
     def _widget_fill(self, widget_type: str, selected: bool) -> QColor:
         if widget_type == "panel":
             return QColor("#304155" if selected else "#243345")
-        if widget_type in {"player_inventory_grid", "hotbar", "armor_slots", "offhand", "inventory_slot", "machine_slot", "slot"}:
+        if widget_type in {"player_inventory_grid", "hotbar", "armor_slots", "offhand_slot", "inventory_slot", "machine_slot", "slot"}:
             return QColor("#4e4030" if selected else "#392d21")
         if widget_type == "button":
             return QColor("#415b82")
@@ -313,6 +316,7 @@ class GuiStudioPanel(QWidget):
         row.addWidget(_button("Open", self.open_document_dialog, "Open a saved GUI document from disk."))
         row.addWidget(_button("Save", self.save_current, "Save the current GUI document."))
         row.addWidget(_button("Export Current", self.export_current, "Export the current GUI document to a chosen file path."))
+        row.addWidget(_button("Export Runtime", self.export_runtime_current, "Export the current GUI document into the deterministic mod-facing runtime path."))
         row.addWidget(_button("Validate Current", self.validate_current, "Validate the current GUI definition against the authoritative backend validator."))
         row.addWidget(_button("Preview Current", self.preview_current, "Refresh the preview payload and selection summary."))
         row.addStretch(1)
@@ -343,7 +347,7 @@ class GuiStudioPanel(QWidget):
             ("Player Grid", "player_inventory_grid"),
             ("Hotbar", "hotbar"),
             ("Armor Slots", "armor_slots"),
-            ("Offhand", "offhand"),
+            ("Offhand", "offhand_slot"),
             ("Inventory Slot", "inventory_slot"),
             ("Add Inventory Section", "inventory_section"),
         ]
@@ -455,6 +459,14 @@ class GuiStudioPanel(QWidget):
         self.visible_check = QCheckBox("Visible")
         self.visible_check.setToolTip("Hide or show the selected widget in preview/export payloads.")
         self.visible_check.toggled.connect(self._apply_inspector_changes)
+        self.anchor_json = QPlainTextEdit()
+        self.anchor_json.setFixedHeight(80)
+        self.anchor_json.setToolTip("Anchor/layout metadata as JSON. Invalid JSON is ignored instead of crashing the page.")
+        self.anchor_json.textChanged.connect(self._apply_inspector_changes)
+        self.binding_json = QPlainTextEdit()
+        self.binding_json.setFixedHeight(96)
+        self.binding_json.setToolTip("Inventory/runtime binding metadata as JSON. Invalid JSON is ignored instead of crashing the page.")
+        self.binding_json.textChanged.connect(self._apply_inspector_changes)
         self.properties = QPlainTextEdit()
         self.properties.setToolTip("Widget properties as JSON. Invalid JSON is ignored instead of crashing the page.")
         self.properties.textChanged.connect(self._apply_inspector_changes)
@@ -467,6 +479,8 @@ class GuiStudioPanel(QWidget):
         form.addRow("Width", self.width_spin)
         form.addRow("Height", self.height_spin)
         form.addRow("Visibility", self.visible_check)
+        form.addRow("Anchors", self.anchor_json)
+        form.addRow("Binding", self.binding_json)
         form.addRow("Properties", self.properties)
 
         preview = QWidget()
@@ -562,6 +576,17 @@ class GuiStudioPanel(QWidget):
         self.report.setPlainText(f"Exported GUI document to {target}")
         self.notifications.emit(f"Exported GUI document to {target.name}")
 
+    def export_runtime_current(self) -> None:
+        if self.current_document is None:
+            self.notifications.emit("No GUI document to export")
+            return
+        target = self.engine.export_runtime_document(self.current_document)
+        runtime = self.engine.build_runtime_definition(self.current_document)
+        self.report.setPlainText(
+            f"Exported runtime GUI to {target}\nResource ID: {runtime['resourceId']}\nInventory bindings: {len(runtime['inventoryBindings'])}"
+        )
+        self.notifications.emit(f"Exported runtime GUI definition to {target.name}")
+
     def validate_current(self) -> None:
         if self.current_document is None:
             self.notifications.emit("No GUI document to validate")
@@ -579,6 +604,7 @@ class GuiStudioPanel(QWidget):
             self.notifications.emit("No GUI document to preview")
             return
         payload = self.engine.preview_payload(self.current_document)
+        runtime = self.engine.build_runtime_definition(self.current_document)
         selected = self.current_document.widgets.get(self.selected_widget_id) if self.selected_widget_id else None
         self.preview_summary.setPlainText(
             json.dumps(
@@ -588,7 +614,9 @@ class GuiStudioPanel(QWidget):
                     "canvas": payload["canvas"],
                     "selected": selected.id if selected else None,
                     "widgetCount": len(payload["widgets"]),
-                    "exportNote": "Widgets here export into mod-loadable GUI definitions.",
+                    "inventoryBindings": len(runtime["inventoryBindings"]),
+                    "runtimeResourceId": runtime["resourceId"],
+                    "runtimePath": str(self.engine.runtime_export_path(self.current_document)),
                 },
                 indent=2,
             )
@@ -609,7 +637,7 @@ class GuiStudioPanel(QWidget):
             ("player_inventory_grid", 0, 0),
             ("hotbar", 0, 58),
             ("armor_slots", 150, 0),
-            ("offhand", 150, 82),
+            ("offhand_slot", 150, 82),
         ]:
             self._add_widget(widget_type, base_x + dx, base_y + dy)
         self.notifications.emit("Added full inventory section")
@@ -625,13 +653,10 @@ class GuiStudioPanel(QWidget):
         if widget is None or self.current_document is None:
             self.notifications.emit("Select a widget before duplicating")
             return
-        duplicate = copy.deepcopy(widget)
-        duplicate.id = self._unique_widget_id(f"{widget.id}_copy")
-        duplicate.label = f"{widget.label or widget.id} Copy"
-        duplicate.bounds.x += 8
-        duplicate.bounds.y += 8
-        duplicate.children = []
-        self.engine.add_widget(self.current_document, duplicate, parent_id=None)
+        if widget.id == "root_panel":
+            self.notifications.emit("The root panel cannot be duplicated")
+            return
+        duplicate = self.engine.duplicate_widget(self.current_document, widget.id)
         self.select_widget(duplicate.id)
         self._mark_dirty("Duplicated selected widget")
 
@@ -679,19 +704,11 @@ class GuiStudioPanel(QWidget):
         if self.current_document is None:
             self.notifications.emit("No GUI document to distribute")
             return
-        widgets = [widget for widget in self.current_document.widgets.values() if widget.id != "root_panel"]
-        if len(widgets) < 3:
+        widget_ids = [widget.id for widget in self.current_document.widgets.values() if widget.id != "root_panel"]
+        if len(widget_ids) < 3:
             self.notifications.emit("Add at least three widgets before distributing")
             return
-        widgets.sort(key=lambda item: item.bounds.x if axis == "horizontal" else item.bounds.y)
-        start = widgets[0].bounds.x if axis == "horizontal" else widgets[0].bounds.y
-        end = (self.current_document.width if axis == "horizontal" else self.current_document.height) - (widgets[-1].bounds.width if axis == "horizontal" else widgets[-1].bounds.height)
-        gap = max(0, (end - start) // max(1, len(widgets) - 1))
-        for index, widget in enumerate(widgets):
-            if axis == "horizontal":
-                widget.bounds.x = start + index * gap
-            else:
-                widget.bounds.y = start + index * gap
+        self.engine.distribute_widgets(self.current_document, widget_ids, axis)
         self._mark_dirty(f"Distributed widgets {axis}")
 
     def zoom_to_fit(self) -> None:
@@ -719,18 +736,7 @@ class GuiStudioPanel(QWidget):
         if self.current_document is None:
             self.new_document()
         assert self.current_document is not None
-        widget_id = self._unique_widget_id(widget_type)
-        width, height = self._widget_dimensions(widget_type)
-        properties = self._default_properties(widget_type)
-        tags = [widget_type, "exportable"]
-        widget = GuiWidget(
-            id=widget_id,
-            widget_type=widget_type,
-            label=widget_type.replace("_", " ").title(),
-            bounds=GuiBounds(x=x, y=y, width=width, height=height),
-            properties=properties,
-            tags=tags,
-        )
+        widget = self.engine.create_widget(widget_type, widget_id=self._unique_widget_id(widget_type), x=x, y=y)
         self.engine.add_widget(self.current_document, widget, parent_id="root_panel")
         self.select_widget(widget.id)
         self._mark_dirty(f"Added {widget_type}")
@@ -745,7 +751,7 @@ class GuiStudioPanel(QWidget):
             "player_inventory_grid": (144, 54),
             "hotbar": (144, 18),
             "armor_slots": (18, 72),
-            "offhand": (18, 18),
+            "offhand_slot": (18, 18),
             "inventory_slot": (18, 18),
             "machine_slot": (18, 18),
         }.get(widget_type, (32, 18))
@@ -788,8 +794,35 @@ class GuiStudioPanel(QWidget):
         widget.bounds.width = max(1, self.width_spin.value())
         widget.bounds.height = max(1, self.height_spin.value())
         widget.visible = self.visible_check.isChecked()
+
+        anchor_payload = _safe_json(self.anchor_json.toPlainText())
+        if anchor_payload is not None:
+            widget.anchor = GuiAnchor(
+                left=anchor_payload.get("left"),
+                top=anchor_payload.get("top"),
+                right=anchor_payload.get("right"),
+                bottom=anchor_payload.get("bottom"),
+                center_x=anchor_payload.get("centerX"),
+                center_y=anchor_payload.get("centerY"),
+            )
+
+        binding_payload = _safe_json(self.binding_json.toPlainText())
+        if binding_payload is not None:
+            if binding_payload:
+                widget.binding = GuiBinding(
+                    kind=str(binding_payload.get("kind", widget.widget_type)),
+                    source=str(binding_payload.get("source", "")),
+                    slot_id=str(binding_payload.get("slotId", "")),
+                    role=str(binding_payload.get("role", "")),
+                    rows=int(binding_payload.get("rows", 0) or 0),
+                    columns=int(binding_payload.get("columns", 0) or 0),
+                    metadata=dict(binding_payload.get("metadata") or {}),
+                )
+            else:
+                widget.binding = None
+
         properties = _safe_json(self.properties.toPlainText())
-        if properties:
+        if properties is not None:
             widget.properties = properties
         self._mark_dirty(f"Updated {widget.id}")
 
@@ -877,6 +910,8 @@ class GuiStudioPanel(QWidget):
             self.width_spin.setValue(0)
             self.height_spin.setValue(0)
             self.visible_check.setChecked(False)
+            self.anchor_json.setPlainText("{}")
+            self.binding_json.setPlainText("{}")
             self.properties.setPlainText("{}")
         else:
             self.widget_id.setText(widget.id)
@@ -887,6 +922,26 @@ class GuiStudioPanel(QWidget):
             self.width_spin.setValue(widget.bounds.width)
             self.height_spin.setValue(widget.bounds.height)
             self.visible_check.setChecked(widget.visible)
+            self.anchor_json.setPlainText(json.dumps({
+                "left": widget.anchor.left,
+                "top": widget.anchor.top,
+                "right": widget.anchor.right,
+                "bottom": widget.anchor.bottom,
+                "centerX": widget.anchor.center_x,
+                "centerY": widget.anchor.center_y,
+            }, indent=2))
+            binding_payload = {}
+            if widget.binding is not None:
+                binding_payload = {
+                    "kind": widget.binding.kind,
+                    "source": widget.binding.source,
+                    "slotId": widget.binding.slot_id,
+                    "role": widget.binding.role,
+                    "rows": widget.binding.rows,
+                    "columns": widget.binding.columns,
+                    "metadata": dict(widget.binding.metadata),
+                }
+            self.binding_json.setPlainText(json.dumps(binding_payload, indent=2))
             self.properties.setPlainText(json.dumps(widget.properties, indent=2))
         self._updating = False
 
@@ -1059,6 +1114,7 @@ class ModelStudioPanel(QWidget):
         row.addWidget(_button("Save", self.save_current, "Save the current model document."))
         row.addWidget(_button("Import", self.open_document_dialog, "Import an existing .model.json document into the workbench."))
         row.addWidget(_button("Export Current", self.export_current, "Export the current model document to a chosen file path."))
+        row.addWidget(_button("Export Runtime", self.export_runtime_current, "Export the current model document into the deterministic mod-facing runtime path."))
         row.addWidget(_button("Validate Current", self.validate_current, "Validate the current model document using the authoritative model validator."))
         row.addWidget(_button("Preview Current", self.preview_current, "Refresh the viewport summary and preview payload."))
         row.addStretch(1)
@@ -1135,6 +1191,9 @@ class ModelStudioPanel(QWidget):
         form = QFormLayout(inspector)
         self.selection_label = QLabel("None")
         self.selection_kind = QLabel("None")
+        self.bone_selector = QComboBox()
+        self.bone_selector.setToolTip("Assign the selected cube to a bone/group in the model hierarchy.")
+        self.bone_selector.currentTextChanged.connect(self._assign_selected_cube_to_bone)
         self.pos_x = self._model_spin(self._apply_inspector_changes, "Start/position X value for the current selection.")
         self.pos_y = self._model_spin(self._apply_inspector_changes, "Start/position Y value for the current selection.")
         self.pos_z = self._model_spin(self._apply_inspector_changes, "Start/position Z value for the current selection.")
@@ -1150,6 +1209,7 @@ class ModelStudioPanel(QWidget):
         self.texture_path.textChanged.connect(self._apply_inspector_changes)
         form.addRow("Selection", self.selection_label)
         form.addRow("Type", self.selection_kind)
+        form.addRow("Bone", self.bone_selector)
         form.addRow("X", self.pos_x)
         form.addRow("Y", self.pos_y)
         form.addRow("Z", self.pos_z)
@@ -1176,9 +1236,10 @@ class ModelStudioPanel(QWidget):
         texture_size_row.addWidget(self.texture_height)
         uv_layout.addLayout(texture_size_row)
         self.face_summary = QPlainTextEdit()
-        self.face_summary.setReadOnly(True)
-        self.face_summary.setToolTip("Visible face mapping state for the current cube.")
+        self.face_summary.setReadOnly(False)
+        self.face_summary.setToolTip("Editable face mapping state for the current cube as JSON.")
         uv_layout.addWidget(self.face_summary)
+        uv_layout.addWidget(_button("Apply Face Mapping", self._apply_face_mappings, "Apply the editable face mapping JSON to the selected cube."))
 
         report_tab = QWidget()
         report_layout = QVBoxLayout(report_tab)
@@ -1246,7 +1307,7 @@ class ModelStudioPanel(QWidget):
             return False
         saved_path = self.engine.save_document(self.current_document)
         self.current_path = saved_path
-        self.report.setPlainText(f"Saved model document to {saved_path}")
+        self.report.setPlainText(f"Saved model document to {saved_path}\nRuntime export path: {self.engine.runtime_export_path(self.current_document)}")
         self.notifications.emit(f"Saved model document {self.current_document.name}")
         return True
 
@@ -1265,6 +1326,17 @@ class ModelStudioPanel(QWidget):
         self.report.setPlainText(f"Exported model document to {target}")
         self.notifications.emit(f"Exported model document to {target.name}")
 
+    def export_runtime_current(self) -> None:
+        if self.current_document is None:
+            self.notifications.emit("No model document to export")
+            return
+        target = self.engine.export_runtime_document(self.current_document)
+        runtime = self.engine.build_runtime_definition(self.current_document)
+        self.report.setPlainText(
+            f"Exported runtime model to {target}\nResource ID: {runtime['resourceId']}\nCube count: {len(runtime['cubes'])}\nBone count: {len(runtime['bones'])}"
+        )
+        self.notifications.emit(f"Exported runtime model definition to {target.name}")
+
     def validate_current(self) -> None:
         if self.current_document is None:
             self.notifications.emit("No model document to validate")
@@ -1282,10 +1354,11 @@ class ModelStudioPanel(QWidget):
             self.notifications.emit("No model document to preview")
             return
         payload = self.engine.preview_payload(self.current_document)
-        self.preview_summary.setPlainText(json.dumps({"document": payload["document"], "modelType": payload["modelType"], "textureSize": payload["textureSize"], "cubeCount": len(payload["cubes"]), "boneCount": len(payload["bones"]), "selectedCube": self.selected_cube_id}, indent=2))
+        runtime = self.engine.build_runtime_definition(self.current_document)
+        self.preview_summary.setPlainText(json.dumps({"document": payload["document"], "modelType": payload["modelType"], "textureSize": payload["textureSize"], "cubeCount": len(payload["cubes"]), "boneCount": len(payload["bones"]), "selectedCube": self.selected_cube_id, "runtimeResourceId": runtime["resourceId"], "runtimePath": str(self.engine.runtime_export_path(self.current_document))}, indent=2))
         cube = self._selected_cube()
         if cube is not None:
-            face_state = {face: {"texture": mapping.texture, "uv": mapping.uv, "rotation": mapping.rotation} for face, mapping in cube.faces.items()}
+            face_state = {face: {"texture": mapping.texture, "uv": list(mapping.uv), "rotation": mapping.rotation} for face, mapping in cube.faces.items()}
             self.face_summary.setPlainText(json.dumps(face_state, indent=2))
         else:
             self.face_summary.setPlainText("Select a cube to inspect face mapping and UV state.")
@@ -1306,13 +1379,7 @@ class ModelStudioPanel(QWidget):
             self.new_document()
         assert self.current_document is not None
         cube_id = self._unique_cube_id("cube")
-        cube = ModelCube(
-            id=cube_id,
-            from_pos=Vec3(0.0, 0.0, 0.0),
-            to_pos=Vec3(8.0, 8.0, 8.0),
-            texture="textures/block/default.png",
-            faces={face: FaceMapping(texture="#0") for face in ["north", "south", "east", "west", "up", "down"]},
-        )
+        cube = self.engine.create_cube(cube_id=cube_id, width=8.0, height=8.0, depth=8.0)
         self.engine.add_cube(self.current_document, cube, bone_id=self.selected_bone_id or "root")
         self.select_cube(cube_id)
         self.notifications.emit(f"Added cube {cube_id}")
@@ -1322,11 +1389,7 @@ class ModelStudioPanel(QWidget):
             self.notifications.emit("Select a bone or cube before duplicating")
             return
         if self.selected_cube_id and self.selected_cube_id in self.current_document.cubes:
-            cube = copy.deepcopy(self.current_document.cubes[self.selected_cube_id])
-            cube.id = self._unique_cube_id(f"{cube.id}_copy")
-            cube.from_pos = Vec3(cube.from_pos.x + 1, cube.from_pos.y + 1, cube.from_pos.z)
-            cube.to_pos = Vec3(cube.to_pos.x + 1, cube.to_pos.y + 1, cube.to_pos.z)
-            self.engine.add_cube(self.current_document, cube, bone_id=self.selected_bone_id or "root")
+            cube = self.engine.duplicate_cube(self.current_document, self.selected_cube_id)
             self.select_cube(cube.id)
             self.notifications.emit(f"Duplicated cube {cube.id}")
             return
@@ -1349,9 +1412,7 @@ class ModelStudioPanel(QWidget):
             if result != QMessageBox.StandardButton.Yes:
                 return
             cube_id = self.selected_cube_id
-            self.current_document.cubes.pop(cube_id, None)
-            for bone in self.current_document.bones.values():
-                bone.cubes = [item for item in bone.cubes if item != cube_id]
+            self.engine.remove_cube(self.current_document, cube_id)
             self.selected_cube_id = next(iter(self.current_document.cubes), None)
             self._refresh_surface()
             self.notifications.emit(f"Deleted cube {cube_id}")
@@ -1361,11 +1422,7 @@ class ModelStudioPanel(QWidget):
             if result != QMessageBox.StandardButton.Yes:
                 return
             bone_id = self.selected_bone_id
-            self.current_document.bones.pop(bone_id, None)
-            for bone in self.current_document.bones.values():
-                bone.children = [item for item in bone.children if item != bone_id]
-                if bone.parent == bone_id:
-                    bone.parent = None
+            self.engine.remove_bone(self.current_document, bone_id)
             self.selected_bone_id = "root"
             self._refresh_surface()
             self.notifications.emit(f"Deleted part {bone_id}")
@@ -1428,6 +1485,43 @@ class ModelStudioPanel(QWidget):
         self.current_document.texture_height = self.texture_height.value()
         self.preview_current()
 
+    def _assign_selected_cube_to_bone(self, bone_id: str) -> None:
+        if self._updating or self.current_document is None or self.selected_cube_id is None:
+            return
+        if not bone_id or bone_id not in self.current_document.bones:
+            return
+        self.engine.assign_cube_to_bone(self.current_document, self.selected_cube_id, bone_id)
+        self.selected_bone_id = bone_id
+        self._refresh_surface()
+
+    def _apply_face_mappings(self) -> None:
+        cube = self._selected_cube()
+        if cube is None:
+            self.notifications.emit("Select a cube before editing face mappings")
+            return
+        payload = _safe_json(self.face_summary.toPlainText())
+        if payload is None:
+            self.notifications.emit("Face mapping JSON is invalid")
+            return
+        updated_faces: dict[str, FaceMapping] = {}
+        for face, mapping in cube.faces.items():
+            source = payload.get(face) if isinstance(payload, dict) else None
+            if not isinstance(source, dict):
+                updated_faces[face] = mapping
+                continue
+            uv = source.get("uv", list(mapping.uv))
+            if not isinstance(uv, (list, tuple)) or len(uv) != 4:
+                uv = list(mapping.uv)
+            updated_faces[face] = FaceMapping(
+                texture=str(source.get("texture", mapping.texture)),
+                uv=tuple(float(value) for value in uv),
+                rotation=int(source.get("rotation", mapping.rotation) or 0),
+            )
+        cube.faces = updated_faces
+        self.notifications.emit(f"Updated face mapping for {cube.id}")
+        self.preview_current()
+
+
     def _select_outliner_item(self, item: QListWidgetItem) -> None:
         payload = item.data(Qt.ItemDataRole.UserRole)
         if not isinstance(payload, tuple) or len(payload) != 2:
@@ -1481,6 +1575,7 @@ class ModelStudioPanel(QWidget):
         self._update_camera()
         self._update_viewport_zoom()
         self._refresh_outliner()
+        self._refresh_bone_selector()
         self._refresh_inspector()
         if self.current_document is None:
             self.preview_summary.setPlainText("Create or open a model document to preview cube and bone payloads.")
@@ -1550,6 +1645,21 @@ class ModelStudioPanel(QWidget):
             self.texture_path.setPlainText("")
         self._updating = False
 
+    def _refresh_bone_selector(self) -> None:
+        self._updating = True
+        current = self.selected_bone_id or "root"
+        self.bone_selector.blockSignals(True)
+        self.bone_selector.clear()
+        if self.current_document is not None:
+            for bone_id in sorted(self.current_document.bones):
+                self.bone_selector.addItem(bone_id)
+            index = self.bone_selector.findText(current)
+            if index >= 0:
+                self.bone_selector.setCurrentIndex(index)
+        self.bone_selector.setEnabled(self.selected_cube_id is not None)
+        self.bone_selector.blockSignals(False)
+        self._updating = False
+
     def _selected_cube(self) -> ModelCube | None:
         if self.current_document is None or self.selected_cube_id is None:
             return None
@@ -1575,25 +1685,33 @@ class ModelStudioPanel(QWidget):
 
 
 class BuildRunPanel(QWidget):
-    def __init__(self, callbacks: dict[str, object]) -> None:
+    def __init__(self, session, callbacks: dict[str, object]) -> None:
         super().__init__()
+        self.session = session
+        self.callbacks = callbacks
+
         root = QVBoxLayout(self)
-        root.addWidget(_PanelHeader("Build/Run Studio", "Run validation, compile/export pipelines, and inspect runtime logs and reports without leaving the shell."))
+        root.addWidget(_PanelHeader("Build/Run Studio", "Run validation, compile/export pipelines, run client/server configurations, and inspect runtime logs without leaving the shell."))
 
         actions = QGridLayout()
         entries = [
             ("Validate", "validate_assets", "Run the current workspace validation pipeline."),
+            ("Build Assets", "compile_assets", "Build workspace asset outputs through the backend build service."),
             ("Compile Expansion", "compile_expansion", "Compile the first detected addon expansion with safe backend feedback."),
+            ("Run Client", "run_client", "Run the configured client through the session run service."),
+            ("Run Server", "run_server", "Run the configured server through the session run service."),
             ("Build Release", "release_build", "Build the release artifact bundle."),
             ("Build Modpack", "modpack_build", "Build the modpack distribution archive."),
             ("Export Datapack", "export_datapack", "Export datapack outputs to the workspace export folder."),
             ("Export Resourcepack", "export_resourcepack", "Export resourcepack outputs to the workspace export folder."),
+            ("Latest Log", "latest_log", "Open the latest runtime log resolved by the session services."),
+            ("Clear Logs", "clear_logs", "Clear in-memory logs and notifications without deleting files."),
         ]
         for index, (title, key, help_text) in enumerate(entries):
             button = QPushButton(title)
             button.setToolTip(help_text)
             button.setStatusTip(help_text)
-            callback = callbacks.get(key)
+            callback = self.callbacks.get(key)
             if callable(callback):
                 button.clicked.connect(callback)
             else:
@@ -1601,28 +1719,42 @@ class BuildRunPanel(QWidget):
             actions.addWidget(button, index // 3, index % 3)
         root.addLayout(actions)
 
-        details = QTabWidget()
-        task_status = QPlainTextEdit()
-        task_status.setReadOnly(True)
-        task_status.setPlainText(
-            "Task Status\n\n"
-            "Use the action buttons to launch backend build and validation tasks.\n"
-            "Live success/failure feedback appears in the shell notifications and output dock."
-        )
-        validation = QPlainTextEdit()
-        validation.setReadOnly(True)
-        validation.setPlainText(
-            "Validation Reports\n\n"
-            "The shell keeps validation safe: actions publish warnings and errors instead of failing silently.\n"
-            "Open the latest log from the shell toolbar if you need the raw runtime output."
-        )
-        tests = QPlainTextEdit()
-        tests.setReadOnly(True)
-        tests.setPlainText(
-            "Run Notes\n\n"
-            "Run actions should be started from the shell toolbar so output, notifications, and latest-log affordances remain visible."
-        )
-        details.addTab(task_status, "Task Status")
-        details.addTab(validation, "Validation Reports")
-        details.addTab(tests, "Run Notes")
-        root.addWidget(details)
+        info_row = QHBoxLayout()
+        self.run_configs = QLabel("Run configs: none")
+        self.log_path = QLabel("Latest log: unavailable")
+        info_row.addWidget(self.run_configs)
+        info_row.addWidget(self.log_path)
+        root.addLayout(info_row)
+
+        self.task_status = QPlainTextEdit()
+        self.task_status.setReadOnly(True)
+        self.task_status.setToolTip("Live task, process, and notification output routed through session services.")
+        root.addWidget(self.task_status)
+
+        self._timer = QTimer(self)
+        self._timer.setInterval(800)
+        self._timer.timeout.connect(self.refresh)
+        self._timer.start()
+        self.refresh()
+
+    def set_session(self, session) -> None:
+        self.session = session
+        self.refresh()
+
+    def refresh(self) -> None:
+        configurations = self.session.run_service.list_configurations()
+        self.run_configs.setText("Run configs: " + (", ".join(config.name for config in configurations) if configurations else "none"))
+        latest = self.session.latest_log_path()
+        self.log_path.setText(f"Latest log: {latest}" if latest else "Latest log: unavailable")
+
+        lines: list[str] = []
+        for entry in self.session.log_model.tail(20):
+            lines.append(f"[{entry.level}] {entry.source}: {entry.message}")
+        notifications = self.session.notification_service.recent(10)
+        if notifications:
+            lines.append("")
+            lines.append("Notifications")
+            for notification in notifications:
+                lines.append(f"[{notification.severity}] {notification.source}: {notification.message}")
+        self.task_status.setPlainText("\n".join(lines) if lines else "No task output yet.")
+
