@@ -6,6 +6,9 @@ import com.extremecraft.ability.AbilityRegistry;
 import com.extremecraft.api.ExtremeCraftAPI;
 import com.extremecraft.classsystem.ClassRegistry;
 import com.extremecraft.entity.system.BossArenaManager;
+import com.extremecraft.dev.validation.ECDataReloadSafety;
+import com.extremecraft.dev.validation.ECRegistryAuditService;
+import com.extremecraft.dev.validation.ECTickProfiler;
 import com.extremecraft.entity.system.GameplayMechanicsEvents;
 import com.extremecraft.progression.classsystem.data.ClassDefinitions;
 import com.extremecraft.magic.SpellCastingSystem;
@@ -97,6 +100,9 @@ public final class ECDevCommands {
                                             + ", pruned=" + hazardCache.prunedEntries()
                                             + ", forcedEvictions=" + hazardCache.forcedEvictions()
                             ), false);
+                            ctx.getSource().sendSuccess(() -> Component.literal(ECRegistryAuditService.summary()), false);
+                            ctx.getSource().sendSuccess(() -> Component.literal(ECDataReloadSafety.summary()), false);
+                            ctx.getSource().sendSuccess(() -> Component.literal(ECTickProfiler.summary()), false);
                             return 1;
                         }))
                 .then(Commands.literal("validate")
@@ -198,7 +204,7 @@ public final class ECDevCommands {
                                                     int next = SkillProgressionService.xpUntilNextLevel(player, skillId);
                                                     ctx.getSource().sendSuccess(() -> Component.literal("Granted " + amount + " skill XP to " + skillId + " (gained levels: " + gainedLevels + ", level: " + level + ", next in: " + next + ")"), false);
                                                     return 1;
-                                                })))))
+                                                }))))
                         .then(Commands.literal("class")
                                 .then(Commands.argument("amount", IntegerArgumentType.integer(1, 100000))
                                         .executes(ctx -> {
@@ -222,7 +228,7 @@ public final class ECDevCommands {
                                                         ctx.getSource().sendSuccess(() -> Component.literal("Granted " + amount + " class XP to " + classId + " (gained levels: " + gainedLevels + ", level: " + data.getClassLevel(classId) + ")"), false);
                                                         return 1;
                                                     }).orElse(0);
-                                                })))))
+                                                }))))
                 .then(Commands.literal("skill")
                         .then(Commands.literal("unlock")
                                 .then(Commands.argument("node", StringArgumentType.word())
@@ -361,6 +367,10 @@ public final class ECDevCommands {
         return 1;
     }
 }
+
+
+
+
 
 
 

@@ -11,6 +11,7 @@ import com.extremecraft.config.Config;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.config.ECFoundationConfig;
 import com.extremecraft.entity.ModEntities;
+import com.extremecraft.foundation.ECFoundationRuntimeEvents;
 import com.extremecraft.entity.MobAttributes;
 import com.extremecraft.entity.MobSpawns;
 import com.extremecraft.entity.extension.EntityExtensionEvents;
@@ -172,6 +173,7 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new GameplayMechanicsEvents());
             MinecraftForge.EVENT_BUS.register(new BossArenaManager());
             MinecraftForge.EVENT_BUS.register(new EntityExtensionEvents());
+            MinecraftForge.EVENT_BUS.register(new ECFoundationRuntimeEvents());
 
             MinecraftForge.EVENT_BUS.register(new AbilityRegistry());
             AbilityEngine.initialize();
@@ -220,6 +222,8 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
+
+
 
 
 

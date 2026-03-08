@@ -6,6 +6,7 @@ import com.extremecraft.ability.AbilityEffect;
 import com.extremecraft.ability.AbilityExecutor;
 import com.extremecraft.classsystem.ClassAbilityBindings;
 import com.extremecraft.magic.SpellCastContext.CastSource;
+import com.extremecraft.magic.Spell.SpellForm;
 import com.extremecraft.magic.Spell.SpellType;
 import com.extremecraft.magic.mana.ManaService;
 import com.extremecraft.modules.item.ArcaneStaffItem;
@@ -59,6 +60,11 @@ public final class SpellExecutor {
             return false;
         }
 
+        SpellValidationService.ValidationResult validation = SpellService.prepareCast(player, spell, source);
+        if (!validation.allowed()) {
+            return false;
+        }
+
         SpellCastContext context = SpellCastContext.create(player, spell, source);
         if (!ManaService.tryConsume(player, context.scaledManaCost())) {
             return false;
@@ -69,6 +75,7 @@ public final class SpellExecutor {
             return false;
         }
 
+        SpellService.finishCast(context, validation.compiled(), false);
         AbilityCooldownManager.startCooldown(player, cooldownKey, spell.cooldownTicks());
         RuntimeSyncService.syncAbilities(player);
         triggerCastFeedback(context, false);
@@ -122,6 +129,12 @@ public final class SpellExecutor {
             return;
         }
 
+        SpellValidationService.ValidationResult validation = SpellValidationService.validate(player, spell, active.source());
+        if (!validation.allowed()) {
+            ACTIVE_CHANNELS.remove(player.getUUID());
+            return;
+        }
+
         SpellCastContext context = SpellCastContext.create(player, spell, active.source());
         int pulseManaCost = Math.max(1, context.scaledManaCost() / 5);
         if (!ManaService.tryConsume(player, pulseManaCost)) {
@@ -130,6 +143,7 @@ public final class SpellExecutor {
         }
 
         if (executeSpell(context, true)) {
+            SpellService.finishCast(context, validation.compiled(), true);
             triggerCastFeedback(context, true);
         }
 
@@ -201,7 +215,7 @@ public final class SpellExecutor {
         Spell spell = context.spell();
         AbilityDefinition.TargetType targetType = targetTypeFor(spell, channelPulse);
         double radius = context.scaledRadius(spell.radius() <= 0.0D ? 4.0D : spell.radius());
-        double range = Math.max(1.0D, spell.range());
+        double range = spell.form() == SpellForm.TOUCH ? Math.min(4.0D, spell.range()) : Math.max(1.0D, spell.range());
         List<AbilityEffect> effects = toAbilityEffects(context, channelPulse);
 
         return new AbilityDefinition(
@@ -221,14 +235,19 @@ public final class SpellExecutor {
             return AbilityDefinition.TargetType.AREA;
         }
 
-        return switch (spell.type()) {
+        return switch (spell.form()) {
             case PROJECTILE -> AbilityDefinition.TargetType.PROJECTILE;
-            case AREA -> AbilityDefinition.TargetType.AREA;
-            case BUFF -> AbilityDefinition.TargetType.SELF;
-            case DEBUFF -> spell.radius() > 1.0D ? AbilityDefinition.TargetType.AREA : AbilityDefinition.TargetType.ENTITY;
-            case SUMMON -> AbilityDefinition.TargetType.NONE;
-            case BEAM, INSTANT -> AbilityDefinition.TargetType.ENTITY;
-            case CHANNEL -> AbilityDefinition.TargetType.AREA;
+            case BEAM, TOUCH -> AbilityDefinition.TargetType.ENTITY;
+            case NOVA, SIGIL, RITUAL -> AbilityDefinition.TargetType.AREA;
+            case SELF -> AbilityDefinition.TargetType.SELF;
+            case INSTANT -> switch (spell.type()) {
+                case PROJECTILE -> AbilityDefinition.TargetType.PROJECTILE;
+                case AREA -> AbilityDefinition.TargetType.AREA;
+                case BUFF -> AbilityDefinition.TargetType.SELF;
+                case DEBUFF, BEAM, INSTANT -> AbilityDefinition.TargetType.ENTITY;
+                case SUMMON -> AbilityDefinition.TargetType.NONE;
+                case CHANNEL -> AbilityDefinition.TargetType.AREA;
+            };
         };
     }
 
@@ -260,12 +279,12 @@ public final class SpellExecutor {
                 effects.add(new AbilityEffect("summon", 0.0D, 0, 0, spell.summonEntity(), Map.of()));
             }
 
-            if (spell.type() == SpellType.BUFF) {
+            if (spell.type() == SpellType.BUFF || spell.form() == SpellForm.SELF) {
                 int seconds = Math.max(2, context.scaledDurationTicks(spell.durationTicks()) / 20);
                 effects.add(new AbilityEffect("buff", 0.0D, seconds, 0, "minecraft:damage_resistance", Map.of()));
             }
 
-            if (spell.type() == SpellType.DEBUFF) {
+            if (spell.type() == SpellType.DEBUFF || spell.form() == SpellForm.TOUCH) {
                 int seconds = Math.max(2, context.scaledDurationTicks(spell.durationTicks()) / 20);
                 effects.add(new AbilityEffect("debuff", 0.0D, seconds, 0, "minecraft:weakness", Map.of()));
             }
@@ -333,6 +352,9 @@ public final class SpellExecutor {
         return switch (spell.element()) {
             case "fire" -> ParticleTypes.FLAME;
             case "lightning", "storm", "electric" -> ParticleTypes.ELECTRIC_SPARK;
+            case "water", "ice", "water_ice" -> ParticleTypes.SPLASH;
+            case "earth" -> ParticleTypes.CRIT;
+            case "void" -> ParticleTypes.DRAGON_BREATH;
             case "healing", "holy" -> ParticleTypes.HEART;
             case "arcane" -> ParticleTypes.ENCHANT;
             default -> ParticleTypes.ENCHANT;
@@ -354,6 +376,9 @@ public final class SpellExecutor {
         return switch (spell.element()) {
             case "fire" -> SoundEvents.BLAZE_SHOOT;
             case "lightning", "storm", "electric" -> SoundEvents.LIGHTNING_BOLT_IMPACT;
+            case "water", "ice", "water_ice" -> SoundEvents.GLASS_BREAK;
+            case "earth" -> SoundEvents.STONE_BREAK;
+            case "void" -> SoundEvents.END_PORTAL_SPAWN;
             case "healing", "holy" -> SoundEvents.AMETHYST_BLOCK_CHIME;
             case "arcane" -> SoundEvents.EVOKER_CAST_SPELL;
             default -> SoundEvents.ENCHANTMENT_TABLE_USE;
@@ -376,10 +401,4 @@ public final class SpellExecutor {
     private record ActiveChannel(String spellId, long endTick, long nextPulseTick, CastSource source) {
     }
 }
-
-
-
-
-
-
 
