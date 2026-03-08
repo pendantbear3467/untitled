@@ -28,6 +28,7 @@ class RunService:
         self.log_model = log_model or LogStreamModel()
         self.config_path = self.context.workspace_root / ".studio" / "run_configurations.json"
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
+        self.ensure_default_configurations()
 
     def list_configurations(self) -> list[RunConfiguration]:
         if not self.config_path.exists():
@@ -38,9 +39,21 @@ class RunService:
     def save_configuration(self, configuration: RunConfiguration) -> RunConfiguration:
         configurations = {item.name: item for item in self.list_configurations()}
         configurations[configuration.name] = configuration
-        payload = {"updatedAt": utc_now(), "configurations": [asdict(item) for item in configurations.values()]}
+        ordered = [configurations[name] for name in sorted(configurations)]
+        payload = {"updatedAt": utc_now(), "configurations": [asdict(item) for item in ordered]}
         self.config_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         return configuration
+
+    def ensure_default_configurations(self) -> None:
+        existing = {item.name: item for item in self.list_configurations()}
+        changed = False
+        for configuration in self._default_configurations():
+            if configuration.name not in existing:
+                existing[configuration.name] = configuration
+                changed = True
+        if changed:
+            payload = {"updatedAt": utc_now(), "configurations": [asdict(item) for item in existing.values()]}
+            self.config_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
     def run_named(self, name: str) -> ManagedProcess | ProcessTaskResult:
         for configuration in self.list_configurations():
@@ -74,3 +87,30 @@ class RunService:
             env=environment,
             log_model=self.log_model,
         )
+
+    def latest_log_path(self) -> Path | None:
+        return self.process_service.latest_log_path()
+
+    def _default_configurations(self) -> list[RunConfiguration]:
+        repo_root = self.context.repo_root
+        gradlew_bat = repo_root / "gradlew.bat"
+        gradlew = repo_root / "gradlew"
+        wrapper = gradlew_bat if os.name == "nt" and gradlew_bat.exists() else gradlew if gradlew.exists() else None
+        if wrapper is None:
+            return []
+        return [
+            RunConfiguration(
+                name="client",
+                command=[str(wrapper), "runClient"],
+                working_directory=str(repo_root),
+                description="Launch Minecraft client run configuration",
+                kind="client",
+            ),
+            RunConfiguration(
+                name="server",
+                command=[str(wrapper), "runServer"],
+                working_directory=str(repo_root),
+                description="Launch dedicated server run configuration",
+                kind="server",
+            ),
+        ]

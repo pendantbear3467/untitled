@@ -54,6 +54,7 @@ class AssetStudioWindow(QMainWindow):
         self.context = self.session.context
         self._observed_notifications = 0
         self._running_tasks: dict[str, object] = {}
+        self._running_processes: dict[str, object] = {}
         self._console_cache: set[str] = set()
 
         self.setWindowTitle("EXTREMECRAFT STUDIO")
@@ -91,8 +92,18 @@ class AssetStudioWindow(QMainWindow):
         if hasattr(self.skilltree_designer, "log_requested"):
             self.skilltree_designer.log_requested.connect(self._write_log)
 
-        self.gui_studio = self._safe_panel("GUI Studio", GuiStudioPanel)
-        self.model_studio = self._safe_panel("Model Studio", ModelStudioPanel)
+        self.gui_studio = self._safe_panel("GUI Studio", lambda: GuiStudioPanel(self.session.gui_studio_engine))
+        if hasattr(self.gui_studio, "status_message"):
+            self.gui_studio.status_message.connect(self._set_cursor_status)
+        if hasattr(self.gui_studio, "notifications"):
+            self.gui_studio.notifications.connect(lambda message: self._publish_notification("info", "gui", message))
+
+        self.model_studio = self._safe_panel("Model Studio", lambda: ModelStudioPanel(self.session.model_studio_engine))
+        if hasattr(self.model_studio, "status_message"):
+            self.model_studio.status_message.connect(self._set_cursor_status)
+        if hasattr(self.model_studio, "notifications"):
+            self.model_studio.notifications.connect(lambda message: self._publish_notification("info", "model", message))
+        self.build_run_panel = BuildRunPanel(self._callbacks())
 
         self.editor_tabs = self._build_editor_tabs()
         self.main_tabs = self._build_main_tabs()
@@ -146,51 +157,64 @@ class AssetStudioWindow(QMainWindow):
         tabs.addTab(self.skilltree_designer, "Progression")
         tabs.addTab(self.gui_studio, "GUI Studio")
         tabs.addTab(self.model_studio, "Model Studio")
-        tabs.addTab(BuildRunPanel(self._callbacks()), "Build/Run")
+        tabs.addTab(self.build_run_panel, "Build/Run")
         tabs.addTab(self.editor_tabs, "Data Editors")
         tabs.addTab(self.preview_tab_renderer, "Preview")
         tabs.currentChanged.connect(lambda i: self.statusBar().showMessage(f"Studio: {tabs.tabText(i)}", 2500) if i >= 0 else None)
         return tabs
 
     def _build_docks(self) -> None:
-        project_dock = QDockWidget("Project Browser", self)
-        project_dock.setWidget(self.browser)
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, project_dock)
+        self.project_dock = QDockWidget("Project Browser", self)
+        self.project_dock.setWidget(self.browser)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.project_dock)
 
         preview_host = QWidget()
         preview_layout = QVBoxLayout(preview_host)
         preview_layout.setContentsMargins(6, 6, 6, 6)
         preview_layout.addWidget(self.preview)
         preview_layout.addWidget(self._build_preview_controls())
-        preview_dock = QDockWidget("Preview", self)
-        preview_dock.setWidget(preview_host)
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, preview_dock)
+        self.preview_dock = QDockWidget("Preview", self)
+        self.preview_dock.setWidget(preview_host)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.preview_dock)
 
-        output_tabs = QTabWidget()
-        output_tabs.addTab(self.log, "Console")
-        output_tabs.addTab(self.notifications, "Notifications")
-        output_tabs.setToolTip("Runtime output and non-fatal diagnostics")
-        output_dock = QDockWidget("Output", self)
-        output_dock.setWidget(output_tabs)
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, output_dock)
+        self.output_tabs = QTabWidget()
+        self.output_tabs.addTab(self.log, "Console")
+        self.output_tabs.addTab(self.notifications, "Notifications")
+        self.output_tabs.setToolTip("Runtime output and non-fatal diagnostics")
+        self.output_dock = QDockWidget("Output", self)
+        self.output_dock.setWidget(self.output_tabs)
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.output_dock)
 
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Studio")
         toolbar.setMovable(False)
         toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, toolbar)
+        self._add_toolbar_action(toolbar, "Open", self._open_current_target, "Open a file or studio document for the active page.")
+        self._add_toolbar_action(toolbar, "Workspace", self._open_project, "Open a different workspace folder.")
+        self._add_toolbar_action(toolbar, "Save", self._save_workspace, "Save the active page and persist workspace state.")
+        self._add_toolbar_action(toolbar, "Save All", self._save_all_pages, "Save all supported pages and flush workspace state.")
+        toolbar.addSeparator()
+        self._add_toolbar_action(toolbar, "Code", lambda: self._switch_tab("Code"), "Switch to Code Studio.")
+        self._add_toolbar_action(toolbar, "Progression", lambda: self._switch_tab("Progression"), "Switch to Progression Studio.")
+        self._add_toolbar_action(toolbar, "GUI", lambda: self._switch_tab("GUI Studio"), "Switch to GUI Studio.")
+        self._add_toolbar_action(toolbar, "Model", lambda: self._switch_tab("Model Studio"), "Switch to Model Studio.")
+        self._add_toolbar_action(toolbar, "Build/Run", lambda: self._switch_tab("Build/Run"), "Switch to Build/Run Studio.")
+        toolbar.addSeparator()
+        self._add_toolbar_action(toolbar, "Validate", self._validate_assets, "Run workspace validation and show feedback in Output/Notifications.")
+        self._add_toolbar_action(toolbar, "Build Assets", self._compile_assets, "Run the asset build pipeline.")
+        self._add_toolbar_action(toolbar, "Run Client", lambda: self._run_named_configuration("client"), "Run the configured client process safely through RunService.")
+        self._add_toolbar_action(toolbar, "Run Server", lambda: self._run_named_configuration("server"), "Run the configured server process safely through RunService.")
+        toolbar.addSeparator()
+        self._add_toolbar_action(toolbar, "Latest Log", self._open_latest_log, "Open run/logs/latest.log if it exists.")
+        self._add_toolbar_action(toolbar, "Clear Logs", self._clear_logs, "Clear console and notification history after confirmation.")
+        self._add_toolbar_action(toolbar, "Output", self._show_output, "Reveal the output dock and focus console logs.")
+        self._add_toolbar_action(toolbar, "Notifications", self._show_notifications, "Reveal the output dock and focus notifications.")
 
-        toolbar.addAction("Open", self._open_project)
-        toolbar.addAction("Save", self._save_workspace)
-        toolbar.addSeparator()
-        toolbar.addAction("Code", lambda: self._switch_tab("Code"))
-        toolbar.addAction("Progression", lambda: self._switch_tab("Progression"))
-        toolbar.addAction("GUI", lambda: self._switch_tab("GUI Studio"))
-        toolbar.addAction("Model", lambda: self._switch_tab("Model Studio"))
-        toolbar.addAction("Build/Run", lambda: self._switch_tab("Build/Run"))
-        toolbar.addSeparator()
-        toolbar.addAction("Latest Log", self._open_latest_log)
-        toolbar.addAction("Clear Logs", self._clear_logs)
+    def _add_toolbar_action(self, toolbar: QToolBar, label: str, callback, description: str) -> None:
+        action = toolbar.addAction(label, callback)
+        action.setToolTip(description)
+        action.setStatusTip(description)
 
     def _callbacks(self):
         return {
@@ -288,6 +312,19 @@ class AssetStudioWindow(QMainWindow):
         for task_id in finished:
             self._running_tasks.pop(task_id, None)
 
+        finished_processes: list[str] = []
+        for task_id, handle in self._running_processes.items():
+            if not handle.done():
+                continue
+            result = handle.result
+            if result is not None:
+                level = "info" if result.success else "error"
+                self._publish_notification(level, result.name, result.message)
+                self.statusBar().showMessage(result.message, 5000)
+            finished_processes.append(task_id)
+        for task_id in finished_processes:
+            self._running_processes.pop(task_id, None)
+
     def _write_log(self, message: str) -> None:
         if hasattr(self.log, "append_line"):
             self.log.append_line(message)
@@ -299,6 +336,16 @@ class AssetStudioWindow(QMainWindow):
     def _set_cursor_status(self, message: str) -> None:
         self._cursor_status.setText(message)
 
+    def _show_output(self) -> None:
+        self.output_dock.show()
+        self.output_dock.raise_()
+        self.output_tabs.setCurrentIndex(0)
+
+    def _show_notifications(self) -> None:
+        self.output_dock.show()
+        self.output_dock.raise_()
+        self.output_tabs.setCurrentIndex(1)
+
     def _switch_tab(self, title: str) -> None:
         for idx in range(self.main_tabs.count()):
             if self.main_tabs.tabText(idx) == title:
@@ -309,7 +356,14 @@ class AssetStudioWindow(QMainWindow):
         self.workspace_manager = self.session.workspace_manager
         self.context = self.session.context
         self.browser.load_workspace(self.context.workspace_root)
-        self.code_studio.workspace_root = self.context.workspace_root
+        if hasattr(self.code_studio, "set_workspace_root"):
+            self.code_studio.set_workspace_root(self.context.workspace_root)
+        else:
+            self.code_studio.workspace_root = self.context.workspace_root
+        if hasattr(self.gui_studio, "set_engine"):
+            self.gui_studio.set_engine(self.session.gui_studio_engine)
+        if hasattr(self.model_studio, "set_engine"):
+            self.model_studio.set_engine(self.session.model_studio_engine)
         if hasattr(self.visual_builder, "set_context"):
             self.visual_builder.set_context(self.context)
         if hasattr(self.skilltree_designer, "set_context"):
@@ -329,14 +383,46 @@ class AssetStudioWindow(QMainWindow):
     def _open_project(self) -> None:
         selected = QFileDialog.getExistingDirectory(self, "Open workspace", str(self.context.workspace_root))
         if not selected:
+            self._publish_notification("warning", "workspace", "Workspace open cancelled")
             return
         self.session.reload_workspace(Path(selected))
         self._rebind_workspace()
         self._write_log(f"Opened workspace: {selected}")
 
     def _save_workspace(self) -> None:
-        self.code_studio.save_all()
+        current_page = self._current_studio_page()
+        if current_page is not None and hasattr(current_page, "save_current"):
+            current_page.save_current()
+        elif self.main_tabs.tabText(self.main_tabs.currentIndex()) == "Code":
+            self.code_studio.save_current()
         self._execute_command("workspace.save")
+        self._publish_notification("info", "workspace", "Workspace save requested")
+
+    def _save_all_pages(self) -> None:
+        self.code_studio.save_all()
+        for page in [self.gui_studio, self.model_studio]:
+            if hasattr(page, "save_all"):
+                page.save_all()
+        self._execute_command("workspace.save")
+        self._publish_notification("info", "workspace", "Save all completed")
+
+    def _open_current_target(self) -> None:
+        current_page = self._current_studio_page()
+        if current_page is not None and hasattr(current_page, "open_document_dialog"):
+            current_page.open_document_dialog()
+            return
+        if self.main_tabs.tabText(self.main_tabs.currentIndex()) == "Code":
+            self.code_studio.open_file_dialog()
+            return
+        self._publish_notification("warning", "shell", "Open is not available for this page")
+
+    def _current_studio_page(self):
+        current_name = self.main_tabs.tabText(self.main_tabs.currentIndex())
+        if current_name == "GUI Studio":
+            return self.gui_studio
+        if current_name == "Model Studio":
+            return self.model_studio
+        return None
 
     def _import_blockbench(self) -> None:
         selected, _ = QFileDialog.getOpenFileName(self, "Import Blockbench model", "", "Blockbench (*.bbmodel)")
@@ -450,17 +536,30 @@ class AssetStudioWindow(QMainWindow):
         latest = self.context.repo_root / "run" / "logs" / "latest.log"
         if not latest.exists():
             self._publish_notification("warning", "logs", "No latest.log found")
+            self._show_notifications()
             return
         self.code_studio.open_file(latest)
         self._switch_tab("Code")
+        self._publish_notification("info", "logs", f"Opened latest log: {latest}")
 
     def _clear_logs(self) -> None:
+        result = QMessageBox.question(
+            self,
+            "Clear Logs",
+            "Clear console output and notification history? This does not delete files on disk.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if result != QMessageBox.StandardButton.Yes:
+            self._publish_notification("warning", "logs", "Clear logs cancelled")
+            return
         if hasattr(self.log, "clear_logs"):
             self.log.clear_logs()
         self.session.log_model.clear()
         self.session.notification_service.clear()
+        self._console_cache.clear()
         self.notifications.clear()
         self.notifications.addItem(QListWidgetItem("Logs cleared. New messages will appear here."))
+        self.statusBar().showMessage("Logs cleared", 3000)
 
     def _set_preview_texture(self, texture_path: Path, mode: str) -> None:
         self._last_preview_texture = texture_path
@@ -510,6 +609,16 @@ class AssetStudioWindow(QMainWindow):
             return
         QMessageBox.information(self, "Recovery", f"Detected {len(snapshots)} recovery snapshots from previous sessions.")
 
+    def _run_named_configuration(self, name: str) -> None:
+        result = self.session.run_service.run_named(name)
+        if hasattr(result, "process"):
+            self._running_processes[result.task_id] = result
+            self._publish_notification("info", "run", f"Started {name} configuration")
+            self._show_output()
+            return
+        self._publish_notification("warning", "run", result.message)
+        self._show_notifications()
+
     def closeEvent(self, event) -> None:  # noqa: N802
         if self.code_studio.has_unsaved():
             result = QMessageBox.question(
@@ -522,7 +631,7 @@ class AssetStudioWindow(QMainWindow):
                 event.ignore()
                 return
             if result == QMessageBox.StandardButton.Yes:
-                self.code_studio.save_all()
+                self._save_all_pages()
         self._execute_command("workspace.save")
         self.session.shutdown()
         super().closeEvent(event)

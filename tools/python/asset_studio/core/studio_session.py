@@ -18,6 +18,7 @@ from asset_studio.model_studio.engine import ModelStudioEngine
 from asset_studio.runtime.build_service import BuildService
 from asset_studio.runtime.log_model import LogStreamModel
 from asset_studio.runtime.run_service import RunService
+from asset_studio.runtime.task_results import StudioTaskResult, utc_now
 from asset_studio.workspace.workspace_manager import AssetStudioContext, WorkspaceManager
 
 
@@ -48,6 +49,7 @@ class StudioSession:
         self.process_service = ProcessService(
             crash_guard=self.crash_guard,
             log_model=self.log_model,
+            log_directory=context.workspace_root / ".studio" / "logs",
         )
         self.plugin_service = PluginService(context.plugins, crash_guard=self.crash_guard)
         self.code_editor_service = EditorService(recovery_service=self.recovery_service)
@@ -98,22 +100,32 @@ class StudioSession:
             notification_service=self.notification_service,
         )
         self.build_service = BuildService(self.context)
+        self.process_service = ProcessService(
+            crash_guard=self.crash_guard,
+            log_model=self.log_model,
+            log_directory=self.context.workspace_root / ".studio" / "logs",
+        )
         self.run_service = RunService(self.context, self.process_service, log_model=self.log_model)
         self.plugin_service = PluginService(self.context.plugins, crash_guard=self.crash_guard)
         self.gui_studio_engine = GuiStudioEngine(self.context.workspace_root / "gui_screens")
         self.model_studio_engine = ModelStudioEngine(self.context.workspace_root / "models" / "studio")
-        self.app_context.register_service("build_service", self.build_service)
-        self.app_context.register_service("run_service", self.run_service)
-        self.app_context.register_service("plugin_service", self.plugin_service)
-        self.app_context.register_service("recovery_service", self.recovery_service)
-        self.app_context.register_service("crash_guard", self.crash_guard)
-        self.app_context.register_service("gui_studio_engine", self.gui_studio_engine)
-        self.app_context.register_service("model_studio_engine", self.model_studio_engine)
+        for name, service in {
+            "recovery_service": self.recovery_service,
+            "crash_guard": self.crash_guard,
+            "build_service": self.build_service,
+            "process_service": self.process_service,
+            "run_service": self.run_service,
+            "plugin_service": self.plugin_service,
+            "gui_studio_engine": self.gui_studio_engine,
+            "model_studio_engine": self.model_studio_engine,
+        }.items():
+            self.app_context.register_service(name, service)
         self._register_plugin_editors()
         self.recovery_service.update_session(workspace=str(self.context.workspace_root))
 
     def save_workspace(self) -> None:
         self.workspace_manager.save_context(self.context)
+        self.sync_code_session_state()
         self.recovery_service.update_session(lastSavedWorkspace=str(self.context.workspace_root))
 
     def instantiate_editor(self, editor_id: str):
@@ -121,6 +133,41 @@ class StudioSession:
 
     def shutdown(self) -> None:
         self.task_service.shutdown(wait=False)
+
+    def clear_runtime_state(self) -> StudioTaskResult:
+        self.log_model.clear()
+        self.notification_service.clear()
+        return StudioTaskResult(
+            task_id="logs-clear",
+            name="Clear Runtime State",
+            success=True,
+            started_at=utc_now(),
+            finished_at=utc_now(),
+            message="Cleared in-memory logs and notifications",
+        )
+
+    def latest_log_path(self) -> Path | None:
+        candidates = [
+            self.run_service.latest_log_path(),
+            self.context.workspace_root / "logs" / "latest.log",
+            self.context.repo_root / "run" / "logs" / "latest.log",
+        ]
+        for candidate in candidates:
+            if candidate is not None and candidate.exists():
+                return candidate
+        return None
+
+    def sync_code_session_state(self) -> None:
+        state = self.code_editor_service.build_session_state()
+        open_files = [str(document.path) for document in self.code_editor_service.documents.values() if document.path is not None]
+        payload = {
+            "open_documents": list(state.open_documents),
+            "recent_files": list(state.recent_files),
+            "split_layouts": {key: list(value) for key, value in state.split_layouts.items()},
+            "open_files": open_files,
+        }
+        self.app_context.state["code_session"] = payload
+        self.recovery_service.update_session(codeSession=payload)
 
     def _register_builtin_help(self) -> None:
         entries = [
@@ -143,15 +190,15 @@ class StudioSession:
             HelpEntry(
                 id="studio.gui",
                 label="GUI Studio",
-                short_tooltip="Versioned Minecraft GUI documents, preview payloads, and validation.",
-                long_description="The GUI backend provides document models, widget schemas, preview contracts, export/import, and validation for mod screens.",
+                short_tooltip="Versioned Minecraft GUI documents, preview payloads, validation, and runtime export.",
+                long_description="The GUI backend provides authoring documents, inventory-aware widget schemas, preview contracts, export/import, and validation for mod screens.",
                 category="editors",
-                keywords=("gui", "screen", "widget"),
+                keywords=("gui", "screen", "widget", "inventory"),
             ),
             HelpEntry(
                 id="studio.model",
                 label="Model Studio",
-                short_tooltip="Cube model documents with hierarchy, UV data, and preview payloads.",
+                short_tooltip="Cube model documents with hierarchy, UV data, preview payloads, and runtime export.",
                 long_description="The model backend provides cube-first Minecraft model authoring contracts for block, item, and entity style assets.",
                 category="editors",
                 keywords=("model", "cube", "uv", "bone"),
@@ -201,6 +248,22 @@ class StudioSession:
                 category="build",
                 short_tooltip="Build workspace asset outputs.",
                 long_description="Creates the standard workspace build tree for assets without changing the existing CLI contract.",
+            ),
+            StudioCommand(
+                id="logs.clear",
+                label="Clear Logs",
+                handler=self.clear_runtime_state,
+                category="runtime",
+                short_tooltip="Clear in-memory log and notification buffers.",
+                long_description="Clears studio log surfaces without touching project files or build outputs.",
+            ),
+            StudioCommand(
+                id="logs.latest",
+                label="Latest Log",
+                handler=self.latest_log_path,
+                category="runtime",
+                short_tooltip="Resolve the newest available runtime log file.",
+                long_description="Resolves the newest process or game log file known to the studio.",
             ),
         ]
         for command in commands:
@@ -394,9 +457,8 @@ class StudioSession:
                     id=f"editor.plugin.{editor_name}",
                     label=editor_name,
                     short_tooltip=f"Plugin-provided editor: {editor_name}.",
-                    long_description=f"This editor is registered by a plugin and loaded through the studio editor registry.",
+                    long_description="This editor is registered by a plugin and loaded through the studio editor registry.",
                     category="plugins",
                     keywords=("plugin", "editor"),
                 )
             )
-

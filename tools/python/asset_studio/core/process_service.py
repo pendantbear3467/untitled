@@ -36,9 +36,18 @@ class ManagedProcess:
 
 
 class ProcessService:
-    def __init__(self, *, crash_guard: CrashGuard | None = None, log_model: LogStreamModel | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        crash_guard: CrashGuard | None = None,
+        log_model: LogStreamModel | None = None,
+        log_directory: Path | None = None,
+    ) -> None:
         self.crash_guard = crash_guard
         self.log_model = log_model
+        self.log_directory = log_directory
+        if self.log_directory is not None:
+            self.log_directory.mkdir(parents=True, exist_ok=True)
         self._processes: dict[str, ManagedProcess] = {}
 
     def run(
@@ -87,6 +96,7 @@ class ProcessService:
                 stdout, stderr = process.communicate(timeout=timeout)
                 cancelled = handle.cancel_event.is_set()
                 success = process.returncode == 0 and not cancelled
+                log_path = self._write_log_file(name, task_id, command, cwd, stdout, stderr, process.returncode)
                 if active_log is not None:
                     active_log.append_lines(name, stdout, level="info", stream="stdout")
                     active_log.append_lines(name, stderr, level="error" if stderr else "info", stream="stderr")
@@ -101,11 +111,13 @@ class ProcessService:
                     exit_code=process.returncode,
                     stdout=stdout,
                     stderr=stderr,
+                    log_path=log_path,
                     cancelled=cancelled,
                 )
             except subprocess.TimeoutExpired:
                 if handle.process and handle.process.poll() is None:
                     handle.process.kill()
+                log_path = self._write_log_file(name, task_id, command, cwd, "", f"Timed out after {timeout} seconds", None)
                 handle.result = ProcessTaskResult(
                     task_id=task_id,
                     name=name,
@@ -114,11 +126,13 @@ class ProcessService:
                     finished_at=utc_now(),
                     message=f"Timed out after {timeout} seconds",
                     command=list(command),
+                    log_path=log_path,
                     cancelled=True,
                 )
             except Exception as exc:  # noqa: BLE001
                 if self.crash_guard is not None:
                     self.crash_guard.capture_exception(name, exc, context={"command": command, "cwd": str(cwd) if cwd else None})
+                log_path = self._write_log_file(name, task_id, command, cwd, "", str(exc), None)
                 handle.result = ProcessTaskResult(
                     task_id=task_id,
                     name=name,
@@ -128,6 +142,7 @@ class ProcessService:
                     message=str(exc),
                     errors=[str(exc)],
                     command=list(command),
+                    log_path=log_path,
                 )
 
         handle.thread = threading.Thread(target=runner, name=f"process-{name}-{task_id}", daemon=True)
@@ -143,3 +158,44 @@ class ProcessService:
 
     def get(self, task_id: str) -> ManagedProcess | None:
         return self._processes.get(task_id)
+
+    def latest_log_path(self) -> Path | None:
+        if self.log_directory is None:
+            return None
+        latest = self.log_directory / "latest.log"
+        if latest.exists():
+            return latest
+        candidates = sorted(self.log_directory.glob("*.log"), key=lambda item: item.stat().st_mtime, reverse=True)
+        return candidates[0] if candidates else None
+
+    def _write_log_file(
+        self,
+        name: str,
+        task_id: str,
+        command: list[str],
+        cwd: Path | None,
+        stdout: str,
+        stderr: str,
+        exit_code: int | None,
+    ) -> Path | None:
+        if self.log_directory is None:
+            return None
+        safe_name = "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in name.lower())
+        path = self.log_directory / f"{safe_name}-{task_id}.log"
+        lines = [
+            f"task={task_id}",
+            f"name={name}",
+            f"cwd={cwd if cwd else ''}",
+            f"command={' '.join(command)}",
+            f"exit_code={'' if exit_code is None else exit_code}",
+            "",
+            "[stdout]",
+            stdout,
+            "",
+            "[stderr]",
+            stderr,
+        ]
+        path.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+        latest = self.log_directory / "latest.log"
+        latest.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+        return path
