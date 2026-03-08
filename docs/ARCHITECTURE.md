@@ -33,4 +33,8 @@ The cross-domain implementation baseline for the first major release is defined 
 
 - `docs/SHARED_IMPLEMENTATION_CONTRACT.md`
 
+Desktop tooling and embedded editor architecture baseline is defined in:
+
+- `docs/EXTREMECRAFT_STUDIO_SHARED_CONTRACT.md`
+
 Contributors should treat that contract as mandatory for progression boundaries, server authority, safety caps, and first-release scope control.

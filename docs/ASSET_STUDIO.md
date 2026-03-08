@@ -9,6 +9,16 @@ EXTREMECRAFT ASSET STUDIO orchestrates the full ExtremeCraft ecosystem platform:
 - Repair, release, registry diff/history, and modpack pipelines
 - GUI visual editors and animation preview tooling
 
+## Studio Shared Contract
+
+The architecture and implementation contract for evolving Asset Studio into full
+ExtremeCraft Studio is defined in:
+
+- `docs/EXTREMECRAFT_STUDIO_SHARED_CONTRACT.md`
+
+Contributors extending desktop tooling should treat this contract as required,
+especially for modularity, failure isolation, migration safety, and compatibility.
+
 ## Primary Command Surface
 
 - `assetstudio generate ...`

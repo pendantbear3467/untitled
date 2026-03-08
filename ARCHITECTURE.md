@@ -143,6 +143,10 @@ For first-major-release implementation boundaries and required systems, use:
 
 - `docs/SHARED_IMPLEMENTATION_CONTRACT.md`
 
+For Python/PyQt tooling evolution into full embedded ExtremeCraft Studio, use:
+
+- `docs/EXTREMECRAFT_STUDIO_SHARED_CONTRACT.md`
+
 This contract is the canonical baseline for server authority, progression-domain separation, safety caps, and scope discipline.
 
 ## Senior-Scope Zones (Do Not Touch in Routine PRs)
