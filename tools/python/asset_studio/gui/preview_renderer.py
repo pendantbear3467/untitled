@@ -318,84 +318,123 @@ class PreviewRenderer(QOpenGLWidget):
         self.set_zoom(self._zoom * factor)
         event.accept()
 
+    def _viewport_rect(self):
+        return self.rect().adjusted(14, 14, -14, -14)
+
+    def _has_visual_content(self) -> bool:
+        if self._pixmap is not None:
+            return True
+        if self._mode == "runtime_model":
+            return True
+        if isinstance(self._payload, dict):
+            if self._payload.get("cubes"):
+                return True
+            if self._mode in {"source_gui", "runtime_gui"} and (self._payload.get("widgets") or self._payload.get("canvas")):
+                return True
+        return False
+
     def paintGL(self) -> None:  # noqa: N802
         painter = QPainter(self)
         base = int(16 * self._lighting)
-        painter.fillRect(self.rect(), QColor(min(255, base), min(255, base + 6), min(255, base + 12)))
-        self._draw_grid(painter)
-        self._draw_preview_surface(painter)
+        painter.fillRect(self.rect(), QColor(min(255, base), min(255, base + 8), min(255, base + 14)))
+        viewport = self._viewport_rect()
+        self._draw_viewport_frame(painter, viewport)
+        painter.save()
+        painter.setClipRect(viewport.adjusted(1, 1, -1, -1))
+        self._draw_grid(painter, viewport)
+        self._draw_preview_surface(painter, viewport)
         if self._mode == "runtime_model" and self._metadata.get("animated"):
             self._animation_renderer.draw(painter, self.width(), self.height(), self._animation_player.progress, self._animation_player.clip.name)
-        self._draw_hud(painter)
-        self._draw_validation_overlay(painter)
+        if not self._has_visual_content():
+            self._draw_empty_state(painter, viewport)
+        painter.restore()
+        self._draw_hud(painter, viewport)
+        self._draw_validation_overlay(painter, viewport)
         painter.end()
 
-    def _draw_grid(self, painter: QPainter) -> None:
+    def _draw_viewport_frame(self, painter: QPainter, viewport) -> None:
         painter.save()
-        painter.setPen(QPen(QColor(44, 50, 63), 1))
-        step = 24
-        for x in range(0, self.width(), step):
-            painter.drawLine(x, 0, x, self.height())
-        for y in range(0, self.height(), step):
-            painter.drawLine(0, y, self.width(), y)
+        painter.fillRect(viewport, QColor(8, 12, 20, 225))
+        painter.setPen(QPen(QColor(41, 56, 80), 2))
+        painter.drawRect(viewport)
+        inner = viewport.adjusted(6, 6, -6, -6)
+        painter.setPen(QPen(QColor(23, 31, 45), 1))
+        painter.drawRect(inner)
         painter.restore()
 
-    def _draw_preview_surface(self, painter: QPainter) -> None:
-        if self._mode in {"source_gui", "runtime_gui"}:
-            self._draw_gui_payload(painter)
-            return
-        self._draw_model_surface(painter)
-        if self._pixmap is not None or self._mode == "texture":
-            self._draw_texture_layer(painter)
+    def _draw_grid(self, painter: QPainter, viewport) -> None:
+        painter.save()
+        painter.setPen(QPen(QColor(37, 45, 60), 1))
+        step = 24
+        for x in range(viewport.left(), viewport.right() + 1, step):
+            painter.drawLine(x, viewport.top(), x, viewport.bottom())
+        for y in range(viewport.top(), viewport.bottom() + 1, step):
+            painter.drawLine(viewport.left(), y, viewport.right(), y)
+        painter.setPen(QPen(QColor(73, 89, 118), 1))
+        painter.drawLine(viewport.center().x(), viewport.top(), viewport.center().x(), viewport.bottom())
+        painter.drawLine(viewport.left(), viewport.center().y(), viewport.right(), viewport.center().y())
+        painter.restore()
 
-    def _draw_model_surface(self, painter: QPainter) -> None:
+    def _draw_preview_surface(self, painter: QPainter, viewport) -> None:
+        if self._mode in {"source_gui", "runtime_gui"}:
+            self._draw_gui_payload(painter, viewport)
+            return
+        self._draw_model_surface(painter, viewport)
+        if self._pixmap is not None or self._mode == "texture":
+            self._draw_texture_layer(painter, viewport)
+
+    def _draw_model_surface(self, painter: QPainter, viewport) -> None:
         cubes = [] if not isinstance(self._payload, dict) else list(self._payload.get("cubes", []))
         if cubes:
             for index, cube in enumerate(cubes[:24]):
                 cube_id = str(cube.get("id", f"cube_{index}"))
                 highlight = cube_id == self._selection_id
-                self._draw_cube_projection(painter, cube, index=index, highlight=highlight)
+                self._draw_cube_projection(painter, cube, index=index, highlight=highlight, viewport=viewport)
             return
         if self._mode == "runtime_model":
             self._block_renderer.draw(painter, self.width(), self.height(), int(self._yaw))
         else:
             self._model_renderer.draw(painter, self.width(), self.height(), int(self._yaw))
 
-    def _draw_cube_projection(self, painter: QPainter, cube: dict, *, index: int, highlight: bool) -> None:
+    def _draw_cube_projection(self, painter: QPainter, cube: dict, *, index: int, highlight: bool, viewport) -> None:
         cube_from = cube.get("from") or [0, 0, 0]
         cube_to = cube.get("to") or [16, 16, 16]
         width = max(2.0, float(cube_to[0]) - float(cube_from[0]))
         height = max(2.0, float(cube_to[1]) - float(cube_from[1]))
-        depth = max(2.0, float(cube_to[2]) - float(cube_from[2]))
         cx = (float(cube_from[0]) + float(cube_to[0])) / 2.0 - 8.0
         cy = (float(cube_from[1]) + float(cube_to[1])) / 2.0 - 8.0
         cz = (float(cube_from[2]) + float(cube_to[2])) / 2.0 - 8.0
-        center = self._project_point(cx, cy, cz)
+        center = self._project_point(cx, cy, cz, viewport)
         scale = 10.0 * self._zoom
-        rect_width = max(8.0, width * scale * 0.6)
-        rect_height = max(8.0, height * scale * 0.6)
+        rect_width = max(10.0, width * scale * 0.6)
+        rect_height = max(10.0, height * scale * 0.6)
         shade = max(40, 150 - index * 3)
-        fill = QColor(124, 163, 255, 180 if highlight else 110)
-        outline = QColor(220, 235, 255) if highlight else QColor(shade, shade + 20, min(255, shade + 55))
+        fill = QColor(124, 163, 255, 190 if highlight else 110)
+        outline = QColor(234, 241, 255) if highlight else QColor(shade, shade + 20, min(255, shade + 55))
         painter.save()
+        rect_left = int(center.x() - rect_width / 2)
+        rect_top = int(center.y() - rect_height / 2)
+        if highlight:
+            painter.setPen(QPen(QColor(130, 196, 255, 110), 6))
+            painter.drawRect(rect_left - 3, rect_top - 3, int(rect_width + 6), int(rect_height + 6))
         painter.setPen(QPen(outline, 3 if highlight else 1))
         painter.setBrush(fill)
-        painter.drawRect(int(center.x() - rect_width / 2), int(center.y() - rect_height / 2), int(rect_width), int(rect_height))
+        painter.drawRect(rect_left, rect_top, int(rect_width), int(rect_height))
         painter.setPen(QColor("#eaf1ff"))
-        painter.drawText(int(center.x() - rect_width / 2), int(center.y() - rect_height / 2 - 4), str(cube.get("id", f"cube_{index}")))
+        painter.drawText(rect_left, rect_top - 6, str(cube.get("id", f"cube_{index}")))
         painter.restore()
 
-    def _project_point(self, x: float, y: float, z: float) -> QPointF:
+    def _project_point(self, x: float, y: float, z: float, viewport) -> QPointF:
         yaw = math.radians(self._yaw)
         pitch = math.radians(self._pitch)
         rx = x * math.cos(yaw) - z * math.sin(yaw)
         rz = x * math.sin(yaw) + z * math.cos(yaw)
         ry = y * math.cos(pitch) - rz * math.sin(pitch)
-        scale = min(self.width(), self.height()) / 18.0 * self._zoom
-        center = QPointF(self.width() / 2.0, self.height() / 2.0) + self._pan
+        scale = min(viewport.width(), viewport.height()) / 18.0 * self._zoom
+        center = QPointF(viewport.center()) + self._pan
         return QPointF(center.x() + rx * scale, center.y() - ry * scale)
 
-    def _draw_gui_payload(self, painter: QPainter) -> None:
+    def _draw_gui_payload(self, painter: QPainter, viewport) -> None:
         canvas = {"width": 176, "height": 166}
         widgets = []
         if isinstance(self._payload, dict):
@@ -403,11 +442,11 @@ class PreviewRenderer(QOpenGLWidget):
             widgets = list(self._payload.get("widgets", []))
         width = int(float(canvas.get("width", 176)) * max(1.2, self._zoom * 1.6))
         height = int(float(canvas.get("height", 166)) * max(1.2, self._zoom * 1.6))
-        left = int((self.width() - width) / 2 + self._pan.x())
-        top = int((self.height() - height) / 2 + self._pan.y())
+        left = int(viewport.center().x() - width / 2 + self._pan.x())
+        top = int(viewport.center().y() - height / 2 + self._pan.y())
         painter.save()
         painter.setPen(QPen(QColor("#c9dbff"), 2))
-        painter.setBrush(QColor("#243345"))
+        painter.setBrush(QColor("#223246"))
         painter.drawRect(left, top, width, height)
         for widget in widgets[:48]:
             bounds = widget.get("bounds") or {}
@@ -416,60 +455,112 @@ class PreviewRenderer(QOpenGLWidget):
             widget_width = max(8, int(float(bounds.get("width", 12)) * width / max(1.0, float(canvas.get("width", 176)))))
             widget_height = max(8, int(float(bounds.get("height", 12)) * height / max(1.0, float(canvas.get("height", 166)))))
             selected = str(widget.get("id", "")) == self._selection_id
-            painter.setPen(QPen(QColor("#ffffff") if selected else QColor("#90a8d8"), 2 if selected else 1))
-            painter.setBrush(QColor("#3b4f70", 180 if selected else 120))
+            if selected:
+                painter.setPen(QPen(QColor("#ffffff"), 3))
+                painter.setBrush(QColor("#4a678f", 200))
+            else:
+                painter.setPen(QPen(QColor("#90a8d8"), 1))
+                painter.setBrush(QColor("#3b4f70", 120))
             painter.drawRect(widget_left, widget_top, widget_width, widget_height)
             painter.drawText(widget_left + 4, widget_top + 14, str(widget.get("label") or widget.get("id") or widget.get("type", "widget")))
         painter.restore()
 
-    def _draw_texture_layer(self, painter: QPainter) -> None:
+    def _draw_texture_layer(self, painter: QPainter, viewport) -> None:
         if self._pixmap is None:
             return
-        tex_size = int(min(self.width(), self.height()) // 2 * self._zoom)
-        px = int(self.rect().center().x() - tex_size // 2 + self._pan.x())
-        py = int(self.rect().center().y() - tex_size // 2 + self._pan.y())
+        tex_size = int(min(viewport.width(), viewport.height()) // 2 * self._zoom)
+        center = viewport.center() + self._pan.toPoint()
+        px = int(center.x() - tex_size // 2)
+        py = int(center.y() - tex_size // 2)
         painter.save()
-        painter.translate(self.rect().center() + self._pan)
+        painter.translate(QPointF(center))
         painter.rotate(-self._yaw if self._mode != "texture" else 0)
-        painter.translate(-(self.rect().center() + self._pan))
+        painter.translate(-QPointF(center))
         self._texture_renderer.draw(painter, self._pixmap, px, py, tex_size)
         painter.restore()
 
-    def _draw_hud(self, painter: QPainter) -> None:
+    def _draw_hud(self, painter: QPainter, viewport) -> None:
         painter.save()
-        painter.setPen(QPen(QColor(225, 232, 245), 1))
         lines = [
-            "Preview Renderer",
+            "Focused Preview",
             f"mode: {self._mode}",
             f"camera: yaw {self._yaw:03.0f} pitch {self._pitch:03.0f} preset {self._view_preset}",
             f"zoom: {self._zoom:.2f}  light: {self._lighting:.2f}  auto: {'on' if self._auto_rotate else 'off'}",
-            "controls: LMB orbit, RMB/MMB pan, wheel zoom, double-click reset",
+            "controls: orbit / pan / zoom / reset",
         ]
-        source_label = str(self._metadata.get("sourcePath") or self._texture_path or "no source loaded")
-        if len(source_label) > 76:
-            source_label = "..." + source_label[-73:]
-        lines.append(source_label)
-        resource_id = self._metadata.get("resourceId")
-        if resource_id:
-            lines.append(f"resource: {resource_id}")
         if self._selection_id:
             lines.append(f"selection: {self._selection_id}")
+        panel_width = min(420, max(280, viewport.width() // 2))
+        panel_height = 22 + len(lines) * 18
+        panel_left = viewport.left() + 12
+        panel_top = viewport.top() + 12
+        painter.fillRect(panel_left, panel_top, panel_width, panel_height, QColor(15, 20, 30, 220))
+        painter.setPen(QPen(QColor("#334762"), 1))
+        painter.drawRect(panel_left, panel_top, panel_width, panel_height)
+        painter.setPen(QColor("#f4f7ff"))
         for index, line in enumerate(lines):
-            painter.drawText(12, 24 + index * 20, line)
+            painter.drawText(panel_left + 12, panel_top + 24 + index * 18, line)
+
+        source_label = str(self._metadata.get("sourcePath") or self._texture_path or "No source loaded")
+        if len(source_label) > 68:
+            source_label = "..." + source_label[-65:]
+        meta_lines = [source_label]
+        resource_id = self._metadata.get("resourceId")
+        if resource_id:
+            meta_lines.append(f"resource: {resource_id}")
+        runtime_path = self._metadata.get("runtimePath")
+        if runtime_path:
+            meta_lines.append(f"runtime: {Path(str(runtime_path)).name}")
+        meta_width = min(360, max(220, viewport.width() // 3))
+        meta_height = 20 + len(meta_lines) * 18
+        meta_left = viewport.right() - meta_width - 12
+        meta_top = viewport.top() + 12
+        painter.fillRect(meta_left, meta_top, meta_width, meta_height, QColor(15, 20, 30, 210))
+        painter.setPen(QPen(QColor("#334762"), 1))
+        painter.drawRect(meta_left, meta_top, meta_width, meta_height)
+        painter.setPen(QColor("#d7deed"))
+        for index, line in enumerate(meta_lines):
+            painter.drawText(meta_left + 10, meta_top + 22 + index * 18, line)
         painter.restore()
 
-    def _draw_validation_overlay(self, painter: QPainter) -> None:
+    def _draw_empty_state(self, painter: QPainter, viewport) -> None:
+        painter.save()
+        width = min(420, int(viewport.width() * 0.58))
+        height = 108
+        left = int(viewport.center().x() - width / 2)
+        top = int(viewport.center().y() - height / 2)
+        painter.fillRect(left, top, width, height, QColor(14, 18, 27, 232))
+        painter.setPen(QPen(QColor("#334762"), 1))
+        painter.drawRect(left, top, width, height)
+        painter.setPen(QColor("#f4f7ff"))
+        painter.drawText(left + 14, top + 28, "Nothing to preview yet")
+        hint = (
+            "Open a GUI/model source, runtime export,
+or texture asset to populate the focused preview."
+            if self._mode != "texture"
+            else "Load a texture or select a linked asset
+to inspect it here."
+        )
+        painter.setPen(QColor("#9db6e0"))
+        painter.drawText(left + 14, top + 54, width - 28, 44, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, hint)
+        painter.restore()
+
+    def _draw_validation_overlay(self, painter: QPainter, viewport) -> None:
         if not self._issues:
             return
-        overlay_width = min(420, self.width() - 24)
-        overlay_height = min(28 + len(self._issues[:6]) * 18, 150)
+        overlay_width = min(460, viewport.width() - 24)
+        overlay_height = min(34 + len(self._issues[:6]) * 18, 168)
+        left = viewport.left() + 12
+        top = viewport.bottom() - overlay_height - 12
         painter.save()
-        painter.fillRect(12, self.height() - overlay_height - 12, overlay_width, overlay_height, QColor(19, 24, 34, 220))
+        painter.fillRect(left, top, overlay_width, overlay_height, QColor(17, 23, 34, 228))
+        painter.setPen(QPen(QColor("#334762"), 1))
+        painter.drawRect(left, top, overlay_width, overlay_height)
         painter.setPen(QColor("#f4f7ff"))
-        painter.drawText(20, self.height() - overlay_height + 8, overlay_width - 16, 18, Qt.AlignmentFlag.AlignLeft, "Validation")
+        painter.drawText(left + 12, top + 22, "Validation")
         for index, issue in enumerate(self._issues[:6]):
             severity = str(issue.get("severity", "warning"))
             color = {"error": QColor("#ff8e8e"), "warning": QColor("#f6c177"), "info": QColor("#8bd5ca")}.get(severity, QColor("#f4f7ff"))
             painter.setPen(color)
-            painter.drawText(20, self.height() - overlay_height + 30 + index * 18, f"[{severity.upper()}] {issue.get('message', '')}")
+            painter.drawText(left + 12, top + 46 + index * 18, f"[{severity.upper()}] {issue.get('message', '')}")
         painter.restore()

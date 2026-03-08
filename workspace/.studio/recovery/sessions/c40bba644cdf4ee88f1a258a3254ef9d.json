@@ -1,0 +1,26 @@
+{
+  "sessionId": "c40bba644cdf4ee88f1a258a3254ef9d",
+  "app": "extremecraft-studio",
+  "workspace": "workspace",
+  "startedAt": "2026-03-08T22:28:00Z",
+  "openedDocuments": [
+    "I:\\minecraft mods\\Extreme Craft\\untitled\\src\\main\\java\\GUI.java",
+    "I:\\minecraft mods\\Extreme Craft\\untitled\\workspace\\graphs\\cli_demo.json"
+  ],
+  "lastCommand": null,
+  "codeSession": {
+    "open_documents": [
+      "1aa68aa6f347497b99b2f0d52b131335",
+      "f320715dadd7454284c864cf47966e72"
+    ],
+    "recent_files": [
+      "I:\\minecraft mods\\Extreme Craft\\untitled\\workspace\\graphs\\cli_demo.json",
+      "I:\\minecraft mods\\Extreme Craft\\untitled\\src\\main\\java\\GUI.java"
+    ],
+    "split_layouts": {},
+    "open_files": [
+      "I:\\minecraft mods\\Extreme Craft\\untitled\\src\\main\\java\\GUI.java",
+      "I:\\minecraft mods\\Extreme Craft\\untitled\\workspace\\graphs\\cli_demo.json"
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "snapshotId": "43d46968d5774b24b52ab84095da02fb",
+  "documentId": "f320715dadd7454284c864cf47966e72",
+  "documentType": "text-document",
+  "createdAt": "2026-03-08T22:30:36Z",
+  "sourcePath": "I:\\minecraft mods\\Extreme Craft\\untitled\\workspace\\graphs\\cli_demo.json",
+  "metadata": {
+    "dirty": true,
+    "version": 1
+  },
+  "payload": {
+    "path": "I:\\minecraft mods\\Extreme Craft\\untitled\\workspace\\graphs\\cli_demo.json",
+    "content": "{\n  \"name\": \"cli_demo\",\n  \"graph_version\": 2,\n  \"metadata\": {\n    \"last_bundle\": \"workspace\\\\generated\\\\cli_demo\\\\content_bundle.json\",\n    \"last_debug_events\": 4\n  },\n  \"nodes\": [\n    {\n      \"node_id\": \"materialnode_1\",\n      \"node_type\": \"MaterialNode\",\n      \"title\": \"MaterialNode\",\n      \"x\": 80.0,\n      \"y\": 80.0,\n      \"inputs\": [],\n      \"outpfuts\": [\n        {\n          \"name\": \"material\",\n          \"port_type\": \"material\",\n          \"direction\": \"output\"\n        }\n      ],\n      \"parameters\": {\n        \"material\": \"mythril\",\n        \"tier\": 4\n      },\n      \"execution_state\": \"success\",\n      \"last_error\": null\n    },\n    {\n      \"node_id\": \"toolnode_2\",\n      \"node_type\": \"ToolNode\",\n      \"title\": \"ToolNode\",\n      \"x\": 360.0,\n      \"y\": 80.0,\n      \"inputs\": [\n        {\n          \"name\": \"material\",\n          \"port_type\": \"material\",\n          \"direction\": \"input\"\n        }\n      ],\n      \"outputs\": [\n        {\n          \"name\": \"tool\",\n          \"port_type\": \"item\",\n          \"direction\": \"output\"\n        }\n      ],\n      \"parameters\": {\n        \"tool_name\": \"mythril_pickaxe\"\n      },\n      \"execution_state\": \"success\",\n      \"last_error\": null\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"materialnode_1\",\n      \"to\": \"toolnode_2\",\n      \"from_port\": \"material\",\n      \"to_port\": \"material\"\n    }\n  ]\n}\n",
+    "encoding": "utf-8",
+    "syntaxMode": "json"
+  }
+}
