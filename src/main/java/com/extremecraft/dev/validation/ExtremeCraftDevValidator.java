@@ -564,11 +564,14 @@ public final class ExtremeCraftDevValidator {
         Set<String> textureIds = collectPngStems(assetsRoot.resolve("textures"));
         Set<String> itemTagIds = collectJsonStems(dataRoot.resolve("tags/items"));
         Set<String> blockTagIds = collectJsonStems(dataRoot.resolve("tags/blocks"));
+        Set<String> structureTagIds = collectJsonStems(dataRoot.resolve("tags/worldgen/structure"));
+        Set<String> structureIds = collectJsonStems(dataRoot.resolve("worldgen/structure"));
 
         Set<String> registryIds = new LinkedHashSet<>();
         registryIds.addAll(itemModelIds);
         registryIds.addAll(blockModelIds);
         registryIds.addAll(blockStateIds);
+        registryIds.addAll(structureIds);
 
         Set<String> langKeys = new LinkedHashSet<>();
         Path enUs = assetsRoot.resolve("lang/en_us.json");
@@ -580,7 +583,7 @@ public final class ExtremeCraftDevValidator {
             }
         }
 
-        return new KnownResources(registryIds, itemModelIds, blockStateIds, textureIds, itemTagIds, blockTagIds, langKeys);
+        return new KnownResources(registryIds, itemModelIds, blockStateIds, textureIds, itemTagIds, blockTagIds, structureTagIds, langKeys);
     }
 
     private static Set<String> expectedTagSetForPath(Path tagFile, KnownResources known) {
@@ -590,6 +593,9 @@ public final class ExtremeCraftDevValidator {
         }
         if (normalized.contains("/data/" + MOD_ID + "/tags/blocks/")) {
             return known.blockTagIds();
+        }
+        if (normalized.contains("/data/" + MOD_ID + "/tags/worldgen/structure/")) {
+            return known.structureTagIds();
         }
         return Collections.emptySet();
     }
@@ -831,6 +837,7 @@ public final class ExtremeCraftDevValidator {
             Set<String> textureIds,
             Set<String> itemTagIds,
             Set<String> blockTagIds,
+                Set<String> structureTagIds,
             Set<String> langKeys
     ) {
     }

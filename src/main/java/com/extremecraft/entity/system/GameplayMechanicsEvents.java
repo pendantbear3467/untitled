@@ -19,6 +19,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.LongAdder;
 
 public final class GameplayMechanicsEvents {
     private static final long HAZARD_CACHE_TTL_TICKS = 20L;
@@ -163,6 +164,41 @@ public final class GameplayMechanicsEvents {
         }
     }
 
+    public static CacheStats cacheStats() {
+        long hits = HAZARD_CACHE_HITS.sum();
+        long misses = HAZARD_CACHE_MISSES.sum();
+        return new CacheStats(
+                hits,
+                misses,
+                HAZARD_CACHE_PRUNED_ENTRIES.sum(),
+                HAZARD_CACHE_FORCED_EVICTIONS.sum(),
+                HAZARD_SCAN_CACHE.size(),
+                HAZARD_CACHE_TTL_TICKS,
+                HAZARD_CACHE_MAX_ENTRIES
+        );
+    }
+
+    public record CacheStats(
+            long hits,
+            long misses,
+            long prunedEntries,
+            long forcedEvictions,
+            int cachedEntries,
+            long ttlTicks,
+            int maxEntries
+    ) {
+        public long lookups() {
+            return hits + misses;
+        }
+
+        public int hitRatePercent() {
+            long lookups = lookups();
+            if (lookups <= 0L) {
+                return 0;
+            }
+            return (int) Math.round((hits * 100.0D) / lookups);
+        }
+    }
     private boolean hasProtection(ServerPlayer player) {
         ItemStack chest = player.getInventory().armor.get(2);
         return !chest.isEmpty() && chest.getDescriptionId().contains("pioneer_chestplate");
@@ -171,5 +207,6 @@ public final class GameplayMechanicsEvents {
     private record HazardSnapshot(long tick, int activeMachines) {
     }
 }
+
 
 

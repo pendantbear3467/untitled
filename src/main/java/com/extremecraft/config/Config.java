@@ -26,6 +26,31 @@ public final class Config {
     private static volatile Set<String> DISABLED_MACHINE_IDS = Set.of();
     private static volatile Set<String> DISABLED_MOB_IDS = Set.of();
 
+    private static final int MIN_MAX_NEARBY_SAME_MOB = 0;
+    private static final int MAX_MAX_NEARBY_SAME_MOB = 512;
+    private static final double MIN_NEARBY_MOB_CHECK_RADIUS = 4.0D;
+    private static final double MAX_NEARBY_MOB_CHECK_RADIUS = 256.0D;
+
+    private static final int MIN_BOSS_ARENA_CHECK_INTERVAL_TICKS = 10;
+    private static final int MAX_BOSS_ARENA_CHECK_INTERVAL_TICKS = 1200;
+
+    private static final int MIN_ENERGY_PARASITE_DRAIN_INTERVAL_TICKS = 10;
+    private static final int MAX_ENERGY_PARASITE_DRAIN_INTERVAL_TICKS = 1200;
+    private static final int MIN_ENERGY_PARASITE_DRAIN_RADIUS = 1;
+    private static final int MAX_ENERGY_PARASITE_DRAIN_RADIUS = 12;
+    private static final int MIN_ENERGY_PARASITE_MAX_DRAIN_PER_PULSE = 0;
+    private static final int MAX_ENERGY_PARASITE_MAX_DRAIN_PER_PULSE = 20_000;
+
+    private static final int MIN_MACHINE_HAZARD_SCAN_INTERVAL_TICKS = 20;
+    private static final int MAX_MACHINE_HAZARD_SCAN_INTERVAL_TICKS = 2400;
+    private static final int MIN_MACHINE_HAZARD_HORIZONTAL_RADIUS = 1;
+    private static final int MAX_MACHINE_HAZARD_HORIZONTAL_RADIUS = 32;
+    private static final int MIN_MACHINE_HAZARD_VERTICAL_RADIUS = 1;
+    private static final int MAX_MACHINE_HAZARD_VERTICAL_RADIUS = 16;
+    private static final int MIN_MACHINE_HAZARD_REQUIRED_MACHINES = 1;
+    private static final int MAX_MACHINE_HAZARD_REQUIRED_MACHINES = 64;
+    private static final double MIN_MACHINE_HAZARD_DAMAGE = 0.0D;
+    private static final double MAX_MACHINE_HAZARD_DAMAGE = 40.0D;
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
         COMMON = new Common(builder);
@@ -103,6 +128,13 @@ public final class Config {
         }
     }
 
+    private static int clampInt(int value, int min, int max) {
+        return Math.min(max, Math.max(min, value));
+    }
+
+    private static double clampDouble(double value, double min, double max) {
+        return Math.min(max, Math.max(min, value));
+    }
     public static boolean areMachinesEnabled() {
         return safeBoolean(COMMON.machines.enableMachines, true);
     }
@@ -184,27 +216,27 @@ public final class Config {
     }
 
     public static int bossArenaCheckIntervalTicks() {
-        return Math.max(10, safeInt(COMMON.mobs.bossArenaCheckIntervalTicks, 40));
+        return clampInt(safeInt(COMMON.mobs.bossArenaCheckIntervalTicks, 40), MIN_BOSS_ARENA_CHECK_INTERVAL_TICKS, MAX_BOSS_ARENA_CHECK_INTERVAL_TICKS);
     }
 
     public static int maxNearbySameMob() {
-        return Math.max(0, safeInt(COMMON.mobs.maxNearbySameMob, 14));
+        return clampInt(safeInt(COMMON.mobs.maxNearbySameMob, 14), MIN_MAX_NEARBY_SAME_MOB, MAX_MAX_NEARBY_SAME_MOB);
     }
 
     public static double nearbyMobCheckRadius() {
-        return Math.max(4.0D, safeDouble(COMMON.mobs.nearbyMobCheckRadius, 48.0D));
+        return clampDouble(safeDouble(COMMON.mobs.nearbyMobCheckRadius, 48.0D), MIN_NEARBY_MOB_CHECK_RADIUS, MAX_NEARBY_MOB_CHECK_RADIUS);
     }
 
     public static int energyParasiteDrainIntervalTicks() {
-        return Math.max(10, safeInt(COMMON.mobs.energyParasiteDrainIntervalTicks, 40));
+        return clampInt(safeInt(COMMON.mobs.energyParasiteDrainIntervalTicks, 40), MIN_ENERGY_PARASITE_DRAIN_INTERVAL_TICKS, MAX_ENERGY_PARASITE_DRAIN_INTERVAL_TICKS);
     }
 
     public static int energyParasiteDrainRadius() {
-        return Math.max(1, safeInt(COMMON.mobs.energyParasiteDrainRadius, 4));
+        return clampInt(safeInt(COMMON.mobs.energyParasiteDrainRadius, 4), MIN_ENERGY_PARASITE_DRAIN_RADIUS, MAX_ENERGY_PARASITE_DRAIN_RADIUS);
     }
 
     public static int energyParasiteMaxDrainPerPulse() {
-        return Math.max(0, safeInt(COMMON.mobs.energyParasiteMaxDrainPerPulse, 260));
+        return clampInt(safeInt(COMMON.mobs.energyParasiteMaxDrainPerPulse, 260), MIN_ENERGY_PARASITE_MAX_DRAIN_PER_PULSE, MAX_ENERGY_PARASITE_MAX_DRAIN_PER_PULSE);
     }
 
     public static boolean isMachineHazardEnabled() {
@@ -212,23 +244,23 @@ public final class Config {
     }
 
     public static int machineHazardScanIntervalTicks() {
-        return Math.max(20, safeInt(COMMON.mobs.machineHazardScanIntervalTicks, 100));
+        return clampInt(safeInt(COMMON.mobs.machineHazardScanIntervalTicks, 100), MIN_MACHINE_HAZARD_SCAN_INTERVAL_TICKS, MAX_MACHINE_HAZARD_SCAN_INTERVAL_TICKS);
     }
 
     public static int machineHazardHorizontalRadius() {
-        return Math.max(1, safeInt(COMMON.mobs.machineHazardHorizontalRadius, 8));
+        return clampInt(safeInt(COMMON.mobs.machineHazardHorizontalRadius, 8), MIN_MACHINE_HAZARD_HORIZONTAL_RADIUS, MAX_MACHINE_HAZARD_HORIZONTAL_RADIUS);
     }
 
     public static int machineHazardVerticalRadius() {
-        return Math.max(1, safeInt(COMMON.mobs.machineHazardVerticalRadius, 3));
+        return clampInt(safeInt(COMMON.mobs.machineHazardVerticalRadius, 3), MIN_MACHINE_HAZARD_VERTICAL_RADIUS, MAX_MACHINE_HAZARD_VERTICAL_RADIUS);
     }
 
     public static int machineHazardRequiredMachines() {
-        return Math.max(1, safeInt(COMMON.mobs.machineHazardRequiredMachines, 4));
+        return clampInt(safeInt(COMMON.mobs.machineHazardRequiredMachines, 4), MIN_MACHINE_HAZARD_REQUIRED_MACHINES, MAX_MACHINE_HAZARD_REQUIRED_MACHINES);
     }
 
     public static double machineHazardDamage() {
-        return Math.max(0.0D, safeDouble(COMMON.mobs.machineHazardDamage, 2.0D));
+        return clampDouble(safeDouble(COMMON.mobs.machineHazardDamage, 2.0D), MIN_MACHINE_HAZARD_DAMAGE, MAX_MACHINE_HAZARD_DAMAGE);
     }
 
     public static boolean isCuriosCompatEnabled() {
@@ -524,5 +556,6 @@ public final class Config {
         }
     }
 }
+
 
 

@@ -31,6 +31,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Supplier;
 
 public final class BossArenaManager {
@@ -239,6 +240,41 @@ public final class BossArenaManager {
         STRUCTURE_MISS_CACHE.entrySet().removeIf(entry -> (now - entry.getValue()) > STRUCTURE_MISS_CACHE_TTL_TICKS);
     }
 
+    public static CacheStats cacheStats() {
+        long hits = STRUCTURE_CACHE_HITS.sum();
+        long misses = STRUCTURE_CACHE_MISSES.sum();
+        return new CacheStats(
+                hits,
+                misses,
+                STRUCTURE_CACHE_PRUNED_ENTRIES.sum(),
+                STRUCTURE_CACHE_HARD_RESETS.sum(),
+                STRUCTURE_MISS_CACHE.size(),
+                STRUCTURE_MISS_CACHE_TTL_TICKS,
+                STRUCTURE_MISS_CACHE_MAX_ENTRIES
+        );
+    }
+
+    public record CacheStats(
+            long hits,
+            long misses,
+            long prunedEntries,
+            long hardResets,
+            int cachedEntries,
+            long ttlTicks,
+            int maxEntries
+    ) {
+        public long lookups() {
+            return hits + misses;
+        }
+
+        public int hitRatePercent() {
+            long lookups = lookups();
+            if (lookups <= 0L) {
+                return 0;
+            }
+            return (int) Math.round((hits * 100.0D) / lookups);
+        }
+    }
     private record ArenaDefinition(
             String id,
             TagKey<Structure> structureTag,
@@ -249,4 +285,5 @@ public final class BossArenaManager {
     ) {
     }
 }
+
 

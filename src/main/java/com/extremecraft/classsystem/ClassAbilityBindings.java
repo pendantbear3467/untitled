@@ -5,7 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Locale;
 
-public final class ClassAbilityBindings {
+/**`r`n * Canonical runtime gate for class-based ability/spell access checks.`r`n * Reads player class state from progression capabilities and resolves metadata via {@link ClassAccessResolver}.`r`n */`r`npublic final class ClassAbilityBindings {
     private ClassAbilityBindings() {
     }
 
@@ -38,3 +38,4 @@ public final class ClassAbilityBindings {
         return ClassAccessResolver.resolve(classId);
     }
 }
+

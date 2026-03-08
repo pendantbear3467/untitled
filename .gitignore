@@ -37,6 +37,9 @@ bin/
 ### VS Code ###
 .vscode/
 .gradle-user-temp/
+.tmp-tests/
+.venv/
+*.egg-info/
 
 ### Mac OS ###
 .DS_Store

@@ -37,7 +37,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public final class ModNetwork {
+/**`r`n * Canonical packet channel and registration owner for ExtremeCraft.`r`n * Compatibility wrappers (for example {@code DwNetwork}) must delegate here and never re-register packets.`r`n */`r`npublic final class ModNetwork {
     private static final Logger LOGGER = LogManager.getLogger();
     private static int index = 0;
     private static boolean initialized = false;
@@ -250,6 +250,7 @@ public final class ModNetwork {
         return initialized;
     }
 }
+
 
 
 
