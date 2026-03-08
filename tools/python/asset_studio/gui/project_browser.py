@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
+    QSplitter,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -41,15 +42,24 @@ class ProjectBrowser(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        layout.setSpacing(8)
+
+        self.summary_title = QLabel("Workspace Navigator")
+        self.summary_title.setObjectName("panelHeaderTitle")
+        layout.addWidget(self.summary_title)
+
+        self.summary_label = QLabel("Open or refresh a workspace to build the index-backed explorer.")
+        self.summary_label.setObjectName("panelHelpHint")
+        self.summary_label.setWordWrap(True)
+        layout.addWidget(self.summary_label)
 
         search_row = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Filter workspace")
+        self.search_input.setPlaceholderText("Filter workspace, ids, linked targets")
         self.search_input.textChanged.connect(self.refresh_view)
         self.refresh_button = QPushButton("Refresh")
         self.refresh_button.clicked.connect(self.refresh_view)
-        search_row.addWidget(self.search_input)
+        search_row.addWidget(self.search_input, 1)
         search_row.addWidget(self.refresh_button)
         layout.addLayout(search_row)
 
@@ -59,7 +69,9 @@ class ProjectBrowser(QWidget):
         self.tree.setAlternatingRowColors(True)
         self.tree.setUniformRowHeights(True)
         self.tree.setRootIsDecorated(True)
-        self.tree.setToolTip("Workspace tree with inferred links and validation state badges.")
+        self.tree.setIndentation(18)
+        self.tree.setMinimumWidth(380)
+        self.tree.setToolTip("Workspace tree with exact/inferred links and validation state badges.")
         self.tree.header().setStretchLastSection(False)
         self.tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.tree.header().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
@@ -70,40 +82,70 @@ class ProjectBrowser(QWidget):
         self.tree.itemSelectionChanged.connect(self._sync_inspector)
         self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self._open_context_menu)
-        layout.addWidget(self.tree, 1)
+
+        self.body_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.body_splitter.addWidget(self.tree)
+        self.body_splitter.addWidget(self._inspector_host)
+        self.body_splitter.setChildrenCollapsible(False)
+        self.body_splitter.setStretchFactor(0, 5)
+        self.body_splitter.setStretchFactor(1, 3)
+        self.body_splitter.setSizes([620, 260])
+        layout.addWidget(self.body_splitter, 1)
 
     def _build_inspector_widget(self) -> QWidget:
         inspector = QWidget()
         inspector_layout = QVBoxLayout(inspector)
         inspector_layout.setContentsMargins(6, 6, 6, 6)
         inspector_layout.setSpacing(8)
-        inspector_layout.addWidget(QLabel("Selection Details"))
+
+        title = QLabel("Selection Details")
+        title.setObjectName("panelHeaderTitle")
+        inspector_layout.addWidget(title)
+
+        self.selection_summary = QLabel("Choose a file or folder to inspect linked sources, exports, targets, and workspace issues.")
+        self.selection_summary.setObjectName("panelHelpHint")
+        self.selection_summary.setWordWrap(True)
+        inspector_layout.addWidget(self.selection_summary)
+
         self.path_label = QLabel("No selection")
         self.path_label.setWordWrap(True)
         inspector_layout.addWidget(self.path_label)
+
         self.kind_label = QLabel("")
         inspector_layout.addWidget(self.kind_label)
+
         self.resource_label = QLabel("")
         self.resource_label.setWordWrap(True)
         inspector_layout.addWidget(self.resource_label)
 
-        actions = QHBoxLayout()
-        actions.setSpacing(6)
+        actions_top = QHBoxLayout()
+        actions_top.setSpacing(6)
         self.open_source_button = QPushButton("Source")
         self.open_source_button.clicked.connect(lambda: self._open_relation("source_document"))
         self.open_runtime_button = QPushButton("Runtime")
         self.open_runtime_button.clicked.connect(lambda: self._open_relation("runtime_export"))
         self.open_java_button = QPushButton("Java")
         self.open_java_button.clicked.connect(lambda: self._open_relation("java_target"))
+        for button in [self.open_source_button, self.open_runtime_button, self.open_java_button]:
+            actions_top.addWidget(button)
+        inspector_layout.addLayout(actions_top)
+
+        actions_bottom = QHBoxLayout()
+        actions_bottom.setSpacing(6)
         self.open_asset_button = QPushButton("Asset")
         self.open_asset_button.clicked.connect(self._open_linked_asset)
         self.open_linked_button = QPushButton("Linked")
         self.open_linked_button.clicked.connect(lambda: self._open_relation(None))
-        for button in [self.open_source_button, self.open_runtime_button, self.open_java_button, self.open_asset_button, self.open_linked_button]:
-            actions.addWidget(button)
-        inspector_layout.addLayout(actions)
+        refresh_button = QPushButton("Refresh")
+        refresh_button.clicked.connect(self.refresh_view)
+        for button in [self.open_asset_button, self.open_linked_button, refresh_button]:
+            actions_bottom.addWidget(button)
+        inspector_layout.addLayout(actions_bottom)
 
-        inspector_layout.addWidget(QLabel("Issues / Relationship Summary"))
+        summary_title = QLabel("Linked State / Issues")
+        summary_title.setObjectName("panelHeaderTitle")
+        inspector_layout.addWidget(summary_title)
+
         self.detail_text = QLabel("Select a file to inspect links, warnings, and workspace issues.")
         self.detail_text.setWordWrap(True)
         self.detail_text.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
