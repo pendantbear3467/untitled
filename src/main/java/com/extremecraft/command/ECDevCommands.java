@@ -5,6 +5,7 @@ import com.extremecraft.ability.AbilityEngine;
 import com.extremecraft.ability.AbilityRegistry;
 import com.extremecraft.api.ExtremeCraftAPI;
 import com.extremecraft.classsystem.ClassRegistry;
+import com.extremecraft.progression.classsystem.data.ClassDefinitions;
 import com.extremecraft.magic.SpellCastingSystem;
 import com.extremecraft.magic.mana.ManaService;
 import com.extremecraft.machine.MachineRegistry;
@@ -222,7 +223,7 @@ public final class ECDevCommands {
                                         .executes(ctx -> {
                                             ServerPlayer player = ctx.getSource().getPlayerOrException();
                                             String classId = StringArgumentType.getString(ctx, "class").trim().toLowerCase();
-                                            if (ClassRegistry.get(classId) == null) {
+                                            if (ClassRegistry.get(classId) == null && ClassDefinitions.get(classId) == null) {
                                                 ctx.getSource().sendFailure(Component.literal("Unknown class: " + classId));
                                                 return 0;
                                             }
@@ -291,3 +292,6 @@ public final class ECDevCommands {
         return 1;
     }
 }
+
+
+

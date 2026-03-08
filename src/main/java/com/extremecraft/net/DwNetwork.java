@@ -1,5 +1,6 @@
 package com.extremecraft.net;
 
+import com.extremecraft.core.ECConstants;
 import com.extremecraft.network.ModNetwork;
 import net.minecraftforge.network.simple.SimpleChannel;
 
@@ -11,7 +12,11 @@ public final class DwNetwork {
     private DwNetwork() {
     }
 
-    public static final String PROTOCOL = "compat-main";
+    /**
+     * Legacy alias retained for compatibility. The canonical protocol id lives in {@link ECConstants#NETWORK_PROTOCOL}.
+     */
+    @Deprecated(forRemoval = false)
+    public static final String PROTOCOL = ECConstants.NETWORK_PROTOCOL;
 
     /**
      * Legacy alias retained for compatibility. Do not register packets through this field.
@@ -20,6 +25,7 @@ public final class DwNetwork {
     public static final SimpleChannel CH = ModNetwork.CHANNEL;
 
     public static void init() {
+        // Compatibility no-op facade: canonical packet registration happens in ModNetwork.
         if (!ModNetwork.isInitialized()) {
             ModNetwork.init();
         }

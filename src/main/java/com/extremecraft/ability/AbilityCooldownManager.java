@@ -1,7 +1,6 @@
 package com.extremecraft.ability;
 
-import com.extremecraft.classsystem.ClassRegistry;
-import com.extremecraft.classsystem.PlayerClass;
+import com.extremecraft.classsystem.ClassAccessResolver;
 import com.extremecraft.network.sync.RuntimeSyncService;
 import com.extremecraft.progression.capability.ProgressApi;
 import net.minecraft.nbt.CompoundTag;
@@ -97,14 +96,14 @@ public final class AbilityCooldownManager {
         }
 
         String classId = ProgressApi.get(player).map(data -> data.currentClass()).orElse("warrior");
-        PlayerClass playerClass = ClassRegistry.get(classId);
-        List<String> abilities = playerClass == null ? List.of() : playerClass.abilityAccess();
+        List<String> abilities = ClassAccessResolver.abilityAccess(classId);
 
         for (int slot = 1; slot <= 4; slot++) {
             String key = "slot_" + slot;
             String abilityId = slot <= abilities.size() ? abilities.get(slot - 1) : "";
-            slotTag.putString(key, abilityId == null ? "" : abilityId);
-            int manaCost = AbilityRegistry.get(abilityId) == null ? 0 : AbilityRegistry.get(abilityId).manaCost();
+            String normalizedAbilityId = normalize(abilityId);
+            slotTag.putString(key, normalizedAbilityId);
+            int manaCost = AbilityRegistry.get(normalizedAbilityId) == null ? 0 : AbilityRegistry.get(normalizedAbilityId).manaCost();
             slotManaTag.putInt(key, manaCost);
         }
 

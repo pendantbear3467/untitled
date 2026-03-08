@@ -1,8 +1,7 @@
 package com.extremecraft.client;
 
 import com.extremecraft.ExtremeCraftMod;
-import com.extremecraft.classsystem.ClassRegistry;
-import com.extremecraft.classsystem.PlayerClass;
+import com.extremecraft.classsystem.ClassAccessResolver;
 import com.extremecraft.progression.capability.ProgressApi;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
@@ -53,10 +52,10 @@ public final class ExtremeCraftKeybinds {
         );
 
         DEV_DEBUG_OVERLAY = new KeyMapping(
-            "key." + ExtremeCraftMod.MODID + ".dev_debug_overlay",
-            InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_F10,
-            "key.categories." + ExtremeCraftMod.MODID
+                "key." + ExtremeCraftMod.MODID + ".dev_debug_overlay",
+                InputConstants.Type.KEYSYM,
+                GLFW.GLFW_KEY_F10,
+                "key.categories." + ExtremeCraftMod.MODID
         );
 
         event.register(ABILITY_SLOT_1);
@@ -72,12 +71,7 @@ public final class ExtremeCraftKeybinds {
         }
 
         String classId = ProgressApi.get(player).map(data -> data.currentClass()).orElse("warrior");
-        PlayerClass playerClass = ClassRegistry.get(classId);
-        if (playerClass == null) {
-            return "";
-        }
-
-        List<String> abilities = playerClass.abilityAccess();
+        List<String> abilities = ClassAccessResolver.abilityAccess(classId);
         if (slotIndex >= abilities.size()) {
             return "";
         }

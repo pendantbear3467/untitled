@@ -34,7 +34,7 @@ public class PlayerStatsGameplayEvents {
         }
 
         if (xp > 0) {
-            LevelService.grantXp(player, xp);
+            ProgressionMutationService.grantXp(player, xp);
         }
     }
 
@@ -96,4 +96,5 @@ public class PlayerStatsGameplayEvents {
         }
     }
 }
+
 
