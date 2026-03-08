@@ -1,0 +1,24 @@
+{
+  "sessionId": "3550765215b9445bb64ebab35966623e",
+  "app": "extremecraft-studio",
+  "workspace": "I:\\minecraft mods\\Extreme Craft\\untitled\\.tmp-studio-smoke\\workspace",
+  "startedAt": "2026-03-08T07:44:47Z",
+  "openedDocuments": [],
+  "lastCommand": null,
+  "codeSession": {
+    "open_documents": [
+      "5255d5928af842a9a9da667302189305",
+      "5a368a5b08674f04a3eb4259ebc4dadb"
+    ],
+    "recent_files": [
+      "I:\\minecraft mods\\Extreme Craft\\untitled\\run\\logs\\latest.log",
+      "I:\\minecraft mods\\Extreme Craft\\untitled\\.tmp-studio-smoke\\workspace\\untitled_test.py"
+    ],
+    "split_layouts": {},
+    "open_files": [
+      "I:\\minecraft mods\\Extreme Craft\\untitled\\.tmp-studio-smoke\\workspace\\untitled_test.py",
+      "I:\\minecraft mods\\Extreme Craft\\untitled\\run\\logs\\latest.log"
+    ]
+  },
+  "lastSavedWorkspace": "I:\\minecraft mods\\Extreme Craft\\untitled\\.tmp-studio-smoke\\workspace"
+}

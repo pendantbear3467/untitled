@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QPlainTextEdit,
     QSplitter,
     QTabWidget,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -184,7 +185,7 @@ class StudioCodeEditor(QPlainTextEdit):
     def _highlight_current_line(self) -> None:
         if self.isReadOnly():
             return
-        selection = QPlainTextEdit.ExtraSelection()
+        selection = QTextEdit.ExtraSelection()
         selection.format.setBackground(QColor("#252c3a"))
         selection.format.setProperty(QTextFormat.Property.FullWidthSelection, True)
         selection.cursor = self.textCursor()
@@ -199,9 +200,13 @@ class StudioCodeEditor(QPlainTextEdit):
 @dataclass
 class _CodeTab:
     document_id: str
-    path: Path
+    path: Path | None
     editor: StudioCodeEditor
     dirty: bool = False
+
+    @property
+    def display_name(self) -> str:
+        return self.path.name if self.path is not None else "untitled"
 
 
 class CodeStudioPanel(QWidget):
@@ -262,30 +267,64 @@ class CodeStudioPanel(QWidget):
     def _build_toolbar(self) -> QHBoxLayout:
         row = QHBoxLayout()
 
+        new_btn = QPushButton("New")
+        new_btn.setToolTip("Create a new untitled document in Code Studio.")
+        new_btn.setStatusTip("Create a new untitled document in Code Studio.")
+        new_btn.clicked.connect(self.new_document)
         open_btn = QPushButton("Open")
+        open_btn.setToolTip("Open a file from the current workspace or disk.")
+        open_btn.setStatusTip("Open a file from the current workspace or disk.")
         open_btn.clicked.connect(self.open_file_dialog)
         save_btn = QPushButton("Save")
+        save_btn.setToolTip("Save the active file. Untitled buffers prompt for a path.")
+        save_btn.setStatusTip("Save the active file. Untitled buffers prompt for a path.")
         save_btn.clicked.connect(self.save_current)
         save_all = QPushButton("Save All")
+        save_all.setToolTip("Save all open files and keep EditorService session state in sync.")
+        save_all.setStatusTip("Save all open files and keep EditorService session state in sync.")
         save_all.clicked.connect(self.save_all)
 
         self.find_input = QLineEdit()
         self.find_input.setPlaceholderText("Find in current file")
+        self.find_input.setToolTip("Search within the active file.")
         self.replace_input = QLineEdit()
         self.replace_input.setPlaceholderText("Replace with")
+        self.replace_input.setToolTip("Replacement text for Replace and Replace All.")
 
         find_next = QPushButton("Find Next")
+        find_next.setToolTip("Jump to the next match.")
         find_next.clicked.connect(lambda: self.find_next(False))
         find_prev = QPushButton("Find Prev")
+        find_prev.setToolTip("Jump to the previous match.")
         find_prev.clicked.connect(lambda: self.find_next(True))
         replace_one = QPushButton("Replace")
+        replace_one.setToolTip("Replace the current selection or jump to the next match.")
         replace_one.clicked.connect(self.replace_one)
         replace_all = QPushButton("Replace All")
+        replace_all.setToolTip("Replace all matches in the active file.")
         replace_all.clicked.connect(self.replace_all)
 
-        for widget in [open_btn, save_btn, save_all, self.find_input, self.replace_input, find_next, find_prev, replace_one, replace_all]:
+        for widget in [new_btn, open_btn, save_btn, save_all, self.find_input, self.replace_input, find_next, find_prev, replace_one, replace_all]:
             row.addWidget(widget)
         return row
+
+    def new_document(self) -> None:
+        document = self.editor_service.new_document(path=None, content="")
+        editor = StudioCodeEditor()
+        editor.set_language(document.syntax_mode)
+        self._set_editor_text(editor, document.content)
+        editor.cursor_moved.connect(self._cursor_moved)
+        editor.textChanged.connect(lambda editor=editor: self._editor_text_changed(editor))
+
+        self._tabs[editor] = _CodeTab(document_id=document.document_id, path=document.path, editor=editor, dirty=document.dirty)
+        index = self.tab_widget.addTab(editor, "untitled")
+        self.tab_widget.setCurrentIndex(index)
+        self._refresh_meta(editor)
+        self._refresh_outline(editor)
+        self._refresh_problems(editor)
+        self._sync_session_state()
+        self.notifications.emit("Created new untitled document")
+        self.status_message.emit("New document ready")
 
     def open_file_dialog(self) -> None:
         selected, _ = QFileDialog.getOpenFileName(self, "Open file", str(self.workspace_root), "All Files (*.*)")
@@ -354,7 +393,7 @@ class CodeStudioPanel(QWidget):
             result = QMessageBox.question(
                 self,
                 "Unsaved Changes",
-                f"Save changes to {tab.path.name} before closing?",
+                f"Save changes to {tab.display_name} before closing?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel,
             )
             if result == QMessageBox.StandardButton.Cancel:
@@ -427,7 +466,7 @@ class CodeStudioPanel(QWidget):
         self._refresh_outline(editor)
         self._refresh_problems(editor)
         self._sync_session_state()
-        self.notifications.emit(f"Replaced {count} occurrence(s) in {tab.path.name}")
+        self.notifications.emit(f"Replaced {count} occurrence(s) in {tab.display_name}")
 
     def _editor_text_changed(self, editor: StudioCodeEditor) -> None:
         if self._setting_editor_text:
@@ -450,10 +489,22 @@ class CodeStudioPanel(QWidget):
             return True
         try:
             self.editor_service.set_document_text(tab.document_id, editor.toPlainText())
-            saved_path = self.editor_service.save_document(tab.document_id)
+            if tab.path is None:
+                selected, _ = QFileDialog.getSaveFileName(
+                    self,
+                    "Save file",
+                    str(self.workspace_root),
+                    "All Files (*.*)",
+                )
+                if not selected:
+                    return False
+                saved_path = self.editor_service.save_document(tab.document_id, Path(selected))
+            else:
+                saved_path = self.editor_service.save_document(tab.document_id)
         except Exception as exc:  # noqa: BLE001
-            QMessageBox.critical(self, "Save Failed", f"Could not save file:\n{tab.path}\n\n{exc}")
-            self.notifications.emit(f"ERROR: failed to save {tab.path.name}: {exc}")
+            path_label = str(tab.path) if tab.path is not None else tab.display_name
+            QMessageBox.critical(self, "Save Failed", f"Could not save file:\n{path_label}\n\n{exc}")
+            self.notifications.emit(f"ERROR: failed to save {tab.display_name}: {exc}")
             return False
 
         tab.path = saved_path
@@ -464,7 +515,7 @@ class CodeStudioPanel(QWidget):
         self._update_recent_files()
         self._sync_session_state()
         self.status_message.emit(f"Saved: {saved_path}")
-        self.notifications.emit(f"Saved {tab.path.name}")
+        self.notifications.emit(f"Saved {tab.display_name}")
         return True
 
     def _refresh_meta(self, editor: StudioCodeEditor | None) -> None:
@@ -475,10 +526,11 @@ class CodeStudioPanel(QWidget):
         document = self.editor_service.documents.get(tab.document_id)
         text = document.content if document is not None else editor.toPlainText()
         line_count = text.count("\n") + 1
-        language = document.syntax_mode if document is not None else LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text")
+        fallback_language = LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text") if tab.path is not None else "text"
+        language = document.syntax_mode if document is not None else fallback_language
         recent = len(self.editor_service.recent_files)
         self.file_meta.setText(
-            f"Path: {tab.path}\nLanguage: {language}\nLines: {line_count}\nDirty: {'yes' if tab.dirty else 'no'}\nRecent tracked: {recent}"
+            f"Path: {tab.path if tab.path is not None else tab.display_name}\nLanguage: {language}\nLines: {line_count}\nDirty: {'yes' if tab.dirty else 'no'}\nRecent tracked: {recent}"
         )
 
     def _refresh_outline(self, editor: StudioCodeEditor | None) -> None:
@@ -486,7 +538,7 @@ class CodeStudioPanel(QWidget):
         if editor is None or editor not in self._tabs:
             return
         tab = self._tabs[editor]
-        language = LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text")
+        language = LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text") if tab.path is not None else "text"
         lines = editor.toPlainText().splitlines()
 
         if language == "python":
@@ -541,24 +593,25 @@ class CodeStudioPanel(QWidget):
 
     def _diagnose(self, tab: _CodeTab) -> list[CodeDiagnostic]:
         text = tab.editor.toPlainText()
-        language = LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text")
+        language = LANGUAGE_BY_SUFFIX.get(tab.path.suffix.lower(), "text") if tab.path is not None else "text"
+        diagnostic_path = tab.path if tab.path is not None else Path(tab.display_name)
         issues: list[CodeDiagnostic] = []
 
         if language == "python":
             try:
                 ast.parse(text)
             except SyntaxError as exc:
-                issues.append(CodeDiagnostic(severity="error", message=exc.msg, line=exc.lineno or 1, source="python", path=tab.path))
+                issues.append(CodeDiagnostic(severity="error", message=exc.msg, line=exc.lineno or 1, source="python", path=diagnostic_path))
         elif language == "json":
             try:
                 json.loads(text)
             except json.JSONDecodeError as exc:
-                issues.append(CodeDiagnostic(severity="error", message=exc.msg, line=exc.lineno, source="json", path=tab.path))
+                issues.append(CodeDiagnostic(severity="error", message=exc.msg, line=exc.lineno, source="json", path=diagnostic_path))
         elif language == "java":
             if text.count("{") != text.count("}"):
-                issues.append(CodeDiagnostic(severity="warning", message="Brace count is unbalanced", line=1, source="java", path=tab.path))
+                issues.append(CodeDiagnostic(severity="warning", message="Brace count is unbalanced", line=1, source="java", path=diagnostic_path))
         if not text.strip():
-            issues.append(CodeDiagnostic(severity="warning", message="File is empty", line=1, source=language, path=tab.path))
+            issues.append(CodeDiagnostic(severity="warning", message="File is empty", line=1, source=language, path=diagnostic_path))
         return issues
 
     def _find_editor_by_path(self, path: Path) -> StudioCodeEditor | None:
@@ -589,7 +642,7 @@ class CodeStudioPanel(QWidget):
         suffix = " *" if tab.dirty else ""
         index = self.tab_widget.indexOf(editor)
         if index >= 0:
-            self.tab_widget.setTabText(index, f"{tab.path.name}{suffix}")
+            self.tab_widget.setTabText(index, f"{tab.display_name}{suffix}")
 
     def _update_recent_files(self) -> None:
         self.recent_files.clear()
