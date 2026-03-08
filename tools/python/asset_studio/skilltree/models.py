@@ -470,7 +470,7 @@ class ValidationReport:
         message: str,
         *,
         node_id: str = "",
-        field_name: str = "",
+        field: str = "",
         details: dict[str, Any] | None = None,
     ) -> None:
         self.issues.append(
@@ -747,4 +747,5 @@ class DocumentDiff:
 
 SkillNode = ProgressionNode
 SkillTree = ProgressionDocument
+
 

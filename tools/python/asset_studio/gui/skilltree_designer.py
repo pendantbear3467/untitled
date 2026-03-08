@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import (
 from asset_studio.gui.graph_framework import ProgressionScene, ProgressionView
 from asset_studio.skilltree.engine import SkillTreeEngine
 from asset_studio.skilltree.history import DocumentHistory
-from asset_studio.skilltree.models import DEFAULT_CATEGORIES, ProgressionDocument, ProgressionNode, SimulationRequest
+from asset_studio.skilltree.models import DEFAULT_CATEGORIES, GraphBookmark, ProgressionDocument, ProgressionNode, SimulationRequest
 from asset_studio.workspace.workspace_manager import AssetStudioContext
 
 
@@ -554,15 +554,11 @@ class SkillTreeDesigner(QWidget):
     def _bookmark_selection(self) -> None:
         if self.current_tree is None or not self.selected_nodes:
             return
-        bookmark_id = f"bookmark_{len(self.current_tree.bookmarks) + 1}"
+        bookmark_index = len(self.current_tree.bookmarks) + 1
         self.current_tree.bookmarks.append(
-            type(self.current_tree.bookmarks[0])(
-                id=bookmark_id,
-                label=f"Selection {len(self.current_tree.bookmarks) + 1}",
-                node_ids=list(self.selected_nodes),
-            ) if self.current_tree.bookmarks else __import__('asset_studio.skilltree.models', fromlist=['GraphBookmark']).GraphBookmark(
-                id=bookmark_id,
-                label=f"Selection {len(self.current_tree.bookmarks) + 1}",
+            GraphBookmark(
+                id=f"bookmark_{bookmark_index}",
+                label=f"Selection {bookmark_index}",
                 node_ids=list(self.selected_nodes),
             )
         )
@@ -671,3 +667,4 @@ class SkillTreeDesigner(QWidget):
 
     def _update_report(self, title: str, payload: dict) -> None:
         self.report_view.setPlainText(f"{title}\n\n{json.dumps(payload, indent=2)}")
+

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import QPointF, QRectF, Qt, pyqtSignal
-from PyQt6.QtGui import QBrush, QColor, QPainter, QPainterPath, QPen
+from PyQt6.QtGui import QBrush, QColor, QPainter, QPen
 from PyQt6.QtWidgets import QGraphicsItem, QGraphicsLineItem, QGraphicsObject, QGraphicsSimpleTextItem
 
 from asset_studio.skilltree.models import ProgressionNode
@@ -135,8 +135,8 @@ class ProgressionLinkItem(QGraphicsLineItem):
         self.setZValue(-1)
         self._normal_pen = QPen(QColor(170, 190, 220), 2.0)
         self._selected_pen = QPen(QColor(245, 216, 95), 3.0)
-        self._active_pen = QPen(QColor(66, 210, 255, 2၁0), 2.5)
-        self.setPen(self._normal_pen)
+        self._active_pen = QPen(QColor(66, 210, 255, 210), 2.5)
+        self._active = False
         self.update_line()
 
     def update_line(self) -> None:
@@ -148,8 +148,14 @@ class ProgressionLinkItem(QGraphicsLineItem):
         )
 
     def set_active(self, active: bool) -> None:
-        self.setPen(self._active_pen if active else self._normal_pen)
+        self._active = active
+        self.update()
 
     def paint(self, painter: QPainter, option, widget=None) -> None:  # noqa: ANN001, ANN201
-        self.setPen(self._selected_pen if self.isSelected() else self.pen())
+        if self.isSelected():
+            self.setPen(self._selected_pen)
+        elif self._active:
+            self.setPen(self._active_pen)
+        else:
+            self.setPen(self._normal_pen)
         super().paint(painter, option, widget)
