@@ -57,6 +57,22 @@ class RecoveryService:
         payload.update(values)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
+    def list_sessions(self) -> list[Path]:
+        return sorted(self.session_root.glob("*.json"), key=lambda item: item.stat().st_mtime, reverse=True)
+
+    def latest_session_payload(self, *, exclude_session_id: str | None = None) -> dict[str, Any] | None:
+        for path in self.list_sessions():
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                continue
+            if str(payload.get("workspace", "")) != str(self.workspace_root):
+                continue
+            if exclude_session_id and str(payload.get("sessionId", "")) == exclude_session_id:
+                continue
+            return payload
+        return None
+
     def record_snapshot(
         self,
         document_id: str,
@@ -114,6 +130,25 @@ class RecoveryService:
             )
         return snapshots
 
+    def latest_snapshot(
+        self,
+        *,
+        document_type: str | None = None,
+        document_id: str | None = None,
+        source_path: Path | None = None,
+    ) -> RecoverySnapshot | None:
+        normalized_source = source_path.resolve(strict=False) if source_path is not None else None
+        candidates = self.list_snapshots(document_id=document_id, document_type=document_type)
+        filtered: list[RecoverySnapshot] = []
+        for snapshot in candidates:
+            if normalized_source is not None:
+                if snapshot.source_path is None or snapshot.source_path.resolve(strict=False) != normalized_source:
+                    continue
+            filtered.append(snapshot)
+        if not filtered:
+            return None
+        return max(filtered, key=lambda item: item.created_at)
+
     def restore_snapshot(self, snapshot_id: str) -> Any:
         for snapshot in self.list_snapshots():
             if snapshot.snapshot_id == snapshot_id:
@@ -149,7 +184,3 @@ class RecoveryService:
     def _session_file(self) -> Path:
         session_id = self._session_id or "pending"
         return self.session_root / f"{session_id}.json"
-
-
-
-

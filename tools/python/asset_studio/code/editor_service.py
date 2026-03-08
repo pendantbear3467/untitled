@@ -16,6 +16,7 @@ class EditorSessionState:
     open_documents: list[str] = field(default_factory=list)
     recent_files: list[str] = field(default_factory=list)
     split_layouts: dict[str, list[str]] = field(default_factory=dict)
+    open_files: list[str] = field(default_factory=list)
 
 
 class EditorService:
@@ -38,7 +39,12 @@ class EditorService:
         for document in self.documents.values():
             if document.path == path:
                 return document
-        document = TextDocument.load(path)
+        try:
+            document = TextDocument.load(path)
+        except Exception:  # noqa: BLE001
+            document = self._recover_document(path)
+            if document is None:
+                raise
         document.syntax_mode = detect_syntax_mode(path)
         self.documents[document.document_id] = document
         self._remember_recent(path)
@@ -59,6 +65,7 @@ class EditorService:
                     "syntaxMode": document.syntax_mode,
                 },
                 source_path=saved_path,
+                metadata={"saved": True, "version": document.version},
             )
         return saved_path
 
@@ -83,6 +90,7 @@ class EditorService:
                     "syntaxMode": document.syntax_mode,
                 },
                 source_path=document.path,
+                metadata={"dirty": document.dirty, "version": document.version},
             )
 
     def close_document(self, document_id: str) -> TextDocument | None:
@@ -100,15 +108,23 @@ class EditorService:
         return self.search_service.replace_all(document, needle, replacement, case_sensitive=case_sensitive)
 
     def build_session_state(self) -> EditorSessionState:
+        open_files = [str(document.path) for document in self.documents.values() if document.path is not None]
         return EditorSessionState(
             open_documents=list(self.documents),
             recent_files=[str(path) for path in self.recent_files],
             split_layouts={key: list(value) for key, value in self.split_layouts.items()},
+            open_files=open_files,
         )
 
     def restore_session_state(self, payload: dict[str, Any]) -> None:
         self.recent_files = [Path(path) for path in payload.get("recent_files", []) if path]
         self.split_layouts = {str(key): list(value) for key, value in (payload.get("split_layouts") or {}).items()}
+        open_files = [Path(path) for path in payload.get("open_files", []) if path]
+        for path in open_files:
+            try:
+                self.open_document(path)
+            except Exception:  # noqa: BLE001
+                continue
 
     def set_split_layout(self, split_id: str, document_ids: list[str]) -> None:
         self.split_layouts[split_id] = list(document_ids)
@@ -117,3 +133,19 @@ class EditorService:
         self.recent_files = [entry for entry in self.recent_files if entry != path]
         self.recent_files.insert(0, path)
         self.recent_files = self.recent_files[:25]
+
+    def _recover_document(self, path: Path) -> TextDocument | None:
+        if self.recovery_service is None:
+            return None
+        snapshot = self.recovery_service.latest_snapshot(document_type="text-document", source_path=path)
+        if snapshot is None:
+            return None
+        payload = self.recovery_service.restore_snapshot(snapshot.snapshot_id)
+        if not isinstance(payload, dict):
+            return None
+        content = str(payload.get("content", ""))
+        encoding = str(payload.get("encoding", "utf-8"))
+        document = TextDocument.create(path=path, content=content, encoding=encoding)
+        document.syntax_mode = str(payload.get("syntaxMode", detect_syntax_mode(path)))
+        document.dirty = True
+        return document

@@ -24,7 +24,7 @@ class PreviewRenderer(QOpenGLWidget):
         self._pixmap: QPixmap | None = None
         self._zoom = 1.0
         self._lighting = 1.0
-        self._rotation_speed = 3
+        self._rotation_speed = 0
         self._texture_pool: list[Path] = []
         self._texture_index = -1
 
@@ -168,3 +168,4 @@ class PreviewRenderer(QOpenGLWidget):
             label = "..." + label[-69:]
         painter.drawText(12, 104, label)
         painter.restore()
+

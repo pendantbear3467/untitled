@@ -19,6 +19,7 @@ from asset_studio.runtime.build_service import BuildService
 from asset_studio.runtime.log_model import LogStreamModel
 from asset_studio.runtime.run_service import RunService
 from asset_studio.runtime.task_results import StudioTaskResult, utc_now
+from asset_studio.workspace.index_service import WorkspaceIndexService
 from asset_studio.workspace.workspace_manager import AssetStudioContext, WorkspaceManager
 
 
@@ -57,6 +58,8 @@ class StudioSession:
         self.model_studio_engine = ModelStudioEngine(context.workspace_root / "models" / "studio")
         self.build_service = BuildService(context)
         self.run_service = RunService(context, self.process_service, log_model=self.log_model)
+        self.workspace_index_service = WorkspaceIndexService(context)
+        self.workspace_index_service.refresh()
 
         for name, service in {
             "help_registry": self.help_registry,
@@ -73,6 +76,7 @@ class StudioSession:
             "model_studio_engine": self.model_studio_engine,
             "build_service": self.build_service,
             "run_service": self.run_service,
+            "workspace_index_service": self.workspace_index_service,
             "log_model": self.log_model,
         }.items():
             self.app_context.register_service(name, service)
@@ -82,6 +86,7 @@ class StudioSession:
         self._register_builtin_commands()
         self._register_builtin_editors()
         self._register_plugin_editors()
+        self.restore_code_session_state()
 
     @classmethod
     def open(cls, workspace_root: Path, repo_root: Path) -> "StudioSession":
@@ -106,6 +111,8 @@ class StudioSession:
             log_directory=self.context.workspace_root / ".studio" / "logs",
         )
         self.run_service = RunService(self.context, self.process_service, log_model=self.log_model)
+        self.workspace_index_service = WorkspaceIndexService(self.context)
+        self.workspace_index_service.refresh()
         self.plugin_service = PluginService(self.context.plugins, crash_guard=self.crash_guard)
         self.gui_studio_engine = GuiStudioEngine(self.context.workspace_root / "gui_screens")
         self.model_studio_engine = ModelStudioEngine(self.context.workspace_root / "models" / "studio")
@@ -115,13 +122,26 @@ class StudioSession:
             "build_service": self.build_service,
             "process_service": self.process_service,
             "run_service": self.run_service,
+            "workspace_index_service": self.workspace_index_service,
             "plugin_service": self.plugin_service,
             "gui_studio_engine": self.gui_studio_engine,
             "model_studio_engine": self.model_studio_engine,
         }.items():
             self.app_context.register_service(name, service)
         self._register_plugin_editors()
+        self.restore_code_session_state()
         self.recovery_service.update_session(workspace=str(self.context.workspace_root))
+
+    def restore_code_session_state(self) -> None:
+        payload = self.recovery_service.latest_session_payload(exclude_session_id=self.session_id)
+        if not isinstance(payload, dict):
+            return
+        code_session = payload.get("codeSession")
+        if not isinstance(code_session, dict):
+            return
+        self.code_editor_service.restore_session_state(code_session)
+        self.app_context.state["code_session"] = code_session
+        self.recovery_service.update_session(restoredFrom=payload.get("sessionId"), openedDocuments=list(code_session.get("open_files", [])))
 
     def save_workspace(self) -> None:
         self.workspace_manager.save_context(self.context)
@@ -167,7 +187,7 @@ class StudioSession:
             "open_files": open_files,
         }
         self.app_context.state["code_session"] = payload
-        self.recovery_service.update_session(codeSession=payload)
+        self.recovery_service.update_session(codeSession=payload, openedDocuments=open_files)
 
     def _register_builtin_help(self) -> None:
         entries = [
@@ -462,3 +482,8 @@ class StudioSession:
                     keywords=("plugin", "editor"),
                 )
             )
+
+
+
+
+

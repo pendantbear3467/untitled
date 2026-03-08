@@ -212,6 +212,7 @@ class _CodeTab:
 class CodeStudioPanel(QWidget):
     status_message = pyqtSignal(str)
     notifications = pyqtSignal(str)
+    current_file_changed = pyqtSignal(object)
 
     def __init__(self, session, workspace_root: Path | None = None) -> None:
         super().__init__()
@@ -262,12 +263,18 @@ class CodeStudioPanel(QWidget):
         root.addWidget(split)
 
         self._update_recent_files()
-        self._set_empty_state()
+        self._restore_tabs_from_service()
+        if not self._tabs:
+            self._set_empty_state()
 
     def set_session(self, session) -> None:
         self.session = session if hasattr(session, "code_editor_service") else None
         self.editor_service = session.code_editor_service if hasattr(session, "code_editor_service") else session
+        self._clear_tabs()
         self._update_recent_files()
+        self._restore_tabs_from_service()
+        if not self._tabs:
+            self._set_empty_state()
         self._sync_session_state()
 
     def set_workspace_root(self, workspace_root: Path) -> None:
@@ -319,15 +326,7 @@ class CodeStudioPanel(QWidget):
 
     def new_document(self) -> None:
         document = self.editor_service.new_document(path=None, content="")
-        editor = StudioCodeEditor()
-        editor.set_language(document.syntax_mode)
-        self._set_editor_text(editor, document.content)
-        editor.cursor_moved.connect(self._cursor_moved)
-        editor.textChanged.connect(lambda editor=editor: self._editor_text_changed(editor))
-
-        self._tabs[editor] = _CodeTab(document_id=document.document_id, path=document.path, editor=editor, dirty=document.dirty)
-        index = self.tab_widget.addTab(editor, document.name)
-        self.tab_widget.setCurrentIndex(index)
+        editor = self._open_document_tab(document, document.name)
         self._refresh_meta(editor)
         self._refresh_outline(editor)
         self._refresh_problems(editor)
@@ -341,31 +340,70 @@ class CodeStudioPanel(QWidget):
             self.open_file(Path(selected))
 
     def open_file(self, path: Path) -> None:
-        if path.is_dir() or not path.exists():
+        if path.is_dir():
             self.notifications.emit(f"File not found: {path}")
             return
 
         existing_editor = self._find_editor_by_path(path)
         if existing_editor is not None:
             self.tab_widget.setCurrentWidget(existing_editor)
+            self._notify_current_file()
             return
 
-        document = self.editor_service.open_document(path)
-        editor = StudioCodeEditor()
-        editor.set_language(document.syntax_mode)
-        self._set_editor_text(editor, document.content)
-        editor.cursor_moved.connect(self._cursor_moved)
-        editor.textChanged.connect(lambda editor=editor: self._editor_text_changed(editor))
+        try:
+            document = self.editor_service.open_document(path)
+        except Exception as exc:  # noqa: BLE001
+            self.notifications.emit(f"Failed to open {path}: {exc}")
+            self.status_message.emit(f"Open failed: {path.name}")
+            return
 
-        self._tabs[editor] = _CodeTab(document_id=document.document_id, path=path, editor=editor, dirty=document.dirty)
-        index = self.tab_widget.addTab(editor, path.name)
-        self.tab_widget.setCurrentIndex(index)
+        editor = self._open_document_tab(document, path.name)
         self._refresh_meta(editor)
         self._refresh_outline(editor)
         self._refresh_problems(editor)
         self._update_recent_files()
         self._sync_session_state()
         self.status_message.emit(f"Opened: {path}")
+
+    def _open_document_tab(self, document: TextDocument, title: str | None = None, *, make_current: bool = True) -> StudioCodeEditor:
+        if document.path is not None:
+            existing_editor = self._find_editor_by_path(document.path)
+            if existing_editor is not None:
+                if make_current:
+                    self.tab_widget.setCurrentWidget(existing_editor)
+                    self._notify_current_file()
+                return existing_editor
+
+        editor = StudioCodeEditor()
+        editor.set_language(document.syntax_mode)
+        self._set_editor_text(editor, document.content)
+        editor.cursor_moved.connect(self._cursor_moved)
+        editor.textChanged.connect(lambda editor=editor: self._editor_text_changed(editor))
+
+        self._tabs[editor] = _CodeTab(document_id=document.document_id, path=document.path, editor=editor, dirty=document.dirty)
+        index = self.tab_widget.addTab(editor, title or document.name)
+        if make_current:
+            self.tab_widget.setCurrentIndex(index)
+            self._notify_current_file()
+        return editor
+
+    def _restore_tabs_from_service(self) -> None:
+        for document in self.editor_service.documents.values():
+            self._open_document_tab(document, document.name, make_current=False)
+        if self.tab_widget.count() > 0:
+            self.tab_widget.setCurrentIndex(0)
+            self._active_tab_changed(0)
+        else:
+            self.current_file_changed.emit(None)
+
+    def _clear_tabs(self) -> None:
+        self.tab_widget.clear()
+        self._tabs.clear()
+        self.current_file_changed.emit(None)
+
+    def _notify_current_file(self) -> None:
+        tab = self._current_tab()
+        self.current_file_changed.emit(tab.path if tab is not None else None)
 
     def save_current(self) -> bool:
         editor = self._current_editor()
@@ -414,7 +452,11 @@ class CodeStudioPanel(QWidget):
         self.tab_widget.removeTab(index)
         self._update_recent_files()
         self._sync_session_state()
-        self._active_tab_changed(self.tab_widget.currentIndex())
+        if self.tab_widget.count() == 0:
+            self._set_empty_state()
+            self.current_file_changed.emit(None)
+        else:
+            self._active_tab_changed(self.tab_widget.currentIndex())
 
     def find_next(self, backward: bool) -> None:
         editor = self._current_editor()
@@ -530,6 +572,7 @@ class CodeStudioPanel(QWidget):
         self._sync_session_state()
         self.status_message.emit(f"Saved: {saved_path}")
         self.notifications.emit(f"Saved {saved_path.name}")
+        self._notify_current_file()
         return True
 
     def _refresh_meta(self, editor: StudioCodeEditor | None) -> None:
@@ -650,6 +693,7 @@ class CodeStudioPanel(QWidget):
         self._refresh_meta(editor)
         self._refresh_outline(editor)
         self._refresh_problems(editor)
+        self._notify_current_file()
 
     def _update_tab_title(self, editor: StudioCodeEditor) -> None:
         tab = self._tabs.get(editor)
@@ -724,3 +768,9 @@ class CodeStudioPanel(QWidget):
         self.problems.addItem(item)
         self.outline.clear()
         self.file_meta.setText("No file open")
+
+
+
+
+
+

@@ -698,3 +698,4 @@ def launch_gui(workspace_root: Path) -> int:
     window = AssetStudioWindow(workspace_root)
     window.show()
     return app.exec()
+
