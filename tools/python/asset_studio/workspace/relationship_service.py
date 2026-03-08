@@ -1,12 +1,19 @@
 from __future__ import annotations
 
-import re
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
-from asset_studio.code.java_support import JavaAnalysis, analyze_java_source, pascal_case
+from asset_studio.code.java_support import JavaAnalysis, analyze_java_source, pascal_case, snake_case
 from asset_studio.workspace.index_service import WorkspaceEntry, WorkspaceIndex, WorkspaceIndexService
+
+
+JAVA_TYPE_SYMBOLS = {"class", "interface", "enum", "record"}
+GUI_KINDS = {"gui_source", "gui_runtime"}
+MODEL_KINDS = {"model_source", "model_runtime", "item_model", "block_model", "texture_asset"}
+RUNTIME_KINDS = {"gui_runtime", "model_runtime", "resource_export", "datapack_export", "generated_artifact"}
+SOURCE_KINDS = {"gui_source", "model_source", "item_model", "block_model", "graph_source", "json", "texture_asset"}
 
 
 @dataclass
@@ -16,6 +23,7 @@ class RelationshipTarget:
     path: Path
     label: str
     resource_id: str | None = None
+    confidence: str = "derived"
 
 
 @dataclass
@@ -58,174 +66,331 @@ class RelationshipResolverService:
     def resolve_path(self, path: Path) -> RelationshipRecord | None:
         return self.snapshot().get(path.resolve(strict=False))
 
-    def related_paths(self, path: Path, relation: str | None = None) -> list[Path]:
+    def related_targets(self, path: Path, relation: str | None = None) -> list[RelationshipTarget]:
         record = self.resolve_path(path)
         if record is None:
             return []
-        targets = record.targets if relation is None else record.targets_for(relation)
-        return [target.path for target in targets]
+        return list(record.targets if relation is None else record.targets_for(relation))
 
-    def resource_metadata(self, path: Path) -> dict[str, object]:
+    def related_paths(self, path: Path, relation: str | None = None) -> list[Path]:
+        return [target.path for target in self.related_targets(path, relation)]
+
+    def first_related_path(self, path: Path, relation: str) -> Path | None:
         record = self.resolve_path(path)
-        return {} if record is None else dict(record.metadata)
+        if record is None:
+            return None
+        target = record.first_target(relation)
+        return None if target is None else target.path
+
+    def inspector_payload(self, path: Path) -> dict[str, object]:
+        record = self.resolve_path(path)
+        if record is None:
+            return {}
+        return {
+            "path": str(record.path),
+            "kind": record.kind,
+            "resourceId": record.resource_id,
+            "warnings": list(record.warnings),
+            "metadata": dict(record.metadata),
+            "targets": [
+                {
+                    "relation": target.relation,
+                    "kind": target.kind,
+                    "path": str(target.path),
+                    "label": target.label,
+                    "resourceId": target.resource_id,
+                    "confidence": target.confidence,
+                }
+                for target in record.targets
+            ],
+        }
 
     def _build_records(self, index: WorkspaceIndex) -> dict[Path, RelationshipRecord]:
-        entries = list(index.entries.values())
-        runtime_by_stem: dict[str, list[WorkspaceEntry]] = {}
-        source_by_stem: dict[str, list[WorkspaceEntry]] = {}
-        entry_by_resource: dict[str, list[WorkspaceEntry]] = {}
-        java_entries: list[WorkspaceEntry] = []
+        entries = [entry for entry in index.entries.values() if not entry.is_dir]
+        java_entries = [entry for entry in entries if entry.kind == "java_source"]
         java_analysis: dict[Path, JavaAnalysis] = {}
-        class_map: dict[str, list[Path]] = {}
+        class_map: dict[str, list[Path]] = defaultdict(list)
+        name_map: dict[str, list[WorkspaceEntry]] = defaultdict(list)
+        resource_map: dict[str, list[WorkspaceEntry]] = defaultdict(list)
+        reverse_links: dict[Path, list[WorkspaceEntry]] = defaultdict(list)
 
         for entry in entries:
-            if entry.is_dir:
-                continue
-            stem = entry.path.stem
-            if entry.kind in {"gui_source", "model_source", "item_model", "block_model"}:
-                source_by_stem.setdefault(stem, []).append(entry)
-            if entry.kind in {"gui_runtime", "model_runtime", "resource_export", "datapack_export", "generated_artifact"}:
-                runtime_by_stem.setdefault(stem, []).append(entry)
+            normalized_name = _normalized_entry_name(entry.path)
+            if normalized_name:
+                name_map[normalized_name].append(entry)
             if entry.resource_id:
-                entry_by_resource.setdefault(entry.resource_id, []).append(entry)
+                resource_map[entry.resource_id].append(entry)
+            for target in entry.links.values():
+                reverse_links[target.resolve(strict=False)].append(entry)
             if entry.kind == "java_source":
-                java_entries.append(entry)
-                try:
-                    analysis = analyze_java_source(entry.path.read_text(encoding="utf-8", errors="ignore"), path=entry.path)
-                except OSError:
-                    analysis = JavaAnalysis()
+                analysis = self._read_java_analysis(entry.path)
                 java_analysis[entry.path] = analysis
                 for symbol in analysis.symbols:
-                    if symbol.symbol_type in {"class", "interface", "enum", "record"}:
-                        class_map.setdefault(symbol.name, []).append(entry.path)
+                    if symbol.symbol_type in JAVA_TYPE_SYMBOLS:
+                        class_map[symbol.name].append(entry.path)
                 for resource_id in analysis.resource_ids:
-                    entry_by_resource.setdefault(resource_id, [])
+                    resource_map.setdefault(resource_id, [])
 
         records: dict[Path, RelationshipRecord] = {}
         for entry in entries:
-            if entry.is_dir:
-                continue
             record = RelationshipRecord(path=entry.path, kind=entry.kind, resource_id=entry.resource_id)
+            record.metadata["badges"] = sorted(entry.badges)
+            record.metadata["issues"] = [
+                {"severity": issue.severity, "code": issue.code, "message": issue.message, "relatedPath": str(issue.related_path) if issue.related_path else ""}
+                for issue in entry.issues
+            ]
+            record.metadata["links"] = {relation: str(target) for relation, target in sorted(entry.links.items())}
+            record.metadata["indexKind"] = entry.kind
+            record.warnings.extend(issue.message for issue in entry.issues)
             for relation, target in sorted(entry.links.items()):
                 target_entry = index.entry(target)
                 record.targets.append(
                     RelationshipTarget(
                         relation=relation,
                         kind=target_entry.kind if target_entry is not None else "file",
-                        path=target,
+                        path=target.resolve(strict=False),
                         label=target.name,
                         resource_id=target_entry.resource_id if target_entry is not None else None,
+                        confidence="explicit",
                     )
                 )
 
-            if entry.kind in {"gui_source", "gui_runtime"}:
-                self._link_gui_relationships(record, entry, index, source_by_stem, runtime_by_stem, class_map, java_analysis)
-            elif entry.kind in {"model_source", "model_runtime", "item_model", "block_model", "texture_asset"}:
-                self._link_model_relationships(record, entry, index, source_by_stem, runtime_by_stem, class_map, java_analysis)
+            if entry.kind in GUI_KINDS:
+                self._link_gui_record(record, entry, index, java_analysis, class_map, name_map, resource_map)
+            elif entry.kind in MODEL_KINDS:
+                self._link_model_record(record, entry, index, java_analysis, class_map, name_map, resource_map, reverse_links)
             elif entry.kind == "java_source":
-                self._link_java_relationships(record, entry, index, entry_by_resource, java_analysis.get(entry.path))
+                self._link_java_record(record, entry, index, java_analysis.get(entry.path), name_map, resource_map)
+            else:
+                self._link_generic_record(record, entry, reverse_links)
 
             record.targets = _dedupe_targets(record.targets)
-            records[entry.path] = record
+            records[entry.path.resolve(strict=False)] = record
         return records
 
-    def _link_gui_relationships(
+    def _link_gui_record(
         self,
         record: RelationshipRecord,
         entry: WorkspaceEntry,
         index: WorkspaceIndex,
-        source_by_stem: dict[str, list[WorkspaceEntry]],
-        runtime_by_stem: dict[str, list[WorkspaceEntry]],
-        class_map: dict[str, list[Path]],
         java_analysis: dict[Path, JavaAnalysis],
-    ) -> None:
-        stem = entry.path.stem.replace(".gui", "")
-        for candidate in source_by_stem.get(stem, []):
-            if candidate.path != entry.path and candidate.kind == "gui_source":
-                record.targets.append(RelationshipTarget("source_document", candidate.kind, candidate.path, candidate.path.name, candidate.resource_id))
-        for candidate in runtime_by_stem.get(stem, []):
-            if candidate.path != entry.path and candidate.kind == "gui_runtime":
-                record.targets.append(RelationshipTarget("runtime_export", candidate.kind, candidate.path, candidate.path.name, candidate.resource_id))
-        for class_name in [f"{pascal_case(stem)}Screen", f"{pascal_case(stem)}Menu", f"{pascal_case(stem)}Gui"]:
-            for java_path in class_map.get(class_name, []):
-                record.targets.append(RelationshipTarget("java_target", "java_source", java_path, java_path.name))
-        if not record.targets_for("java_target"):
-            for java_path, analysis in java_analysis.items():
-                if entry.resource_id and entry.resource_id in analysis.resource_ids:
-                    record.targets.append(RelationshipTarget("java_target", "java_source", java_path, java_path.name))
-
-    def _link_model_relationships(
-        self,
-        record: RelationshipRecord,
-        entry: WorkspaceEntry,
-        index: WorkspaceIndex,
-        source_by_stem: dict[str, list[WorkspaceEntry]],
-        runtime_by_stem: dict[str, list[WorkspaceEntry]],
         class_map: dict[str, list[Path]],
-        java_analysis: dict[Path, JavaAnalysis],
+        name_map: dict[str, list[WorkspaceEntry]],
+        resource_map: dict[str, list[WorkspaceEntry]],
     ) -> None:
-        stem = entry.path.stem.replace(".model", "")
-        model_like = [candidate for candidate in source_by_stem.get(stem, []) if candidate.path != entry.path]
-        runtime_like = [candidate for candidate in runtime_by_stem.get(stem, []) if candidate.path != entry.path]
-        for candidate in model_like:
-            relation = "source_document" if candidate.kind in {"model_source", "item_model", "block_model"} else "related_source"
-            record.targets.append(RelationshipTarget(relation, candidate.kind, candidate.path, candidate.path.name, candidate.resource_id))
-        for candidate in runtime_like:
-            if candidate.kind == "model_runtime":
-                record.targets.append(RelationshipTarget("runtime_export", candidate.kind, candidate.path, candidate.path.name, candidate.resource_id))
-        if entry.kind in {"model_source", "model_runtime"}:
-            for candidate in source_by_stem.get(stem, []):
-                if candidate.kind in {"item_model", "block_model"}:
-                    record.targets.append(RelationshipTarget("resource_target", candidate.kind, candidate.path, candidate.path.name, candidate.resource_id))
-        for class_name in [f"{pascal_case(stem)}Block", f"{pascal_case(stem)}Item", f"{pascal_case(stem)}Entity", f"{pascal_case(stem)}Model"]:
+        name = _document_name(entry.path)
+        if name:
+            record.metadata["documentName"] = name
+            for candidate in name_map.get(name, []):
+                if candidate.path == entry.path:
+                    continue
+                if candidate.kind in GUI_KINDS:
+                    relation = "runtime_export" if candidate.kind == "gui_runtime" else "source_document"
+                    record.targets.append(RelationshipTarget(relation, candidate.kind, candidate.path, candidate.path.name, candidate.resource_id))
+        if entry.resource_id:
+            record.metadata["resourceId"] = entry.resource_id
+        for class_name in [f"{pascal_case(name)}Screen", f"{pascal_case(name)}Menu", f"{pascal_case(name)}Gui"]:
             for java_path in class_map.get(class_name, []):
-                record.targets.append(RelationshipTarget("java_target", "java_source", java_path, java_path.name))
-        if not record.targets_for("java_target"):
-            for java_path, analysis in java_analysis.items():
-                if entry.resource_id and entry.resource_id in analysis.resource_ids:
-                    record.targets.append(RelationshipTarget("java_target", "java_source", java_path, java_path.name))
+                record.targets.append(RelationshipTarget("java_target", "java_source", java_path, java_path.name, confidence="name"))
+        self._link_resource_matches(record, entry.resource_id, resource_map, include_kinds={"java_source"}, relation="java_target")
+        if not record.targets_for("source_document") and entry.kind == "gui_runtime":
+            explicit = index.related_path(entry.path, "source_definition")
+            if explicit is not None:
+                target_entry = index.entry(explicit)
+                if target_entry is not None:
+                    record.targets.append(RelationshipTarget("source_document", target_entry.kind, target_entry.path, target_entry.path.name, target_entry.resource_id, "explicit"))
+        self._annotate_java_metadata(record, java_analysis)
 
-    def _link_java_relationships(
+    def _link_model_record(
         self,
         record: RelationshipRecord,
         entry: WorkspaceEntry,
         index: WorkspaceIndex,
-        entry_by_resource: dict[str, list[WorkspaceEntry]],
+        java_analysis: dict[Path, JavaAnalysis],
+        class_map: dict[str, list[Path]],
+        name_map: dict[str, list[WorkspaceEntry]],
+        resource_map: dict[str, list[WorkspaceEntry]],
+        reverse_links: dict[Path, list[WorkspaceEntry]],
+    ) -> None:
+        name = _document_name(entry.path)
+        if name:
+            record.metadata["documentName"] = name
+            for candidate in name_map.get(name, []):
+                if candidate.path == entry.path:
+                    continue
+                if candidate.kind in {"model_source", "model_runtime", "item_model", "block_model"}:
+                    relation = _relation_for_candidate(candidate.kind)
+                    record.targets.append(RelationshipTarget(relation, candidate.kind, candidate.path, candidate.path.name, candidate.resource_id))
+        if entry.resource_id:
+            record.metadata["resourceId"] = entry.resource_id
+        for class_name in [
+            f"{pascal_case(name)}Block",
+            f"{pascal_case(name)}Item",
+            f"{pascal_case(name)}Entity",
+            f"{pascal_case(name)}Model",
+        ]:
+            for java_path in class_map.get(class_name, []):
+                record.targets.append(RelationshipTarget("java_target", "java_source", java_path, java_path.name, confidence="name"))
+        self._link_resource_matches(record, entry.resource_id, resource_map, include_kinds={"java_source"}, relation="java_target")
+        for dependent in reverse_links.get(entry.path.resolve(strict=False), []):
+            if dependent.path == entry.path:
+                continue
+            record.targets.append(RelationshipTarget("linked_from", dependent.kind, dependent.path, dependent.path.name, dependent.resource_id))
+        self._annotate_java_metadata(record, java_analysis)
+
+    def _link_java_record(
+        self,
+        record: RelationshipRecord,
+        entry: WorkspaceEntry,
+        index: WorkspaceIndex,
         analysis: JavaAnalysis | None,
+        name_map: dict[str, list[WorkspaceEntry]],
+        resource_map: dict[str, list[WorkspaceEntry]],
     ) -> None:
         if analysis is None:
             return
-        record.metadata["package"] = analysis.package_name or ""
-        record.metadata["imports"] = list(analysis.imports)
-        record.metadata["types"] = [symbol.name for symbol in analysis.symbols if symbol.symbol_type in {"class", "interface", "enum", "record"}]
-        record.metadata["resource_ids"] = list(analysis.resource_ids)
+        type_symbols = [symbol for symbol in analysis.symbols if symbol.symbol_type in JAVA_TYPE_SYMBOLS]
+        record.metadata.update(
+            {
+                "package": analysis.package_name or "",
+                "imports": list(analysis.imports),
+                "types": [symbol.name for symbol in type_symbols],
+                "resourceIds": list(analysis.resource_ids),
+                "linkedFiles": list(analysis.linked_files),
+                "symbolCounts": {
+                    "types": len(type_symbols),
+                    "fields": len(analysis.by_type("field")),
+                    "methods": len(analysis.by_type("method")),
+                },
+            }
+        )
+        for diagnostic in analysis.diagnostics:
+            record.warnings.append(diagnostic.message)
+
         for resource_id in analysis.resource_ids:
-            for candidate in entry_by_resource.get(resource_id, []):
-                relation = "runtime_export" if candidate.kind in {"gui_runtime", "model_runtime"} else "resource_target"
+            for candidate in resource_map.get(resource_id, []):
+                if candidate.path == entry.path:
+                    continue
+                relation = _relation_for_candidate(candidate.kind)
                 record.targets.append(RelationshipTarget(relation, candidate.kind, candidate.path, candidate.path.name, candidate.resource_id))
-                for source_relation in ["source_definition", "source_document"]:
-                    source_target = candidate.links.get("source_definition")
-                    if source_target is not None:
-                        source_entry = index.entry(source_target)
-                        if source_entry is not None:
-                            record.targets.append(RelationshipTarget("source_document", source_entry.kind, source_entry.path, source_entry.path.name, source_entry.resource_id))
+                source_path = candidate.links.get("source_definition")
+                if source_path is not None:
+                    source_entry = index.entry(source_path)
+                    if source_entry is not None:
+                        record.targets.append(RelationshipTarget("source_document", source_entry.kind, source_entry.path, source_entry.path.name, source_entry.resource_id, "explicit"))
+
         for linked_file in analysis.linked_files:
-            candidate = (self.context.workspace_root / linked_file).resolve(strict=False)
-            target_entry = index.entry(candidate)
-            if target_entry is not None:
-                record.targets.append(RelationshipTarget("source_document", target_entry.kind, target_entry.path, target_entry.path.name, target_entry.resource_id))
-        if not record.targets and not analysis.resource_ids:
-            for symbol_name in analysis.metadata if False else []:
-                _ = symbol_name
+            candidate_path = (self.context.workspace_root / linked_file).resolve(strict=False)
+            candidate_entry = index.entry(candidate_path)
+            if candidate_entry is not None:
+                record.targets.append(RelationshipTarget("source_document", candidate_entry.kind, candidate_entry.path, candidate_entry.path.name, candidate_entry.resource_id, "text-reference"))
+
+        for symbol in type_symbols:
+            base_names = _type_to_candidate_names(symbol.name)
+            for base_name in base_names:
+                for candidate in name_map.get(base_name, []):
+                    if candidate.path == entry.path:
+                        continue
+                    relation = _relation_for_candidate(candidate.kind)
+                    record.targets.append(RelationshipTarget(relation, candidate.kind, candidate.path, candidate.path.name, candidate.resource_id, "name"))
+
+    def _link_generic_record(self, record: RelationshipRecord, entry: WorkspaceEntry, reverse_links: dict[Path, list[WorkspaceEntry]]) -> None:
+        for dependent in reverse_links.get(entry.path.resolve(strict=False), []):
+            if dependent.path == entry.path:
+                continue
+            record.targets.append(RelationshipTarget("linked_from", dependent.kind, dependent.path, dependent.path.name, dependent.resource_id))
+
+    def _read_java_analysis(self, path: Path) -> JavaAnalysis:
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            return JavaAnalysis()
+        return analyze_java_source(text, path=path)
+
+    def _link_resource_matches(
+        self,
+        record: RelationshipRecord,
+        resource_id: str | None,
+        resource_map: dict[str, list[WorkspaceEntry]],
+        *,
+        include_kinds: set[str],
+        relation: str,
+    ) -> None:
+        if not resource_id:
+            return
+        for candidate in resource_map.get(resource_id, []):
+            if candidate.path == record.path or candidate.kind not in include_kinds:
+                continue
+            record.targets.append(RelationshipTarget(relation, candidate.kind, candidate.path, candidate.path.name, candidate.resource_id, "resource-id"))
+
+    def _annotate_java_metadata(self, record: RelationshipRecord, java_analysis: dict[Path, JavaAnalysis]) -> None:
+        java_targets = record.targets_for("java_target")
+        record.metadata["javaTargets"] = [str(target.path) for target in java_targets]
+        linked_resource_ids: list[str] = []
+        for target in java_targets:
+            analysis = java_analysis.get(target.path)
+            if analysis is None:
+                continue
+            linked_resource_ids.extend(analysis.resource_ids)
+        if linked_resource_ids:
+            record.metadata["linkedJavaResourceIds"] = sorted(set(linked_resource_ids))
+
+
+def _normalized_entry_name(path: Path) -> str:
+    suffixes = [".gui.json", ".model.json", ".json", ".png", ".java"]
+    name = path.name
+    for suffix in suffixes:
+        if name.endswith(suffix):
+            return snake_case(name[: -len(suffix)])
+    return snake_case(path.stem)
+
+
+def _document_name(path: Path) -> str:
+    name = path.name
+    for suffix in [".gui.json", ".model.json", ".json", ".png", ".java"]:
+        if name.endswith(suffix):
+            return snake_case(name[: -len(suffix)])
+    return snake_case(path.stem)
+
+
+def _relation_for_candidate(kind: str) -> str:
+    if kind in {"gui_source", "model_source"}:
+        return "source_document"
+    if kind in {"gui_runtime", "model_runtime", "resource_export", "datapack_export", "generated_artifact"}:
+        return "runtime_export"
+    if kind == "java_source":
+        return "java_target"
+    if kind in {"item_model", "block_model", "texture_asset"}:
+        return "resource_target"
+    return "related_file"
+
+
+def _type_to_candidate_names(type_name: str) -> list[str]:
+    names = [snake_case(type_name)]
+    for suffix in ["screen", "menu", "gui", "block", "item", "entity", "model"]:
+        lowered = type_name.lower()
+        if lowered.endswith(suffix) and len(type_name) > len(suffix):
+            names.append(snake_case(type_name[: -len(suffix)]))
+    return [name for name in dict.fromkeys(names) if name]
 
 
 def _dedupe_targets(targets: Iterable[RelationshipTarget]) -> list[RelationshipTarget]:
     seen: set[tuple[str, Path]] = set()
     ordered: list[RelationshipTarget] = []
     for target in targets:
-        key = (target.relation, target.path.resolve(strict=False))
+        normalized_path = target.path.resolve(strict=False)
+        key = (target.relation, normalized_path)
         if key in seen:
             continue
         seen.add(key)
-        ordered.append(target)
+        ordered.append(
+            RelationshipTarget(
+                relation=target.relation,
+                kind=target.kind,
+                path=normalized_path,
+                label=target.label,
+                resource_id=target.resource_id,
+                confidence=target.confidence,
+            )
+        )
     return ordered
