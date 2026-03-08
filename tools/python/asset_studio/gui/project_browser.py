@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 )
 
 from asset_studio.workspace.index_service import WorkspaceEntry, WorkspaceIndex, WorkspaceIndexService
+from asset_studio.workspace.relationship_service import RelationshipTarget
 
 
 class ProjectBrowser(QWidget):
@@ -291,20 +292,32 @@ class ProjectBrowser(QWidget):
         if entry.issues:
             details.append("Issues")
             details.extend(f"- [{issue.severity}] {issue.code}: {issue.message}" for issue in entry.issues)
+        source_target = self._relation_target_info(path, "source_document", allow_inferred=True)
+        runtime_target = self._relation_target_info(path, "runtime_export", allow_inferred=True)
+        java_target = self._relation_target_info(path, "java_target", allow_inferred=True)
+        asset_target = self._asset_relation_target_info(path)
+        linked_target = self._relation_target_info(path, None, allow_inferred=True)
         if record is not None:
+            resolution_counts = record.metadata.get("resolutionCounts") or {}
             details.append("")
+            details.append(
+                f"Resolution: exact={resolution_counts.get('authoritative', 0)} possible={resolution_counts.get('inferred', 0)}"
+            )
             details.append("Relationships")
-            details.extend(f"- {target.relation} -> {target.path.name} ({target.kind})" for target in record.targets[:12])
+            details.extend(
+                f"- {target.state_label} {target.relation} -> {target.path.name} ({target.kind}; {target.source}; {target.confidence})"
+                for target in record.targets[:12]
+            )
             if record.warnings:
                 details.append("")
                 details.append("Relationship warnings")
                 details.extend(f"- {warning}" for warning in record.warnings[:8])
         self.detail_text.setText("\n".join(details).strip() or "No issues or relationships available.")
-        self.open_source_button.setEnabled(self._relation_target(path, "source_document") is not None)
-        self.open_runtime_button.setEnabled(self._relation_target(path, "runtime_export") is not None)
-        self.open_java_button.setEnabled(self._relation_target(path, "java_target") is not None)
-        self.open_asset_button.setEnabled(self._asset_relation_target(path) is not None)
-        self.open_linked_button.setEnabled(record is not None and bool(record.targets))
+        self._configure_relation_button(self.open_source_button, "Source", source_target)
+        self._configure_relation_button(self.open_runtime_button, "Runtime", runtime_target)
+        self._configure_relation_button(self.open_java_button, "Java", java_target)
+        self._configure_relation_button(self.open_asset_button, "Asset", asset_target)
+        self._configure_relation_button(self.open_linked_button, "Linked", linked_target)
 
     def _open_context_menu(self, position) -> None:
         item = self.tree.itemAt(position)
@@ -375,41 +388,74 @@ class ProjectBrowser(QWidget):
             self.notifications.emit(f"Project Browser action failed: {exc}")
             self.refresh_view()
 
-    def _relation_target(self, path: Path | None, relation: str | None) -> Path | None:
+    def _configure_relation_button(self, button: QPushButton, label: str, target: RelationshipTarget | None) -> None:
+        if target is None:
+            button.setText(f"Open {label}")
+            button.setToolTip(f"Open the linked {label.lower()} when an exact or unique possible target exists.")
+            button.setEnabled(False)
+            return
+        if target.authoritative:
+            button.setText(f"Open {label}")
+            button.setToolTip(f"Open exact linked {label.lower()}: {target.path.name}")
+        else:
+            button.setText(f"Open Possible {label}")
+            button.setToolTip(f"Open inferred possible {label.lower()} matched by {target.source}: {target.path.name}")
+        button.setEnabled(True)
+
+    def _relation_target_info(self, path: Path | None, relation: str | None, *, allow_inferred: bool = False) -> RelationshipTarget | None:
         if path is None:
             return None
-        if relation is None:
-            record = self._relationship_record(path)
-            if record is None or not record.targets:
-                return None
-            return record.targets[0].path
-        if self.relationship_service is not None:
-            target = self.relationship_service.first_related_path(path, relation)
+        record = self._relationship_record(path)
+        if record is not None:
+            target = record.preferred_target(relation, allow_inferred=allow_inferred)
             if target is not None:
                 return target
-        if self.index_service is not None:
-            return self.index_service.related_path(path, relation)
+        if relation is not None and self.index_service is not None:
+            target_path = self.index_service.related_path(path, relation)
+            if target_path is not None:
+                entry = self._entry_for_path(target_path)
+                return RelationshipTarget(
+                    relation=relation,
+                    kind=entry.kind if entry is not None else "file",
+                    path=target_path.resolve(strict=False),
+                    label=target_path.name,
+                    resource_id=entry.resource_id if entry is not None else None,
+                    confidence="exact",
+                    source="index",
+                    authoritative=True,
+                )
         return None
 
+    def _relation_target(self, path: Path | None, relation: str | None, *, allow_inferred: bool = False) -> Path | None:
+        target = self._relation_target_info(path, relation, allow_inferred=allow_inferred)
+        return None if target is None else target.path
+
     def _open_relation(self, relation: str | None, path: Path | None = None) -> None:
-        target = self._relation_target(path or self._selected_path(), relation)
+        target = self._relation_target(path or self._selected_path(), relation, allow_inferred=True)
         if target is None or not target.exists() or not target.is_file():
             label = "linked file" if relation is None else relation.replace("_", " ")
             self.notifications.emit(f"No {label} available for the current selection")
             return
         self.file_open_requested.emit(target)
 
-    def _asset_relation_target(self, path: Path | None) -> Path | None:
+    def _asset_relation_target_info(self, path: Path | None) -> RelationshipTarget | None:
         if path is None:
             return None
         record = self._relationship_record(path)
         if record is None:
             return None
         asset_kinds = {"texture_asset", "item_model", "block_model", "model_runtime", "json"}
-        for target in record.targets:
-            if target.kind in asset_kinds:
-                return target.path
+        exact = [target for target in record.targets if target.kind in asset_kinds and target.authoritative]
+        if exact:
+            return exact[0]
+        inferred = [target for target in record.targets if target.kind in asset_kinds and not target.authoritative]
+        if len(inferred) == 1:
+            return inferred[0]
         return None
+
+    def _asset_relation_target(self, path: Path | None) -> Path | None:
+        target = self._asset_relation_target_info(path)
+        return None if target is None else target.path
 
     def _open_linked_asset(self, path: Path | None = None) -> None:
         target = self._asset_relation_target(path or self._selected_path())

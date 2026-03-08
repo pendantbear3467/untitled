@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from PyQt6.QtCore import QPoint, QPointF, QTimer, Qt
@@ -27,6 +28,15 @@ MODE_ALIASES = {
 }
 
 
+@dataclass
+class PreviewVariant:
+    payload: dict | None = None
+    metadata: dict[str, object] = field(default_factory=dict)
+    issues: list[dict[str, str]] = field(default_factory=list)
+    texture_path: Path | None = None
+    selection_id: str | None = None
+
+
 class PreviewRenderer(QOpenGLWidget):
     """Interactive preview renderer for Minecraft-first source/runtime assets."""
 
@@ -39,6 +49,9 @@ class PreviewRenderer(QOpenGLWidget):
         self._metadata: dict[str, object] = {}
         self._issues: list[dict[str, str]] = []
         self._selection_id: str | None = None
+        self._preview_variants: dict[str, PreviewVariant] = {}
+        self._preview_auto_mode = "texture"
+        self._mode_override: str | None = None
         self._zoom = 1.0
         self._lighting = 1.0
         self._rotation_speed = 4
@@ -63,9 +76,30 @@ class PreviewRenderer(QOpenGLWidget):
         self._timer.start(33)
 
     def set_mode(self, mode: str) -> None:
-        normalized = MODE_ALIASES.get(mode, self._mode)
+        normalized = MODE_ALIASES.get(mode, mode)
         self._mode = normalized
+        self._mode_override = normalized
         self.update()
+
+    def set_mode_override(self, mode: str | None) -> None:
+        normalized = None if mode in {None, "", "auto"} else MODE_ALIASES.get(mode, mode)
+        self._mode_override = normalized
+        if self._preview_variants:
+            self._apply_preview_variant()
+        else:
+            if normalized is not None:
+                self._mode = normalized
+            self.update()
+
+    def set_preview_variants(self, auto_mode: str, variants: dict[str, PreviewVariant | dict[str, object]]) -> None:
+        normalized_variants: dict[str, PreviewVariant] = {}
+        for mode, variant in variants.items():
+            normalized_variants[MODE_ALIASES.get(mode, mode)] = self._coerce_variant(variant)
+        self._preview_variants = normalized_variants
+        self._preview_auto_mode = MODE_ALIASES.get(auto_mode, auto_mode)
+        if self._preview_auto_mode not in self._preview_variants and self._preview_variants:
+            self._preview_auto_mode = next(iter(self._preview_variants))
+        self._apply_preview_variant()
 
     def set_preview_document(
         self,
@@ -77,17 +111,24 @@ class PreviewRenderer(QOpenGLWidget):
         texture_path: Path | None = None,
         selection_id: str | None = None,
     ) -> None:
-        self.set_mode(mode)
-        self._payload = payload
-        self._metadata = dict(metadata or {})
-        self._issues = list(issues or [])
-        self._selection_id = selection_id
-        if texture_path is not None:
-            self.load_texture(texture_path)
-        self.update()
+        self.set_preview_variants(
+            mode,
+            {
+                mode: PreviewVariant(
+                    payload=payload,
+                    metadata=dict(metadata or {}),
+                    issues=list(issues or []),
+                    texture_path=texture_path,
+                    selection_id=selection_id,
+                )
+            },
+        )
 
     def set_metadata(self, metadata: dict[str, object] | None) -> None:
         self._metadata = dict(metadata or {})
+        variant = self._current_variant()
+        if variant is not None:
+            variant.metadata = dict(self._metadata)
         self.update()
 
     def set_validation_issues(self, issues: list[dict[str, str]] | list[str]) -> None:
@@ -98,10 +139,16 @@ class PreviewRenderer(QOpenGLWidget):
             else:
                 normalized.append({"severity": "warning", "message": str(issue)})
         self._issues = normalized
+        variant = self._current_variant()
+        if variant is not None:
+            variant.issues = list(normalized)
         self.update()
 
     def set_selection_id(self, selection_id: str | None) -> None:
         self._selection_id = selection_id
+        variant = self._current_variant()
+        if variant is not None:
+            variant.selection_id = selection_id
         self.update()
 
     def set_auto_rotate(self, enabled: bool) -> None:
@@ -129,14 +176,11 @@ class PreviewRenderer(QOpenGLWidget):
         self._zoom = 1.0
         self.update()
 
-    def load_texture(self, texture_path: Path) -> None:
-        self._texture_path = texture_path
-        if not texture_path.exists():
-            self._pixmap = None
-            self.update()
-            return
-        image = QImage(str(texture_path))
-        self._pixmap = None if image.isNull() else QPixmap.fromImage(image)
+    def load_texture(self, texture_path: Path | None) -> None:
+        self._set_texture_image(texture_path)
+        variant = self._current_variant()
+        if variant is not None:
+            variant.texture_path = texture_path
         self.update()
 
     def set_zoom(self, zoom: float) -> None:
@@ -154,6 +198,74 @@ class PreviewRenderer(QOpenGLWidget):
         duration = max(1, self._animation_player.clip.duration_ms)
         self._animation_player.current_ms = int(max(0.0, min(1.0, progress)) * duration)
         self.update()
+
+    def preview_state(self) -> dict[str, object]:
+        return {
+            "mode": self._mode,
+            "modeOverride": self._mode_override or "auto",
+            "autoMode": self._preview_auto_mode,
+            "availableModes": sorted(self._preview_variants.keys()),
+            "autoRotate": self._auto_rotate,
+            "viewPreset": self._view_preset,
+            "zoom": self._zoom,
+            "lighting": self._lighting,
+            "selectionId": self._selection_id,
+            "texturePath": str(self._texture_path) if self._texture_path is not None else "",
+            "issueCount": len(self._issues),
+        }
+
+    def _current_variant(self) -> PreviewVariant | None:
+        key = self._resolved_mode_key()
+        return self._preview_variants.get(key)
+
+    def _resolved_mode_key(self) -> str:
+        if self._mode_override is not None and self._mode_override in self._preview_variants:
+            return self._mode_override
+        if self._preview_auto_mode in self._preview_variants:
+            return self._preview_auto_mode
+        return next(iter(self._preview_variants), self._mode)
+
+    def _apply_preview_variant(self) -> None:
+        if not self._preview_variants:
+            self.update()
+            return
+        mode = self._resolved_mode_key()
+        variant = self._preview_variants.get(mode)
+        if variant is None:
+            self._mode = mode
+            self.update()
+            return
+        self._mode = mode
+        self._payload = variant.payload
+        self._metadata = dict(variant.metadata)
+        self._issues = list(variant.issues)
+        self._selection_id = variant.selection_id
+        self._set_texture_image(variant.texture_path)
+        self.update()
+
+    def _set_texture_image(self, texture_path: Path | None) -> None:
+        self._texture_path = texture_path
+        if texture_path is None or not texture_path.exists():
+            self._pixmap = None
+            return
+        image = QImage(str(texture_path))
+        self._pixmap = None if image.isNull() else QPixmap.fromImage(image)
+
+    def _coerce_variant(self, variant: PreviewVariant | dict[str, object]) -> PreviewVariant:
+        if isinstance(variant, PreviewVariant):
+            return PreviewVariant(
+                payload=variant.payload,
+                metadata=dict(variant.metadata),
+                issues=list(variant.issues),
+                texture_path=variant.texture_path,
+                selection_id=variant.selection_id,
+            )
+        payload = variant.get("payload") if isinstance(variant, dict) else None
+        metadata = dict(variant.get("metadata") or {}) if isinstance(variant, dict) else {}
+        issues = list(variant.get("issues") or []) if isinstance(variant, dict) else []
+        texture_path = variant.get("texture_path") if isinstance(variant, dict) else None
+        selection_id = variant.get("selection_id") if isinstance(variant, dict) else None
+        return PreviewVariant(payload=payload, metadata=metadata, issues=issues, texture_path=texture_path, selection_id=selection_id)
 
     def set_texture_candidates(self, paths: list[Path]) -> None:
         self._texture_pool = [path for path in paths if path.exists()]

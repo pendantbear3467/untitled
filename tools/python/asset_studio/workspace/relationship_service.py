@@ -67,6 +67,11 @@ class RelationshipRecord:
 
 
 class RelationshipResolverService:
+    """Combines authoritative workspace links with heuristic candidates.
+
+    Targets always carry source metadata so UI layers can distinguish exact links
+    from inferred possibilities and avoid ambiguous auto-navigation.
+    """
     def __init__(self, context, workspace_index_service: WorkspaceIndexService) -> None:
         self.context = context
         self.workspace_index_service = workspace_index_service

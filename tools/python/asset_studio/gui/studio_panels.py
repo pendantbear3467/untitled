@@ -608,11 +608,16 @@ class GuiStudioPanel(QWidget):
         if self.current_path is None or self.relationship_service is None:
             self.notifications.emit("No linked document available")
             return
-        target = self.relationship_service.first_related_path(self.current_path, relation)
+        record = self.relationship_service.resolve_path(self.current_path)
+        target = record.preferred_target(relation, allow_inferred=True) if record is not None else None
         if target is None:
             self.notifications.emit(f"No {relation.replace('_', ' ')} available for this GUI document")
             return
-        self.open_path_requested.emit(target)
+        if not target.authoritative:
+            self.notifications.emit(
+                f"Opening possible {relation.replace('_', ' ')} inferred from {target.source}: {target.path.name}"
+            )
+        self.open_path_requested.emit(target.path)
 
     def _migration_preview_text(self, preview) -> str:
         lines = [f"Migration preview: gui", f"Source: {preview.source_path}", f"Applied: {'yes' if preview.applied else 'no'}"]
@@ -1424,11 +1429,16 @@ class ModelStudioPanel(QWidget):
         if self.current_path is None or self.relationship_service is None:
             self.notifications.emit("No linked document available")
             return
-        target = self.relationship_service.first_related_path(self.current_path, relation)
+        record = self.relationship_service.resolve_path(self.current_path)
+        target = record.preferred_target(relation, allow_inferred=True) if record is not None else None
         if target is None:
             self.notifications.emit(f"No {relation.replace('_', ' ')} available for this model document")
             return
-        self.open_path_requested.emit(target)
+        if not target.authoritative:
+            self.notifications.emit(
+                f"Opening possible {relation.replace('_', ' ')} inferred from {target.source}: {target.path.name}"
+            )
+        self.open_path_requested.emit(target.path)
 
     def _migration_preview_text(self, preview) -> str:
         lines = [f"Migration preview: model", f"Source: {preview.source_path}", f"Applied: {'yes' if preview.applied else 'no'}"]

@@ -3,14 +3,15 @@
   "documentType": "gui-studio",
   "name": "screen_1",
   "namespace": "extremecraft",
-  "screenType": "machine",
+  "screenType": "generic",
   "width": 176,
   "height": 166,
   "rootWidgets": [
     "root_panel"
   ],
   "metadata": {
-    "runtimeContract": "extremecraft-gui-runtime"
+    "runtimeContract": "extremecraft-gui-runtime",
+    "theme": "Industrial Slate"
   },
   "widgets": [
     {
@@ -18,8 +19,8 @@
       "type": "panel",
       "label": "Panel",
       "bounds": {
-        "x": 18,
-        "y": 58,
+        "x": 22,
+        "y": 62,
         "width": 120,
         "height": 60
       },
@@ -65,13 +66,44 @@
       },
       "binding": null,
       "children": [
-        "panel"
+        "panel",
+        "button"
       ],
       "tags": [
         "root"
       ],
       "visible": true,
       "zIndex": 0
+    },
+    {
+      "id": "button",
+      "type": "button",
+      "label": "Button",
+      "bounds": {
+        "x": 143,
+        "y": 63,
+        "width": 90,
+        "height": 20
+      },
+      "anchor": {
+        "left": null,
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "centerX": null,
+        "centerY": null
+      },
+      "properties": {
+        "text": "Button",
+        "action": "noop"
+      },
+      "binding": null,
+      "children": [],
+      "tags": [
+        "interactive"
+      ],
+      "visible": true,
+      "zIndex": 20
     }
   ]
 }

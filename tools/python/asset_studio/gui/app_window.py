@@ -82,9 +82,6 @@ class AssetStudioWindow(QMainWindow):
         self.preview = self._create_editor("preview_renderer", PreviewRenderer)
         self.preview_tab_renderer = self._create_editor("preview_renderer", PreviewRenderer)
         self._last_preview_texture: Path | None = None
-        self._preview_variants: dict[str, dict[str, object]] = {}
-        self._preview_auto_mode = "texture"
-        self._preview_mode_choice = "auto"
 
         self.code_studio = CodeStudioPanel(self.session, self.context.workspace_root)
         self.code_studio.status_message.connect(self._set_cursor_status)
@@ -658,44 +655,20 @@ class AssetStudioWindow(QMainWindow):
 
     def _set_preview_mode_choice(self, label: str) -> None:
         mapping = {
-            "Auto": "auto",
+            "Auto": None,
             "Source Model": "source_model",
             "Runtime Model": "runtime_model",
             "Source GUI": "source_gui",
             "Runtime GUI": "runtime_gui",
             "Texture / Asset": "texture",
         }
-        self._preview_mode_choice = mapping.get(label, "auto")
-        self._apply_preview_variant()
+        mode = mapping.get(label)
+        for renderer in self._preview_renderers():
+            renderer.set_mode_override(mode)
 
     def _set_preview_variants(self, auto_mode: str, variants: dict[str, dict[str, object]]) -> None:
-        self._preview_auto_mode = auto_mode
-        self._preview_variants = {mode: dict(data) for mode, data in variants.items()}
-        if self._preview_auto_mode not in self._preview_variants and self._preview_variants:
-            self._preview_auto_mode = next(iter(self._preview_variants))
-        self._apply_preview_variant()
-
-    def _selected_preview_mode(self) -> str:
-        if self._preview_mode_choice != "auto" and self._preview_mode_choice in self._preview_variants:
-            return self._preview_mode_choice
-        if self._preview_auto_mode in self._preview_variants:
-            return self._preview_auto_mode
-        return next(iter(self._preview_variants), "texture")
-
-    def _apply_preview_variant(self) -> None:
-        if not self._preview_variants:
-            return
-        mode = self._selected_preview_mode()
-        variant = self._preview_variants.get(mode) or {}
         for renderer in self._preview_renderers():
-            renderer.set_preview_document(
-                mode,
-                payload=variant.get("payload"),
-                metadata=variant.get("metadata"),
-                issues=variant.get("issues"),
-                texture_path=variant.get("texture_path"),
-                selection_id=variant.get("selection_id"),
-            )
+            renderer.set_preview_variants(auto_mode, variants)
 
     def _set_preview_document(
         self,

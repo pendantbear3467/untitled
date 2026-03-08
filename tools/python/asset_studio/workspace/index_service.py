@@ -77,6 +77,11 @@ class WorkspaceIndex:
 
 
 class WorkspaceIndexService:
+    """Builds the authoritative workspace file graph.
+
+    Deterministic path-based and export-contract links live here. Heuristic cross-file
+    inference belongs in ``RelationshipResolverService``.
+    """
     def __init__(self, context) -> None:
         self.context = context
         self._index: WorkspaceIndex | None = None

@@ -762,6 +762,11 @@ class CodeStudioPanel(QWidget):
                 details.append(f"Relationship resource: {record.resource_id}")
             if record.targets:
                 details.append(f"Linked targets: {len(record.targets)}")
+            resolution_counts = record.metadata.get("resolutionCounts")
+            if isinstance(resolution_counts, dict):
+                details.append(
+                    f"Exact/Possible: {resolution_counts.get('authoritative', 0)}/{resolution_counts.get('inferred', 0)}"
+                )
             linked_resource_ids = record.metadata.get("linkedJavaResourceIds")
             if isinstance(linked_resource_ids, list) and linked_resource_ids:
                 details.append(f"Linked Java resources: {', '.join(str(item) for item in linked_resource_ids[:3])}")
@@ -786,12 +791,11 @@ class CodeStudioPanel(QWidget):
             group_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
             self.relationships.addTopLevelItem(group_item)
             for target in grouped[relation]:
-                child = QTreeWidgetItem([target.kind, target.path.name])
+                child = QTreeWidgetItem([f"{target.state_label.title()} {target.kind}", target.path.name])
                 child.setData(0, Qt.ItemDataRole.UserRole, str(target.path))
-                tooltip = [str(target.path)]
+                tooltip = [str(target.path), f"state: {target.state_label}", f"source: {target.source}", f"confidence: {target.confidence}"]
                 if target.resource_id:
                     tooltip.append(f"resourceId: {target.resource_id}")
-                tooltip.append(f"confidence: {target.confidence}")
                 child.setToolTip(0, "\n".join(tooltip))
                 child.setToolTip(1, "\n".join(tooltip))
                 group_item.addChild(child)

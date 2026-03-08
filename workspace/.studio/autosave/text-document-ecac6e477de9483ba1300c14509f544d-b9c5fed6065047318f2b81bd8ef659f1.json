@@ -1,0 +1,17 @@
+{
+  "snapshotId": "b9c5fed6065047318f2b81bd8ef659f1",
+  "documentId": "ecac6e477de9483ba1300c14509f544d",
+  "documentType": "text-document",
+  "createdAt": "2026-03-08T12:19:33Z",
+  "sourcePath": "I:\\minecraft mods\\Extreme Craft\\untitled\\src\\main\\java\\k.java",
+  "metadata": {
+    "saved": true,
+    "version": 2
+  },
+  "payload": {
+    "path": "I:\\minecraft mods\\Extreme Craft\\untitled\\src\\main\\java\\k.java",
+    "content": "public record k(String id) {}\n",
+    "encoding": "utf-8",
+    "syntaxMode": "java"
+  }
+}
