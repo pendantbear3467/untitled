@@ -11,6 +11,8 @@ import com.extremecraft.network.packet.ActivateAbilityC2SPacket;
 import com.extremecraft.network.packet.ActivateClassAbilityC2SPacket;
 import com.extremecraft.network.packet.SpellCastPacket;
 import com.extremecraft.progression.classsystem.ability.ClassAbilityClientState;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
@@ -38,7 +40,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class DwClientHooks {
-    private boolean isMining = false;
+    private HeldBreakTarget heldBreakTarget;
+
+    private record HeldBreakTarget(BlockPos pos, Direction face) {
+    }
 
     @SubscribeEvent
     public void onInteractKey(InputEvent.InteractionKeyMappingTriggered event) {
@@ -55,10 +60,12 @@ public final class DwClientHooks {
         HitResult hit = mc.hitResult;
         ItemStack off = player.getOffhandItem();
         if (off.isEmpty() || isBlacklisted(off) || shouldBypassOverride(off)) {
+            clearHeldBreakLocally();
             return;
         }
 
         if (hit instanceof EntityHitResult ehr && isOffhandWeapon(off)) {
+            abortHeldBreak();
             event.setCanceled(true);
             DwNetwork.sendToServer(new OffhandActionC2S(Action.ATTACK_ENTITY, ehr.getEntity().getId(), null, null));
             return;
@@ -72,15 +79,16 @@ public final class DwClientHooks {
 
         if (hit instanceof BlockHitResult bhr) {
             if (player.isShiftKeyDown() && safeConfigFlag(DwConfig.CLIENT.allowOffhandBlockBreaking, true)) {
-                DwNetwork.sendToServer(new OffhandActionC2S(Action.HOLD_START_BREAK, 0, bhr.getBlockPos(), bhr.getDirection()));
-                isMining = true;
+                startOrRetargetHeldBreak(bhr);
                 return;
             }
 
+            abortHeldBreak();
             DwNetwork.sendToServer(new OffhandActionC2S(Action.USE_ON_BLOCK, 0, bhr.getBlockPos(), bhr.getDirection()));
             return;
         }
 
+        abortHeldBreak();
         DwNetwork.sendToServer(new OffhandActionC2S(Action.USE_ITEM, -1, null, null));
     }
 
@@ -90,9 +98,8 @@ public final class DwClientHooks {
             return;
         }
 
-        if (DwKeybinds.OFFHAND_OVERRIDE != null && !DwKeybinds.OFFHAND_OVERRIDE.isDown() && isMining) {
-            DwNetwork.sendToServer(new OffhandActionC2S(Action.HOLD_ABORT_BREAK, 0, null, null));
-            isMining = false;
+        if (DwKeybinds.OFFHAND_OVERRIDE != null && !DwKeybinds.OFFHAND_OVERRIDE.isDown() && isHeldBreakActive()) {
+            abortHeldBreak();
         }
     }
 
@@ -105,9 +112,17 @@ public final class DwClientHooks {
         ClassAbilityClientState.tickDown();
 
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.screen != null) {
+        if (mc.player == null) {
+            clearHeldBreakLocally();
             return;
         }
+
+        if (mc.screen != null) {
+            abortHeldBreak();
+            return;
+        }
+
+        updateHeldBreakState(mc, mc.player);
 
         boolean abilityCastTriggered = false;
         abilityCastTriggered |= consumeAbilitySlot(mc.player, ExtremeCraftKeybinds.ABILITY_SLOT_1, 0);
@@ -135,8 +150,59 @@ public final class DwClientHooks {
     @SubscribeEvent
     public void onPlayerInteract(PlayerInteractEvent.RightClickItem event) {
         if (event.isCancelable() && event.isCanceled()) {
-            DwNetwork.sendToServer(new OffhandActionC2S(Action.HOLD_ABORT_BREAK, 0, null, null));
+            abortHeldBreak();
         }
+    }
+
+    private void updateHeldBreakState(Minecraft mc, LocalPlayer player) {
+        if (!safeConfigFlag(DwConfig.CLIENT.enableDualWield, true)
+                || !safeConfigFlag(DwConfig.CLIENT.allowOffhandBlockBreaking, true)
+                || DwKeybinds.OFFHAND_OVERRIDE == null
+                || !DwKeybinds.OFFHAND_OVERRIDE.isDown()
+                || !player.isShiftKeyDown()) {
+            abortHeldBreak();
+            return;
+        }
+
+        ItemStack offhand = player.getOffhandItem();
+        if (offhand.isEmpty() || isBlacklisted(offhand) || shouldBypassOverride(offhand)) {
+            abortHeldBreak();
+            return;
+        }
+
+        if (!(mc.hitResult instanceof BlockHitResult blockHit) || blockHit.getType() != HitResult.Type.BLOCK) {
+            abortHeldBreak();
+            return;
+        }
+
+        startOrRetargetHeldBreak(blockHit);
+    }
+
+    private void startOrRetargetHeldBreak(BlockHitResult hit) {
+        HeldBreakTarget nextTarget = new HeldBreakTarget(hit.getBlockPos().immutable(), hit.getDirection());
+        if (nextTarget.equals(heldBreakTarget)) {
+            return;
+        }
+
+        heldBreakTarget = nextTarget;
+        DwNetwork.sendToServer(new OffhandActionC2S(Action.HOLD_START_BREAK, 0, nextTarget.pos(), nextTarget.face()));
+    }
+
+    private void abortHeldBreak() {
+        if (!isHeldBreakActive()) {
+            return;
+        }
+
+        heldBreakTarget = null;
+        DwNetwork.sendToServer(new OffhandActionC2S(Action.HOLD_ABORT_BREAK, 0, null, null));
+    }
+
+    private void clearHeldBreakLocally() {
+        heldBreakTarget = null;
+    }
+
+    private boolean isHeldBreakActive() {
+        return heldBreakTarget != null;
     }
 
     private boolean consumeAbilitySlot(LocalPlayer player, net.minecraft.client.KeyMapping key, int slotIndex) {

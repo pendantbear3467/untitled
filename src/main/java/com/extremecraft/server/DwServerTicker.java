@@ -81,7 +81,7 @@ public class DwServerTicker {
         ACTIVE_BREAKS.put(sp.getUUID(), state);
         sendBreakAction(sp, state.pos, state.face, ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK);
         if (sp.serverLevel().isEmptyBlock(state.pos)) {
-            ACTIVE_BREAKS.remove(sp.getUUID());
+            abortOffhandBreak(sp, true);
         }
     }
 
@@ -122,7 +122,7 @@ public class DwServerTicker {
         sendBreakAction(sp, state.pos, state.face, RESUME_DESTROY_BLOCK);
 
         if (sp.serverLevel().isEmptyBlock(state.pos)) {
-            abortOffhandBreak(sp, false);
+            abortOffhandBreak(sp, true);
         }
     }
 
