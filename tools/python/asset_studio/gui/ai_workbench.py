@@ -132,13 +132,19 @@ class AIWorkbenchPanel(QWidget):
         self.preview_text.setPlainText(json.dumps(self.current_artifact.preview_summary, indent=2))
         self.diff_text.setPlainText(self.current_artifact.diff_preview or "No diff preview for this operation.")
         self.validation_text.setPlainText("\n".join(self.current_artifact.validation_messages))
-        self.apply_button.setEnabled(self.current_artifact.apply_kind in {"open-draft", "replace-current"})
+        can_apply = self.current_artifact.apply_kind in {"open-draft", "replace-current"} and self.current_artifact.ready_to_apply
+        self.apply_button.setEnabled(can_apply)
+        if self.current_artifact.validation_blockers:
+            self.notifications.emit("Artifact blocked by validation. Review Validation panel before applying.")
         self._refresh_history()
         self.status_message.emit(f"AI artifact ready: {self.current_artifact.title}")
         self.notifications.emit(f"Generated {self.current_artifact.title} with {self.current_artifact.provider_name}")
 
     def _apply(self) -> None:
         if self.current_artifact is None:
+            return
+        if not self.current_artifact.ready_to_apply:
+            self.notifications.emit("Cannot apply artifact until validation blockers are resolved")
             return
         self.artifact_apply_requested.emit(self.current_artifact)
         self.notifications.emit(f"Apply requested for {self.current_artifact.title}")

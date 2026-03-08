@@ -43,6 +43,7 @@ class PreviewRenderer(QOpenGLWidget):
         self._lighting = 1.0
         self._rotation_speed = 4
         self._auto_rotate = False
+        self._view_preset = "isometric"
         self._yaw = 45.0
         self._pitch = 25.0
         self._pan = QPointF(0.0, 0.0)
@@ -117,9 +118,11 @@ class PreviewRenderer(QOpenGLWidget):
         yaw, pitch = presets.get(preset, (45.0, 25.0))
         self._yaw = yaw
         self._pitch = pitch
+        self._view_preset = preset if preset in presets else "isometric"
         self.update()
 
     def reset_camera(self) -> None:
+        self._view_preset = "isometric"
         self._yaw = 45.0
         self._pitch = 25.0
         self._pan = QPointF(0.0, 0.0)
@@ -326,8 +329,9 @@ class PreviewRenderer(QOpenGLWidget):
         lines = [
             "Preview Renderer",
             f"mode: {self._mode}",
-            f"camera: yaw {self._yaw:03.0f} pitch {self._pitch:03.0f}",
+            f"camera: yaw {self._yaw:03.0f} pitch {self._pitch:03.0f} preset {self._view_preset}",
             f"zoom: {self._zoom:.2f}  light: {self._lighting:.2f}  auto: {'on' if self._auto_rotate else 'off'}",
+            "controls: LMB orbit, RMB/MMB pan, wheel zoom, double-click reset",
         ]
         source_label = str(self._metadata.get("sourcePath") or self._texture_path or "no source loaded")
         if len(source_label) > 76:

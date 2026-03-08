@@ -43,9 +43,14 @@ class AIArtifact:
     candidate_payload: dict[str, Any] | None = None
     diff_preview: str = ""
     validation_messages: list[str] = field(default_factory=list)
+    validation_blockers: list[str] = field(default_factory=list)
     preview_summary: dict[str, Any] = field(default_factory=dict)
     source_path: Path | None = None
     apply_kind: str = "preview"
+
+    @property
+    def ready_to_apply(self) -> bool:
+        return not self.validation_blockers
 
 
 class AIProvider(Protocol):
@@ -165,6 +170,7 @@ class AIWorkbenchService:
         result = provider.generate(request)
         diff_preview = self._build_diff(request.current_text, result.content) if normalized_mode in {"apply to current file", "generate diff preview"} else ""
         validation_messages = self._validate_result(result)
+        validation_blockers = [message for message in validation_messages if message.lower().startswith("json decode failed")]
         preview_summary = self._build_preview_summary(result)
         artifact = AIArtifact(
             artifact_id=uuid4().hex,
@@ -177,6 +183,7 @@ class AIWorkbenchService:
             candidate_payload=result.payload,
             diff_preview=diff_preview,
             validation_messages=validation_messages,
+            validation_blockers=validation_blockers,
             preview_summary=preview_summary,
             source_path=request.current_path,
             apply_kind=self._apply_kind_for(request.mode, result.target_kind),

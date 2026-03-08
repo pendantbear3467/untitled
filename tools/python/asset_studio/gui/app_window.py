@@ -898,6 +898,11 @@ class AssetStudioWindow(QMainWindow):
             )
 
     def _apply_ai_artifact(self, artifact) -> None:
+        if getattr(artifact, "validation_blockers", None):
+            blocker_text = "; ".join(str(message) for message in artifact.validation_blockers)
+            self._publish_notification("warning", "ai", f"Apply blocked by validation: {blocker_text}")
+            self._show_notifications()
+            return
         if artifact.apply_kind == "replace-current":
             if self.code_studio.apply_text_to_current(artifact.candidate_content):
                 self._switch_tab("Code")
