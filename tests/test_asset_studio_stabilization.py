@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import io
 import os
 import shutil
 import subprocess
@@ -16,6 +17,7 @@ if str(TOOLS_PYTHON) not in sys.path:
     sys.path.insert(0, str(TOOLS_PYTHON))
 
 from asset_studio.core.studio_session import StudioSession
+from asset_studio.main import main as studio_main
 from asset_studio.project.asset_database import AssetDatabase as ProjectAssetDatabase
 from asset_studio.project.workspace_manager import AssetStudioContext as ProjectAssetStudioContext
 from asset_studio.project.workspace_manager import WorkspaceManager as ProjectWorkspaceManager
@@ -65,6 +67,26 @@ class AssetStudioStabilizationTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(result.returncode, 0, msg=result.stderr or result.stdout)
+
+    def test_repo_root_imports_asset_studio_studio_without_gui_runtime(self) -> None:
+        result = subprocess.run(
+            [sys.executable, "-c", "import asset_studio.studio"],
+            cwd=self.repo_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr or result.stdout)
+
+    def test_gui_mode_missing_dependency_returns_actionable_error(self) -> None:
+        captured_stderr = io.StringIO()
+        with patch("asset_studio.main._load_gui_launcher", side_effect=ModuleNotFoundError("No module named 'PyQt6'")):
+            with patch("sys.stderr", captured_stderr):
+                exit_code = studio_main(["--gui", "--workspace", str(self.workspace)])
+
+        self.assertEqual(exit_code, 2)
+        self.assertIn("GUI mode is unavailable", captured_stderr.getvalue())
+        self.assertIn("pip install .[gui]", captured_stderr.getvalue())
 
     def test_workspace_index_detects_links_stale_exports_orphans_and_duplicates(self) -> None:
         session = self._open_session()

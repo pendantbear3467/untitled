@@ -1,9 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import sys
+from importlib import import_module
 from pathlib import Path
+from typing import Callable
 
 from asset_studio.cli.cli_commands import register_subcommands, run_cli
+
+
+def _load_gui_launcher() -> Callable[[Path], int]:
+    module = import_module("asset_studio.gui.app_window")
+    return module.launch_gui
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -33,8 +41,18 @@ def main(argv: list[str] | None = None) -> int:
     workspace = Path(args.workspace)
 
     if args.gui:
-        from asset_studio.studio.app_window import launch_gui
-
+        try:
+            launch_gui = _load_gui_launcher()
+        except ModuleNotFoundError as exc:
+            dependency = getattr(exc, "name", "PyQt6") or "PyQt6"
+            print(
+                (
+                    "GUI mode is unavailable because an optional dependency is missing: "
+                    f"{dependency}. Install GUI extras with 'pip install .[gui]'."
+                ),
+                file=sys.stderr,
+            )
+            return 2
         return launch_gui(workspace)
 
     if not args.command:
