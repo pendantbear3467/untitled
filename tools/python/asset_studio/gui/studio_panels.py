@@ -577,8 +577,7 @@ class GuiStudioPanel(QWidget):
         if self.current_path is not None and self.migration_service is not None:
             preview = self.migration_service.prepare_save("gui", self.current_path, metadata=self.current_document.metadata)
             if preview is not None and preview.backup_path is not None:
-                backup_note = f"
-Migration backup: {preview.backup_path}"
+                backup_note = f"\nMigration backup: {preview.backup_path}"
         saved_path = self.engine.save_document(self.current_document)
         self.current_path = saved_path
         self._dirty = False
@@ -628,8 +627,7 @@ Migration backup: {preview.backup_path}"
         if preview.errors:
             lines.append("Errors:")
             lines.extend(f"- {error}" for error in preview.errors)
-        return "
-".join(lines)
+        return "\n".join(lines)
 
     def save_all(self) -> int:
         return 1 if self.save_current() else 0
@@ -1397,12 +1395,10 @@ class ModelStudioPanel(QWidget):
         if self.current_path is not None and self.migration_service is not None:
             preview = self.migration_service.prepare_save("model", self.current_path, metadata=self.current_document.metadata)
             if preview is not None and preview.backup_path is not None:
-                backup_note = f"
-Migration backup: {preview.backup_path}"
+                backup_note = f"\nMigration backup: {preview.backup_path}"
         saved_path = self.engine.save_document(self.current_document)
         self.current_path = saved_path
-        self.report.setPlainText(f"Saved model document to {saved_path}
-Runtime export path: {self.engine.runtime_export_path(self.current_document)}{backup_note}")
+        self.report.setPlainText(f"Saved model document to {saved_path}\nRuntime export path: {self.engine.runtime_export_path(self.current_document)}{backup_note}")
         self.notifications.emit(f"Saved model document {self.current_document.name}")
         return True
 
@@ -1447,8 +1443,7 @@ Runtime export path: {self.engine.runtime_export_path(self.current_document)}{ba
         if preview.errors:
             lines.append("Errors:")
             lines.extend(f"- {error}" for error in preview.errors)
-        return "
-".join(lines)
+        return "\n".join(lines)
 
     def save_all(self) -> int:
         return 1 if self.save_current() else 0
