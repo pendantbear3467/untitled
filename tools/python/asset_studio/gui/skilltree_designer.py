@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal
@@ -49,12 +51,14 @@ class SkillTreeDesigner(QWidget):
         validate_btn = QPushButton("Validate")
         export_btn = QPushButton("Export")
         import_btn = QPushButton("Import")
+        studio_btn = QPushButton("Open Progression Studio")
         tree_actions.addWidget(create_btn)
         tree_actions.addWidget(load_btn)
         tree_actions.addWidget(save_btn)
         tree_actions.addWidget(validate_btn)
         tree_actions.addWidget(export_btn)
         tree_actions.addWidget(import_btn)
+        tree_actions.addWidget(studio_btn)
 
         node_box = QGroupBox("Node Editor")
         node_form = QFormLayout(node_box)
@@ -90,6 +94,7 @@ class SkillTreeDesigner(QWidget):
         validate_btn.clicked.connect(self._validate_tree)
         export_btn.clicked.connect(self._export_tree)
         import_btn.clicked.connect(self._import_tree)
+        studio_btn.clicked.connect(self._open_progression_studio)
         add_node_btn.clicked.connect(self._add_node)
         del_node_btn.clicked.connect(self._delete_node)
 
@@ -199,3 +204,14 @@ class SkillTreeDesigner(QWidget):
             return
         for node in self.current_tree.nodes.values():
             self.node_list.addItem(f"{node.id} :: {node.display_name} [{node.category}] (cost={node.cost})")
+
+    def _open_progression_studio(self) -> None:
+        editor_path = Path(__file__).resolve().parents[3] / "extremecraft_skill_tree_editor.py"
+        if not editor_path.exists():
+            QMessageBox.warning(self, "Progression Studio", f"Editor not found: {editor_path}")
+            return
+        try:
+            subprocess.Popen([sys.executable, str(editor_path)], cwd=str(self.context.workspace_root))
+            self.log_requested.emit("Opened Progression Studio window")
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Progression Studio", f"Could not launch editor:\n{exc}")
