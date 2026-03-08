@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class DwClientHooks {
+    private boolean heldBreakIntent;
     private HeldBreakTarget heldBreakTarget;
 
     private record HeldBreakTarget(BlockPos pos, Direction face) {
@@ -60,12 +61,12 @@ public final class DwClientHooks {
         HitResult hit = mc.hitResult;
         ItemStack off = player.getOffhandItem();
         if (off.isEmpty() || isBlacklisted(off) || shouldBypassOverride(off)) {
-            clearHeldBreakLocally();
+            cancelHeldBreak();
             return;
         }
 
         if (hit instanceof EntityHitResult ehr && isOffhandWeapon(off)) {
-            abortHeldBreak();
+            cancelHeldBreak();
             event.setCanceled(true);
             DwNetwork.sendToServer(new OffhandActionC2S(Action.ATTACK_ENTITY, ehr.getEntity().getId(), null, null));
             return;
@@ -79,16 +80,16 @@ public final class DwClientHooks {
 
         if (hit instanceof BlockHitResult bhr) {
             if (player.isShiftKeyDown() && safeConfigFlag(DwConfig.CLIENT.allowOffhandBlockBreaking, true)) {
-                startOrRetargetHeldBreak(bhr);
+                activateHeldBreakIntent(bhr);
                 return;
             }
 
-            abortHeldBreak();
+            cancelHeldBreak();
             DwNetwork.sendToServer(new OffhandActionC2S(Action.USE_ON_BLOCK, 0, bhr.getBlockPos(), bhr.getDirection()));
             return;
         }
 
-        abortHeldBreak();
+        cancelHeldBreak();
         DwNetwork.sendToServer(new OffhandActionC2S(Action.USE_ITEM, -1, null, null));
     }
 
@@ -98,8 +99,10 @@ public final class DwClientHooks {
             return;
         }
 
-        if (DwKeybinds.OFFHAND_OVERRIDE != null && !DwKeybinds.OFFHAND_OVERRIDE.isDown() && isHeldBreakActive()) {
-            abortHeldBreak();
+        if (DwKeybinds.OFFHAND_OVERRIDE != null
+                && !DwKeybinds.OFFHAND_OVERRIDE.isDown()
+                && (heldBreakIntent || isHeldBreakActive())) {
+            cancelHeldBreak();
         }
     }
 
@@ -118,7 +121,7 @@ public final class DwClientHooks {
         }
 
         if (mc.screen != null) {
-            abortHeldBreak();
+            cancelHeldBreak();
             return;
         }
 
@@ -150,7 +153,7 @@ public final class DwClientHooks {
     @SubscribeEvent
     public void onPlayerInteract(PlayerInteractEvent.RightClickItem event) {
         if (event.isCancelable() && event.isCanceled()) {
-            abortHeldBreak();
+            cancelHeldBreak();
         }
     }
 
@@ -160,13 +163,20 @@ public final class DwClientHooks {
                 || DwKeybinds.OFFHAND_OVERRIDE == null
                 || !DwKeybinds.OFFHAND_OVERRIDE.isDown()
                 || !player.isShiftKeyDown()) {
-            abortHeldBreak();
+            cancelHeldBreak();
             return;
         }
 
         ItemStack offhand = player.getOffhandItem();
         if (offhand.isEmpty() || isBlacklisted(offhand) || shouldBypassOverride(offhand)) {
-            abortHeldBreak();
+            cancelHeldBreak();
+            return;
+        }
+
+        if (!heldBreakIntent) {
+            if (isHeldBreakActive()) {
+                abortHeldBreak();
+            }
             return;
         }
 
@@ -202,7 +212,13 @@ public final class DwClientHooks {
         DwNetwork.sendToServer(new OffhandActionC2S(Action.HOLD_ABORT_BREAK, 0, null, null));
     }
 
+    private void cancelHeldBreak() {
+        heldBreakIntent = false;
+        abortHeldBreak();
+    }
+
     private void clearHeldBreakLocally() {
+        heldBreakIntent = false;
         heldBreakTarget = null;
     }
 
@@ -274,7 +290,3 @@ public final class DwClientHooks {
         return false;
     }
 }
-
-
-
-
