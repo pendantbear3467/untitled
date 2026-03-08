@@ -8,7 +8,11 @@ from typing import Any, Callable
 
 from asset_studio.core.crash_guard import CrashGuard
 from asset_studio.core.notification_service import NotificationService
-from asset_studio.runtime.task_results import StudioTaskResult, TaskProgressEvent, utc_now
+from asset_studio.runtime.task_results import StudioTaskResult, TaskIssue, TaskProgressEvent, TaskReport, utc_now
+
+
+class TaskCancelledError(RuntimeError):
+    pass
 
 
 @dataclass
@@ -25,6 +29,10 @@ class TaskExecutionContext:
     @property
     def cancelled(self) -> bool:
         return self.cancel_event.is_set()
+
+    def raise_if_cancelled(self) -> None:
+        if self.cancelled:
+            raise TaskCancelledError(f"Task cancelled: {self.task_id}")
 
 
 @dataclass
@@ -83,6 +91,24 @@ class TaskService:
                     finished_at=utc_now(),
                     message=f"Task completed: {name}",
                     data=value,
+                    report=TaskReport(operation=name, category="task", summary=f"Task completed: {name}"),
+                )
+            except TaskCancelledError as exc:
+                return StudioTaskResult(
+                    task_id=task_id,
+                    name=name,
+                    success=False,
+                    started_at=started_at,
+                    finished_at=utc_now(),
+                    message=str(exc),
+                    errors=[str(exc)],
+                    cancelled=True,
+                    report=TaskReport(
+                        operation=name,
+                        category="task",
+                        summary=str(exc),
+                        issues=[TaskIssue(severity="warning", code="task_cancelled", message=str(exc))],
+                    ),
                 )
             except Exception as exc:  # noqa: BLE001
                 if self.crash_guard is not None:
@@ -97,6 +123,12 @@ class TaskService:
                     finished_at=utc_now(),
                     message=str(exc),
                     errors=[str(exc)],
+                    report=TaskReport(
+                        operation=name,
+                        category="task",
+                        summary=str(exc),
+                        issues=[TaskIssue(severity="error", code="task_exception", message=str(exc))],
+                    ),
                 )
 
         future = self._executor.submit(runner)

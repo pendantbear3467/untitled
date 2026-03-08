@@ -7,7 +7,7 @@ from pathlib import Path
 
 from asset_studio.core.process_service import ManagedProcess, ProcessService
 from asset_studio.runtime.log_model import LogStreamModel
-from asset_studio.runtime.task_results import ProcessTaskResult, utc_now
+from asset_studio.runtime.task_results import ProcessTaskResult, TaskIssue, TaskReport, utc_now
 from asset_studio.workspace.workspace_manager import AssetStudioContext
 
 
@@ -59,15 +59,22 @@ class RunService:
         for configuration in self.list_configurations():
             if configuration.name == name:
                 return self.run_configuration(configuration)
+        message = f"Run configuration not found: {name}"
         return ProcessTaskResult(
             task_id=f"run-{name}",
             name=f"Run {name}",
             success=False,
             started_at=utc_now(),
             finished_at=utc_now(),
-            message=f"Run configuration not found: {name}",
+            message=message,
             errors=[name],
             command=[],
+            report=TaskReport(
+                operation=f"run:{name}",
+                category="runtime",
+                summary=message,
+                issues=[TaskIssue(severity="error", code="run_configuration_missing", message=message)],
+            ),
         )
 
     def run_client(self) -> ManagedProcess | ProcessTaskResult:

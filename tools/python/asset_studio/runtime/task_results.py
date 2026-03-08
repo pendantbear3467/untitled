@@ -11,6 +11,35 @@ def utc_now() -> str:
 
 
 @dataclass
+class TaskIssue:
+    severity: str
+    code: str
+    message: str
+    path: Path | None = None
+    related_path: Path | None = None
+    details: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class TaskArtifact:
+    kind: str
+    path: Path | None = None
+    status: str = "created"
+    label: str = ""
+    details: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class TaskReport:
+    operation: str
+    category: str
+    summary: str = ""
+    issues: list[TaskIssue] = field(default_factory=list)
+    artifacts: list[TaskArtifact] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class TaskProgressEvent:
     task_id: str
     step: str
@@ -30,6 +59,8 @@ class StudioTaskResult:
     data: Any = None
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    report: TaskReport | None = None
+    cancelled: bool = False
 
 
 @dataclass
@@ -39,7 +70,6 @@ class ProcessTaskResult(StudioTaskResult):
     stdout: str = ""
     stderr: str = ""
     log_path: Path | None = None
-    cancelled: bool = False
 
 
 @dataclass
@@ -47,5 +77,3 @@ class ValidationTaskResult(StudioTaskResult):
     error_count: int = 0
     warning_count: int = 0
     issue_count: int = 0
-
-

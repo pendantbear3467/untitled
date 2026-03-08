@@ -8,7 +8,7 @@ from pathlib import Path
 
 from asset_studio.core.crash_guard import CrashGuard
 from asset_studio.runtime.log_model import LogStreamModel
-from asset_studio.runtime.task_results import ProcessTaskResult, utc_now
+from asset_studio.runtime.task_results import ProcessTaskResult, TaskArtifact, TaskIssue, TaskReport, utc_now
 
 
 @dataclass
@@ -100,6 +100,9 @@ class ProcessService:
                 if active_log is not None:
                     active_log.append_lines(name, stdout, level="info", stream="stdout")
                     active_log.append_lines(name, stderr, level="error" if stderr else "info", stream="stderr")
+                issues = []
+                if stderr.strip():
+                    issues.append(TaskIssue(severity="error" if not success else "warning", code="stderr", message=stderr.strip()))
                 handle.result = ProcessTaskResult(
                     task_id=task_id,
                     name=name,
@@ -113,21 +116,41 @@ class ProcessService:
                     stderr=stderr,
                     log_path=log_path,
                     cancelled=cancelled,
+                    report=TaskReport(
+                        operation=name,
+                        category="process",
+                        summary=f"Process finished with code {process.returncode}",
+                        issues=issues,
+                        artifacts=[
+                            TaskArtifact(kind="log", path=log_path, label="process log", status="updated") if log_path else TaskArtifact(kind="log", label="process log", status="skipped"),
+                            TaskArtifact(kind="working_directory", path=cwd, label="working directory", status="used"),
+                        ],
+                        metadata={"command": list(command)},
+                    ),
                 )
             except subprocess.TimeoutExpired:
                 if handle.process and handle.process.poll() is None:
                     handle.process.kill()
                 log_path = self._write_log_file(name, task_id, command, cwd, "", f"Timed out after {timeout} seconds", None)
+                message = f"Timed out after {timeout} seconds"
                 handle.result = ProcessTaskResult(
                     task_id=task_id,
                     name=name,
                     success=False,
                     started_at=started_at,
                     finished_at=utc_now(),
-                    message=f"Timed out after {timeout} seconds",
+                    message=message,
                     command=list(command),
                     log_path=log_path,
                     cancelled=True,
+                    report=TaskReport(
+                        operation=name,
+                        category="process",
+                        summary=message,
+                        issues=[TaskIssue(severity="error", code="process_timeout", message=message)],
+                        artifacts=[TaskArtifact(kind="log", path=log_path, label="process log", status="updated") if log_path else TaskArtifact(kind="log", label="process log", status="skipped")],
+                        metadata={"command": list(command)},
+                    ),
                 )
             except Exception as exc:  # noqa: BLE001
                 if self.crash_guard is not None:
@@ -143,6 +166,14 @@ class ProcessService:
                     errors=[str(exc)],
                     command=list(command),
                     log_path=log_path,
+                    report=TaskReport(
+                        operation=name,
+                        category="process",
+                        summary=str(exc),
+                        issues=[TaskIssue(severity="error", code="process_exception", message=str(exc))],
+                        artifacts=[TaskArtifact(kind="log", path=log_path, label="process log", status="updated") if log_path else TaskArtifact(kind="log", label="process log", status="skipped")],
+                        metadata={"command": list(command)},
+                    ),
                 )
 
         handle.thread = threading.Thread(target=runner, name=f"process-{name}-{task_id}", daemon=True)
