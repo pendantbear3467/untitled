@@ -138,3 +138,4 @@ public final class GameplayMechanicsEvents {
     private record HazardSnapshot(long tick, int activeMachines) {
     }
 }
+
