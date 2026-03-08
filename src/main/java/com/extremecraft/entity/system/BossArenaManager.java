@@ -215,30 +215,15 @@ public final class BossArenaManager {
         return level.dimension().location() + "|" + id + "|" + center.asLong();
     }
 
-    private static boolean isArenaMissCached(ServerLevel level, ArenaDefinition arena, BlockPos playerPos, long now) {
-        String key = buildMissCacheKey(level, arena, playerPos);
-        Long cachedTick = STRUCTURE_MISS_CACHE.get(key);
-        return cachedTick != null && (now - cachedTick) <= STRUCTURE_MISS_CACHE_TTL_TICKS;
-    }
+    private static boolean isArenaMissCached(ServerLevel level, ArenaDefinition arena, BlockPos playerPos, long now) {`r`n        String key = buildMissCacheKey(level, arena, playerPos);`r`n        Long cachedTick = STRUCTURE_MISS_CACHE.get(key);`r`n        if (cachedTick != null && (now - cachedTick) <= STRUCTURE_MISS_CACHE_TTL_TICKS) {`r`n            STRUCTURE_CACHE_HITS.increment();`r`n            return true;`r`n        }`r`n`r`n        STRUCTURE_CACHE_MISSES.increment();`r`n        return false;`r`n    }
 
-    private static void rememberArenaMiss(ServerLevel level, ArenaDefinition arena, BlockPos playerPos, long now) {
-        if (STRUCTURE_MISS_CACHE.size() >= STRUCTURE_MISS_CACHE_MAX_ENTRIES) {
-            pruneStructureMissCache(now);
-            if (STRUCTURE_MISS_CACHE.size() >= STRUCTURE_MISS_CACHE_MAX_ENTRIES) {
-                STRUCTURE_MISS_CACHE.clear();
-            }
-        }
-
-        STRUCTURE_MISS_CACHE.put(buildMissCacheKey(level, arena, playerPos), now);
-    }
+    private static void rememberArenaMiss(ServerLevel level, ArenaDefinition arena, BlockPos playerPos, long now) {`r`n        if (STRUCTURE_MISS_CACHE.size() >= STRUCTURE_MISS_CACHE_MAX_ENTRIES) {`r`n            pruneStructureMissCache(now);`r`n            if (STRUCTURE_MISS_CACHE.size() >= STRUCTURE_MISS_CACHE_MAX_ENTRIES) {`r`n                int cleared = STRUCTURE_MISS_CACHE.size();`r`n                if (cleared > 0) {`r`n                    STRUCTURE_CACHE_HARD_RESETS.increment();`r`n                    STRUCTURE_CACHE_PRUNED_ENTRIES.add(cleared);`r`n                }`r`n                STRUCTURE_MISS_CACHE.clear();`r`n            }`r`n        }`r`n`r`n        STRUCTURE_MISS_CACHE.put(buildMissCacheKey(level, arena, playerPos), now);`r`n    }
 
     private static String buildMissCacheKey(ServerLevel level, ArenaDefinition arena, BlockPos playerPos) {
         return level.dimension().location() + "|" + arena.id() + "|" + (playerPos.getX() >> 4) + "|" + (playerPos.getZ() >> 4);
     }
 
-    private static void pruneStructureMissCache(long now) {
-        STRUCTURE_MISS_CACHE.entrySet().removeIf(entry -> (now - entry.getValue()) > STRUCTURE_MISS_CACHE_TTL_TICKS);
-    }
+    private static void pruneStructureMissCache(long now) {`r`n        int before = STRUCTURE_MISS_CACHE.size();`r`n        STRUCTURE_MISS_CACHE.entrySet().removeIf(entry -> (now - entry.getValue()) > STRUCTURE_MISS_CACHE_TTL_TICKS);`r`n        int removed = before - STRUCTURE_MISS_CACHE.size();`r`n        if (removed > 0) {`r`n            STRUCTURE_CACHE_PRUNED_ENTRIES.add(removed);`r`n        }`r`n    }
 
     public static CacheStats cacheStats() {
         long hits = STRUCTURE_CACHE_HITS.sum();
@@ -285,5 +270,6 @@ public final class BossArenaManager {
     ) {
     }
 }
+
 
 

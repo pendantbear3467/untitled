@@ -25,9 +25,7 @@ public final class GameplayMechanicsEvents {
     private static final long HAZARD_CACHE_TTL_TICKS = 20L;
     private static final long HAZARD_CACHE_PRUNE_INTERVAL_TICKS = 200L;
     private static final int HAZARD_CACHE_MAX_ENTRIES = 4096;
-    private static final Map<String, HazardSnapshot> HAZARD_SCAN_CACHE = new ConcurrentHashMap<>();
-
-    private static volatile long lastPruneTick;
+    private static final Map<String, HazardSnapshot> HAZARD_SCAN_CACHE = new ConcurrentHashMap<>();`r`n    private static final LongAdder HAZARD_CACHE_HITS = new LongAdder();`r`n    private static final LongAdder HAZARD_CACHE_MISSES = new LongAdder();`r`n    private static final LongAdder HAZARD_CACHE_PRUNED_ENTRIES = new LongAdder();`r`n    private static final LongAdder HAZARD_CACHE_FORCED_EVICTIONS = new LongAdder();`r`n`r`n    private static volatile long lastPruneTick;
 
     @SubscribeEvent
     public void onPlayerTick(TickEvent.PlayerTickEvent event) {
@@ -78,10 +76,7 @@ public final class GameplayMechanicsEvents {
         String cacheKey = level.dimension().location() + "|" + (center.getX() >> 4) + "|" + (center.getZ() >> 4)
                 + "|" + horizontalRadius + "|" + verticalRadius;
 
-        HazardSnapshot cached = HAZARD_SCAN_CACHE.get(cacheKey);
-        if (cached != null && (now - cached.tick()) <= HAZARD_CACHE_TTL_TICKS) {
-            return cached.activeMachines();
-        }
+        HazardSnapshot cached = HAZARD_SCAN_CACHE.get(cacheKey);`r`n        if (cached != null && (now - cached.tick()) <= HAZARD_CACHE_TTL_TICKS) {`r`n            HAZARD_CACHE_HITS.increment();`r`n            return cached.activeMachines();`r`n        }`r`n`r`n        HAZARD_CACHE_MISSES.increment();
 
         int minX = center.getX() - horizontalRadius;
         int maxX = center.getX() + horizontalRadius;
@@ -132,24 +127,7 @@ public final class GameplayMechanicsEvents {
         return activeMachines;
     }
 
-    private static void pruneHazardCache(long now) {
-        if ((now - lastPruneTick) < HAZARD_CACHE_PRUNE_INTERVAL_TICKS && HAZARD_SCAN_CACHE.size() < HAZARD_CACHE_MAX_ENTRIES) {
-            return;
-        }
-
-        lastPruneTick = now;
-        HAZARD_SCAN_CACHE.entrySet().removeIf(entry -> (now - entry.getValue().tick()) > HAZARD_CACHE_TTL_TICKS);
-
-        if (HAZARD_SCAN_CACHE.size() <= HAZARD_CACHE_MAX_ENTRIES) {
-            return;
-        }
-
-        Iterator<String> keys = HAZARD_SCAN_CACHE.keySet().iterator();
-        while (HAZARD_SCAN_CACHE.size() > HAZARD_CACHE_MAX_ENTRIES && keys.hasNext()) {
-            keys.next();
-            keys.remove();
-        }
-    }
+    private static void pruneHazardCache(long now) {`r`n        if ((now - lastPruneTick) < HAZARD_CACHE_PRUNE_INTERVAL_TICKS && HAZARD_SCAN_CACHE.size() < HAZARD_CACHE_MAX_ENTRIES) {`r`n            return;`r`n        }`r`n`r`n        lastPruneTick = now;`r`n        int beforePrune = HAZARD_SCAN_CACHE.size();`r`n        HAZARD_SCAN_CACHE.entrySet().removeIf(entry -> (now - entry.getValue().tick()) > HAZARD_CACHE_TTL_TICKS);`r`n        int pruned = beforePrune - HAZARD_SCAN_CACHE.size();`r`n        if (pruned > 0) {`r`n            HAZARD_CACHE_PRUNED_ENTRIES.add(pruned);`r`n        }`r`n`r`n        if (HAZARD_SCAN_CACHE.size() <= HAZARD_CACHE_MAX_ENTRIES) {`r`n            return;`r`n        }`r`n`r`n        Iterator<String> keys = HAZARD_SCAN_CACHE.keySet().iterator();`r`n        long forcedEvictions = 0L;`r`n        while (HAZARD_SCAN_CACHE.size() > HAZARD_CACHE_MAX_ENTRIES && keys.hasNext()) {`r`n            keys.next();`r`n            keys.remove();`r`n            forcedEvictions++;`r`n        }`r`n`r`n        if (forcedEvictions > 0L) {`r`n            HAZARD_CACHE_FORCED_EVICTIONS.add(forcedEvictions);`r`n        }`r`n    }
 
     @SubscribeEvent
     public void onCombatCombo(LivingHurtEvent event) {
@@ -207,6 +185,7 @@ public final class GameplayMechanicsEvents {
     private record HazardSnapshot(long tick, int activeMachines) {
     }
 }
+
 
 
 

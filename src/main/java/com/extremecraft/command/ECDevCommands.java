@@ -5,6 +5,8 @@ import com.extremecraft.ability.AbilityEngine;
 import com.extremecraft.ability.AbilityRegistry;
 import com.extremecraft.api.ExtremeCraftAPI;
 import com.extremecraft.classsystem.ClassRegistry;
+import com.extremecraft.entity.system.BossArenaManager;
+import com.extremecraft.entity.system.GameplayMechanicsEvents;
 import com.extremecraft.progression.classsystem.data.ClassDefinitions;
 import com.extremecraft.magic.SpellCastingSystem;
 import com.extremecraft.magic.mana.ManaService;
@@ -70,6 +72,25 @@ public final class ECDevCommands {
                             ctx.getSource().sendSuccess(() -> Component.literal("API classes: " + ExtremeCraftAPI.classes().size()), false);
                             ctx.getSource().sendSuccess(() -> Component.literal("Datapack machines: " + MachineDataRegistry.registry().size()), false);
                             ctx.getSource().sendSuccess(() -> Component.literal("Datapack tech trees: " + TechTreeDataRegistry.registry().size()), false);
+
+                            BossArenaManager.CacheStats bossCache = BossArenaManager.cacheStats();
+                            GameplayMechanicsEvents.CacheStats hazardCache = GameplayMechanicsEvents.cacheStats();
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Boss arena cache: entries=" + bossCache.cachedEntries() + "/" + bossCache.maxEntries()
+                                            + ", hits=" + bossCache.hits()
+                                            + ", misses=" + bossCache.misses()
+                                            + ", hitRate=" + bossCache.hitRatePercent() + "%"
+                                            + ", pruned=" + bossCache.prunedEntries()
+                                            + ", hardResets=" + bossCache.hardResets()
+                            ), false);
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Machine hazard cache: entries=" + hazardCache.cachedEntries() + "/" + hazardCache.maxEntries()
+                                            + ", hits=" + hazardCache.hits()
+                                            + ", misses=" + hazardCache.misses()
+                                            + ", hitRate=" + hazardCache.hitRatePercent() + "%"
+                                            + ", pruned=" + hazardCache.prunedEntries()
+                                            + ", forcedEvictions=" + hazardCache.forcedEvictions()
+                            ), false);
                             return 1;
                         }))
                 .then(Commands.literal("validate")
@@ -292,6 +313,3 @@ public final class ECDevCommands {
         return 1;
     }
 }
-
-
-
