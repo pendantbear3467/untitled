@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 2,
+  "documentType": "gui-studio",
+  "name": "screen_2",
+  "namespace": "extremecraft",
+  "screenType": "player",
+  "width": 176,
+  "height": 166,
+  "rootWidgets": [
+    "root_panel"
+  ],
+  "metadata": {
+    "runtimeContract": "extremecraft-gui-runtime"
+  },
+  "widgets": [
+    {
+      "id": "root_panel",
+      "type": "panel",
+      "label": "Root Panel",
+      "bounds": {
+        "x": 1,
+        "y": 1,
+        "width": 176,
+        "height": 166
+      },
+      "anchor": {
+        "left": null,
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "centerX": null,
+        "centerY": null
+      },
+      "properties": {
+        "background": "textures/gui/default_panel.png"
+      },
+      "binding": null,
+      "children": [
+        "player_inventory_grid",
+        "hotbar",
+        "armor_slots",
+        "offhand_slot",
+        "button",
+        "image"
+      ],
+      "tags": [
+        "root"
+      ],
+      "visible": true,
+      "zIndex": 0
+    },
+    {
+      "id": "image",
+      "type": "image",
+      "label": "Image",
+      "bounds": {
+        "x": 34,
+        "y": 40,
+        "width": 18,
+        "height": 18
+      },
+      "anchor": {
+        "left": null,
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "centerX": null,
+        "centerY": null
+      },
+      "properties": {
+        "texture": "textures/gui/placeholder.png"
+      },
+      "binding": null,
+      "children": [],
+      "tags": [
+        "visual"
+      ],
+      "visible": true,
+      "zIndex": 15
+    },
+    {
+      "id": "button",
+      "type": "button",
+      "label": "Button",
+      "bounds": {
+        "x": 34,
+        "y": 39,
+        "width": 18,
+        "height": 18
+      },
+      "anchor": {
+        "left": null,
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "centerX": null,
+        "centerY": null
+      },
+      "properties": {
+        "text": "Button",
+        "action": "noop"
+      },
+      "binding": null,
+      "children": [],
+      "tags": [
+        "interactive"
+      ],
+      "visible": true,
+      "zIndex": 20
+    },
+    {
+      "id": "armor_slots",
+      "type": "armor_slots",
+      "label": "Armor Slots",
+      "bounds": {
+        "x": 6,
+        "y": 5,
+        "width": 18,
+        "height": 72
+      },
+      "anchor": {
+        "left": null,
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "centerX": null,
+        "centerY": null
+      },
+      "properties": {
+        "count": 4,
+        "slotSize": 18
+      },
+      "binding": {
+        "kind": "armor_slots",
+        "source": "player.armor",
+        "slotId": "",
+        "role": "armor",
+        "rows": 4,
+        "columns": 1,
+        "metadata": {}
+      },
+      "children": [],
+      "tags": [
+        "inventory",
+        "player"
+      ],
+      "visible": true,
+      "zIndex": 25
+    },
+    {
+      "id": "hotbar",
+      "type": "hotbar",
+      "label": "Hotbar",
+      "bounds": {
+        "x": 6,
+        "y": 131,
+        "width": 162,
+        "height": 18
+      },
+      "anchor": {
+        "left": null,
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "centerX": null,
+        "centerY": null
+      },
+      "properties": {
+        "columns": 9,
+        "slotSize": 18
+      },
+      "binding": {
+        "kind": "hotbar",
+        "source": "player.hotbar",
+        "slotId": "",
+        "role": "hotbar",
+        "rows": 1,
+        "columns": 9,
+        "metadata": {}
+      },
+      "children": [],
+      "tags": [
+        "inventory",
+        "player"
+      ],
+      "visible": true,
+      "zIndex": 25
+    },
+    {
+      "id": "offhand_slot",
+      "type": "offhand_slot",
+      "label": "Offhand",
+      "bounds": {
+        "x": 34,
+        "y": 58,
+        "width": 18,
+        "height": 18
+      },
+      "anchor": {
+        "left": null,
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "centerX": null,
+        "centerY": null
+      },
+      "properties": {
+        "slotSize": 18
+      },
+      "binding": {
+        "kind": "offhand_slot",
+        "source": "player.offhand",
+        "slotId": "player.offhand",
+        "role": "offhand",
+        "rows": 0,
+        "columns": 0,
+        "metadata": {}
+      },
+      "children": [],
+      "tags": [
+        "inventory",
+        "player"
+      ],
+      "visible": true,
+      "zIndex": 25
+    },
+    {
+      "id": "player_inventory_grid",
+      "type": "player_inventory_grid",
+      "label": "Player Inventory",
+      "bounds": {
+        "x": 6,
+        "y": 77,
+        "width": 162,
+        "height": 54
+      },
+      "anchor": {
+        "left": null,
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "centerX": null,
+        "centerY": null
+      },
+      "properties": {
+        "rows": 3,
+        "columns": 9,
+        "slotSize": 18
+      },
+      "binding": {
+        "kind": "player_inventory_grid",
+        "source": "player.inventory.main",
+        "slotId": "",
+        "role": "inventory",
+        "rows": 3,
+        "columns": 9,
+        "metadata": {}
+      },
+      "children": [],
+      "tags": [
+        "inventory",
+        "player"
+      ],
+      "visible": true,
+      "zIndex": 25
+    }
+  ]
+}
