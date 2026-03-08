@@ -4,9 +4,10 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from asset_studio.gui_studio.models import GuiAnchor, GuiBounds, GuiDocument, GuiWidget
+from asset_studio.gui_studio.models import GuiAnchor, GuiBinding, GuiBounds, GuiDocument, GuiWidget
 
 GUI_STUDIO_FORMAT = "gui-studio"
+GUI_RUNTIME_FORMAT = "extremecraft-gui-runtime"
 
 
 @dataclass
@@ -14,6 +15,20 @@ class GuiImportResult:
     document: GuiDocument
     warnings: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+
+
+def binding_to_dict(binding: GuiBinding | None) -> dict | None:
+    if binding is None:
+        return None
+    return {
+        "kind": binding.kind,
+        "source": binding.source,
+        "slotId": binding.slot_id,
+        "role": binding.role,
+        "rows": binding.rows,
+        "columns": binding.columns,
+        "metadata": dict(binding.metadata),
+    }
 
 
 def widget_to_dict(widget: GuiWidget) -> dict:
@@ -36,9 +51,11 @@ def widget_to_dict(widget: GuiWidget) -> dict:
             "centerY": widget.anchor.center_y,
         },
         "properties": dict(widget.properties),
+        "binding": binding_to_dict(widget.binding),
         "children": list(widget.children),
         "tags": list(widget.tags),
         "visible": widget.visible,
+        "zIndex": widget.z_index,
     }
 
 
@@ -47,12 +64,13 @@ def document_to_dict(document: GuiDocument) -> dict:
         "schemaVersion": document.schema_version,
         "documentType": GUI_STUDIO_FORMAT,
         "name": document.name,
+        "namespace": document.namespace,
         "screenType": document.screen_type,
         "width": document.width,
         "height": document.height,
         "rootWidgets": list(document.root_widgets),
         "metadata": dict(document.metadata),
-        "widgets": [widget_to_dict(widget) for widget in sorted(document.widgets.values(), key=lambda item: item.id)],
+        "widgets": [widget_to_dict(widget) for widget in sorted(document.widgets.values(), key=lambda item: (item.z_index, item.id))],
     }
 
 
@@ -84,6 +102,18 @@ def load_document(payload_or_path: dict | Path) -> GuiImportResult:
             continue
         bounds_payload = widget_payload.get("bounds") or {}
         anchor_payload = widget_payload.get("anchor") or {}
+        binding_payload = widget_payload.get("binding") or {}
+        binding = None
+        if isinstance(binding_payload, dict) and binding_payload:
+            binding = GuiBinding(
+                kind=str(binding_payload.get("kind", "")),
+                source=str(binding_payload.get("source", "")),
+                slot_id=str(binding_payload.get("slotId", "")),
+                role=str(binding_payload.get("role", "")),
+                rows=int(binding_payload.get("rows", 0) or 0),
+                columns=int(binding_payload.get("columns", 0) or 0),
+                metadata=dict(binding_payload.get("metadata") or {}),
+            )
         widgets[widget_id] = GuiWidget(
             id=widget_id,
             widget_type=str(widget_payload.get("type", "panel")),
@@ -103,17 +133,20 @@ def load_document(payload_or_path: dict | Path) -> GuiImportResult:
                 center_y=_maybe_int(anchor_payload.get("centerY")),
             ),
             properties=dict(widget_payload.get("properties") or {}),
+            binding=binding,
             children=[str(item) for item in widget_payload.get("children", [])],
             tags=[str(item) for item in widget_payload.get("tags", [])],
             visible=bool(widget_payload.get("visible", True)),
+            z_index=int(widget_payload.get("zIndex", 0)),
         )
 
     document = GuiDocument(
         name=str(payload.get("name", "untitled_gui")),
         screen_type=str(payload.get("screenType", "generic")),
-        schema_version=int(payload.get("schemaVersion", 1)),
+        schema_version=int(payload.get("schemaVersion", 2)),
         width=int(payload.get("width", 176)),
         height=int(payload.get("height", 166)),
+        namespace=str(payload.get("namespace", payload.get("modid", "extremecraft"))),
         widgets=widgets,
         root_widgets=[str(item) for item in payload.get("rootWidgets", list(widgets))],
         metadata=dict(payload.get("metadata") or {}),

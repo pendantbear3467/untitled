@@ -7,6 +7,7 @@ from pathlib import Path
 from asset_studio.model_studio.models import FaceMapping, ModelBone, ModelCube, ModelDocument, Vec3
 
 MODEL_STUDIO_FORMAT = "cube-model-studio"
+MODEL_RUNTIME_FORMAT = "extremecraft-model-runtime"
 
 
 @dataclass
@@ -38,6 +39,7 @@ def cube_to_dict(cube: ModelCube) -> dict:
             }
             for face, mapping in sorted(cube.faces.items())
         },
+        "metadata": dict(cube.metadata),
     }
 
 
@@ -58,6 +60,7 @@ def document_to_dict(document: ModelDocument) -> dict:
         "schemaVersion": document.schema_version,
         "documentType": MODEL_STUDIO_FORMAT,
         "name": document.name,
+        "namespace": document.namespace,
         "modelType": document.model_type,
         "textureSize": [document.texture_width, document.texture_height],
         "metadata": dict(document.metadata),
@@ -110,6 +113,7 @@ def load_document(payload_or_path: dict | Path) -> ModelImportResult:
                 )
                 for face, mapping in faces_payload.items()
             },
+            metadata=dict(cube_payload.get("metadata") or {}),
         )
 
     bones: dict[str, ModelBone] = {}
@@ -135,9 +139,10 @@ def load_document(payload_or_path: dict | Path) -> ModelImportResult:
     document = ModelDocument(
         name=str(payload.get("name", "untitled_model")),
         model_type=str(payload.get("modelType", "block")),
-        schema_version=int(payload.get("schemaVersion", 1)),
+        schema_version=int(payload.get("schemaVersion", 2)),
         texture_width=int(texture_size[0]),
         texture_height=int(texture_size[1]),
+        namespace=str(payload.get("namespace", payload.get("modid", "extremecraft"))),
         cubes=cubes,
         bones=bones,
         metadata=dict(payload.get("metadata") or {}),

@@ -92,12 +92,23 @@ class StudioSession:
             self.workspace_manager = WorkspaceManager(workspace_root=workspace_root, repo_root=self.context.repo_root)
         self.context = self.workspace_manager.load_context()
         self.app_context.context = self.context
+        self.recovery_service = RecoveryService(self.context.workspace_root)
+        self.crash_guard = CrashGuard(
+            recovery_service=self.recovery_service,
+            notification_service=self.notification_service,
+        )
         self.build_service = BuildService(self.context)
         self.run_service = RunService(self.context, self.process_service, log_model=self.log_model)
         self.plugin_service = PluginService(self.context.plugins, crash_guard=self.crash_guard)
+        self.gui_studio_engine = GuiStudioEngine(self.context.workspace_root / "gui_screens")
+        self.model_studio_engine = ModelStudioEngine(self.context.workspace_root / "models" / "studio")
         self.app_context.register_service("build_service", self.build_service)
         self.app_context.register_service("run_service", self.run_service)
         self.app_context.register_service("plugin_service", self.plugin_service)
+        self.app_context.register_service("recovery_service", self.recovery_service)
+        self.app_context.register_service("crash_guard", self.crash_guard)
+        self.app_context.register_service("gui_studio_engine", self.gui_studio_engine)
+        self.app_context.register_service("model_studio_engine", self.model_studio_engine)
         self._register_plugin_editors()
         self.recovery_service.update_session(workspace=str(self.context.workspace_root))
 

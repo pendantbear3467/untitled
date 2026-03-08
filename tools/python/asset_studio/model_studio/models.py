@@ -29,6 +29,7 @@ class ModelCube:
     texture: str = ""
     mirror: bool = False
     faces: dict[str, FaceMapping] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -46,9 +47,10 @@ class ModelBone:
 class ModelDocument:
     name: str
     model_type: str = "block"
-    schema_version: int = 1
+    schema_version: int = 2
     texture_width: int = 64
     texture_height: int = 64
+    namespace: str = "extremecraft"
     cubes: dict[str, ModelCube] = field(default_factory=dict)
     bones: dict[str, ModelBone] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
