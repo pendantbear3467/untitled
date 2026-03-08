@@ -856,11 +856,15 @@ class CodeStudioPanel(QWidget):
         self.relationships.clear()
         if editor is None or editor not in self._tabs:
             self.relationship_summary.setText("Linked source, runtime, Java, and asset targets appear here.")
+            for button in [self.link_source_button, self.link_runtime_button, self.link_java_button, self.link_asset_button]:
+                button.setEnabled(False)
             return
         tab = self._tabs[editor]
         record = self._relationship_record(tab.path)
         if record is None:
             self.relationship_summary.setText("No relationship data is available for the active file.")
+            for button in [self.link_source_button, self.link_runtime_button, self.link_java_button, self.link_asset_button]:
+                button.setEnabled(False)
             item = QTreeWidgetItem(["No relationship data", ""])
             item.setFlags(Qt.ItemFlag.ItemIsEnabled)
             self.relationships.addTopLevelItem(item)
@@ -893,6 +897,13 @@ class CodeStudioPanel(QWidget):
         self.relationship_summary.setText(
             f"Exact {resolution_counts.get('authoritative', 0)} | Possible {resolution_counts.get('inferred', 0)} | Total {len(record.targets)}"
         )
+        self.link_source_button.setEnabled(record.preferred_target("source_document", allow_inferred=True) is not None)
+        self.link_runtime_button.setEnabled(record.preferred_target("runtime_export", allow_inferred=True) is not None)
+        self.link_java_button.setEnabled(record.preferred_target("java_target", allow_inferred=True) is not None)
+        asset_kinds = {"texture_asset", "item_model", "block_model", "model_runtime", "json"}
+        exact_asset = next((target for target in record.targets if target.kind in asset_kinds and target.authoritative), None)
+        inferred_asset = [target for target in record.targets if target.kind in asset_kinds and not target.authoritative]
+        self.link_asset_button.setEnabled(exact_asset is not None or len(inferred_asset) == 1)
         self.relationships.expandAll()
 
     def _refresh_outline(self, editor: StudioCodeEditor | None) -> None:
@@ -937,7 +948,6 @@ class CodeStudioPanel(QWidget):
                     child.setData(0, Qt.ItemDataRole.UserRole, (symbol.line, symbol.column, len(symbol.name)))
                     group.addChild(child)
             self.outline.expandAll()
-        self._apply_outline_filter()
             self._apply_outline_filter()
             return
 
@@ -970,6 +980,7 @@ class CodeStudioPanel(QWidget):
             child.setData(0, Qt.ItemDataRole.UserRole, (line, 1, max(1, len(label))))
             group.addChild(child)
         self.outline.expandAll()
+        self._apply_outline_filter()
 
     def _apply_outline_filter(self) -> None:
         query = self.symbol_filter.text().strip().lower()
@@ -1100,8 +1111,6 @@ class CodeStudioPanel(QWidget):
         _ = index
         self._symbol_nav_index = -1
         editor = self._current_editor()
-        if editor is not None:
-            self.sidebar_tabs.setCurrentIndex(0)
         self._refresh_sidebar(editor)
         self._notify_current_file()
 
@@ -1182,6 +1191,8 @@ class CodeStudioPanel(QWidget):
         self.file_meta.setText("No file open")
         self.relationship_summary.setText("Linked source, runtime, Java, and asset targets appear here.")
         self.problem_summary.setText("Diagnostics are grouped by severity and file.")
+        for button in [self.link_source_button, self.link_runtime_button, self.link_java_button, self.link_asset_button]:
+            button.setEnabled(False)
 
     def _step_symbol_navigation(self, step: int) -> None:
         editor = self._current_editor()
