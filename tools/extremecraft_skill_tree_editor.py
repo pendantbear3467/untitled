@@ -15,10 +15,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable
 
-from PyQt6.QtCore import QPoint, QPointF, QRectF, Qt, pyqtSignal
+from PyQt6.QtCore import QPoint, QPointF, QRectF, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import (
     QAction,
     QBrush,
+    QCloseEvent,
     QColor,
     QKeySequence,
     QPainter,
@@ -36,8 +37,10 @@ from PyQt6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QDoubleSpinBox,
+    QCheckBox,
     QFileDialog,
     QFormLayout,
+    QGridLayout,
     QGraphicsItem,
     QGraphicsLineItem,
     QGraphicsObject,
@@ -54,6 +57,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QSpinBox,
     QSplitter,
+    QTabWidget,
     QTextEdit,
     QToolBar,
     QVBoxLayout,
@@ -88,6 +92,16 @@ ICON_ROOT = REPO_ROOT / "src" / "main" / "resources" / "assets" / "extremecraft"
 ICON_FOLDER = ICON_ROOT / "textures" / "gui" / "skills"
 DEFAULT_EXPORT_ROOT = REPO_ROOT / "src" / "main" / "resources" / "data" / "extremecraft" / "skill_trees"
 DEFAULT_PROJECT_PATH = REPO_ROOT / ".extremecraft_project.json"
+RECOVERY_PROJECT_PATH = REPO_ROOT / ".extremecraft_project.recovery.json"
+
+NODE_TEMPLATES: dict[str, dict[str, str | int]] = {
+    "combat_basic": {"display": "Combat Basic", "category": "combat", "cost": 1, "level": 1},
+    "combat_advanced": {"display": "Combat Advanced", "category": "combat", "cost": 3, "level": 5},
+    "survival_utility": {"display": "Survival Utility", "category": "survival", "cost": 2, "level": 2},
+    "arcane_focus": {"display": "Arcane Focus", "category": "arcane", "cost": 2, "level": 4},
+    "exploration_mobility": {"display": "Exploration Mobility", "category": "exploration", "cost": 2, "level": 3},
+    "technology_efficiency": {"display": "Technology Efficiency", "category": "technology", "cost": 2, "level": 4},
+}
 
 
 def _clamp(value: float, lo: float, hi: float) -> float:
@@ -837,11 +851,33 @@ class SimulationPanel(QWidget):
         super().__init__(parent)
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel("Simulation Stats"))
+
+        form = QFormLayout()
+        self.sim_level = QSpinBox()
+        self.sim_level.setRange(MIN_LEVEL, MAX_LEVEL)
+        self.sim_level.setValue(1)
+        self.sim_points = QSpinBox()
+        self.sim_points.setRange(0, MAX_COST * 200)
+        self.sim_points.setValue(0)
+        self.sim_class = QLineEdit("adventurer")
+        form.addRow("Player Level", self.sim_level)
+        form.addRow("Skill Points", self.sim_points)
+        form.addRow("Class", self.sim_class)
+        layout.addLayout(form)
+
         self.summary = QTextEdit()
         self.summary.setReadOnly(True)
         layout.addWidget(self.summary)
 
-    def update_content(self, total_cost: int, modifiers: dict[str, float]) -> None:
+        self.lock_reason = QTextEdit()
+        self.lock_reason.setReadOnly(True)
+        self.lock_reason.setPlaceholderText("Why locked? Select a node while Simulation Mode is enabled.")
+        layout.addWidget(self.lock_reason)
+
+    def simulation_constraints(self) -> tuple[int, int, str]:
+        return self.sim_level.value(), self.sim_points.value(), self.sim_class.text().strip()
+
+    def update_content(self, total_cost: int, modifiers: dict[str, float], unlocked_count: int) -> None:
         lines = [f"Total Skill Cost: {total_cost}", "", "Stats Gained:"]
         if not modifiers:
             lines.append("(none)")
@@ -849,7 +885,12 @@ class SimulationPanel(QWidget):
             for mod, value in sorted(modifiers.items()):
                 sign = "+" if value >= 0 else ""
                 lines.append(f"{sign}{value} {mod}")
+        lines.append("")
+        lines.append(f"Unlocked Nodes: {unlocked_count}")
         self.summary.setPlainText("\n".join(lines))
+
+    def set_lock_reason(self, message: str) -> None:
+        self.lock_reason.setPlainText(message)
 
 
 class SkillTreeEditorWindow(QMainWindow):
@@ -872,12 +913,23 @@ class SkillTreeEditorWindow(QMainWindow):
         self.trees: dict[str, SkillTreeData] = {name: SkillTreeData(name) for name in DEFAULT_TREES}
         self.current_tree_name = DEFAULT_TREES[0]
         self.sim_unlocked: dict[str, set[str]] = {name: set() for name in DEFAULT_TREES}
+        self.favorite_nodes: dict[str, set[str]] = {name: set() for name in DEFAULT_TREES}
+        self._dirty = False
+        self._suspend_inspector_sync = False
+        self._last_context_scene_pos = QPointF(0.0, 0.0)
+        self._autosave_timer = QTimer(self)
+        self._autosave_timer.setInterval(45000)
+        self._autosave_timer.timeout.connect(self._autosave_snapshot)
 
         self._build_ui()
         self._wire_scene_signals()
         self._refresh_tree_selector()
         self._load_tree_to_scene(self.current_tree_name)
         self._refresh_icon_warning()
+        self.undo_stack.setClean()
+        self._autosave_timer.start()
+        self._set_dirty(False)
+        self._offer_recovery_if_present()
 
     def _build_ui(self) -> None:
         toolbar = QToolBar("Main")
@@ -901,8 +953,14 @@ class SkillTreeEditorWindow(QMainWindow):
 
         self.connect_action = QAction("Connect Nodes", self)
         self.connect_action.setCheckable(True)
+        self.connect_action.setShortcut(QKeySequence("L"))
         self.connect_action.triggered.connect(self.scene.set_connect_mode)
         toolbar.addAction(self.connect_action)
+
+        self.edit_action = QAction("Edit Node", self)
+        self.edit_action.setShortcut(QKeySequence(Qt.Key.Key_Return))
+        self.edit_action.triggered.connect(self.edit_selected_node)
+        toolbar.addAction(self.edit_action)
 
         self.undo_action = self.undo_stack.createUndoAction(self, "Undo")
         if self.undo_action is not None:
@@ -917,6 +975,22 @@ class SkillTreeEditorWindow(QMainWindow):
         self.auto_arrange_action = QAction("Auto Arrange", self)
         self.auto_arrange_action.triggered.connect(self.auto_arrange_tree)
         toolbar.addAction(self.auto_arrange_action)
+
+        self.align_left_action = QAction("Align Left", self)
+        self.align_left_action.triggered.connect(self.align_left)
+        toolbar.addAction(self.align_left_action)
+
+        self.align_top_action = QAction("Align Top", self)
+        self.align_top_action.triggered.connect(self.align_top)
+        toolbar.addAction(self.align_top_action)
+
+        self.distribute_horizontal_action = QAction("Distribute X", self)
+        self.distribute_horizontal_action.triggered.connect(self.distribute_horizontal)
+        toolbar.addAction(self.distribute_horizontal_action)
+
+        self.distribute_vertical_action = QAction("Distribute Y", self)
+        self.distribute_vertical_action.triggered.connect(self.distribute_vertical)
+        toolbar.addAction(self.distribute_vertical_action)
 
         self.export_action = QAction("Export Tree", self)
         self.export_action.setShortcut(QKeySequence("Ctrl+S"))
@@ -940,6 +1014,22 @@ class SkillTreeEditorWindow(QMainWindow):
         self.sim_mode_action.triggered.connect(self._update_simulation_visuals)
         toolbar.addAction(self.sim_mode_action)
 
+        self.center_view_action = QAction("Center View", self)
+        self.center_view_action.triggered.connect(self.center_view)
+        toolbar.addAction(self.center_view_action)
+
+        self.reset_zoom_action = QAction("100% Zoom", self)
+        self.reset_zoom_action.triggered.connect(lambda: self.set_zoom(1.0))
+        toolbar.addAction(self.reset_zoom_action)
+
+        self.zoom_75_action = QAction("75%", self)
+        self.zoom_75_action.triggered.connect(lambda: self.set_zoom(0.75))
+        toolbar.addAction(self.zoom_75_action)
+
+        self.zoom_150_action = QAction("150%", self)
+        self.zoom_150_action.triggered.connect(lambda: self.set_zoom(1.5))
+        toolbar.addAction(self.zoom_150_action)
+
         toolbar.addSeparator()
 
         self.new_project_action = QAction("New Project", self)
@@ -962,12 +1052,158 @@ class SkillTreeEditorWindow(QMainWindow):
         self.tree_selector.currentTextChanged.connect(self.switch_tree)
         top_layout.addWidget(self.tree_selector)
 
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search node id/name/modifier")
+        self.search_input.textChanged.connect(self._apply_visual_filters)
+        self.search_input.returnPressed.connect(self.jump_to_search_match)
+        top_layout.addWidget(self.search_input)
+
+        self.category_filter = QComboBox()
+        self.category_filter.addItem("All Categories")
+        for category in sorted(CATEGORY_COLORS.keys()):
+            self.category_filter.addItem(category)
+        self.category_filter.currentTextChanged.connect(self._apply_visual_filters)
+        top_layout.addWidget(self.category_filter)
+
+        self.class_filter = QComboBox()
+        self.class_filter.addItem("All Classes")
+        self.class_filter.currentTextChanged.connect(self._apply_visual_filters)
+        top_layout.addWidget(self.class_filter)
+
+        self.modifier_filter = QComboBox()
+        self.modifier_filter.addItem("All Modifiers")
+        self.modifier_filter.currentTextChanged.connect(self._apply_visual_filters)
+        top_layout.addWidget(self.modifier_filter)
+
+        self.validation_filter = QComboBox()
+        self.validation_filter.addItems(["All Nodes", "Validation Issues", "Missing Icons"])
+        self.validation_filter.currentTextChanged.connect(self._apply_visual_filters)
+        top_layout.addWidget(self.validation_filter)
+
+        self.focus_branch_check = QCheckBox("Focus Branch")
+        self.focus_branch_check.toggled.connect(self._apply_visual_filters)
+        top_layout.addWidget(self.focus_branch_check)
+
         self.icon_warning = QLabel("")
         top_layout.addWidget(self.icon_warning)
+        self.selection_summary = QLabel("Selection: 0")
+        top_layout.addWidget(self.selection_summary)
+        self.autosave_label = QLabel("Autosave idle")
+        top_layout.addWidget(self.autosave_label)
         top_layout.addStretch(1)
 
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
+
+        right_layout.addWidget(QLabel("Node Palette"))
+        self.palette_list = QListWidget()
+        for key, payload in NODE_TEMPLATES.items():
+            display = str(payload["display"])
+            category = str(payload["category"])
+            self.palette_list.addItem(f"{key} :: {display} [{category}]")
+        right_layout.addWidget(self.palette_list)
+
+        palette_row = QHBoxLayout()
+        self.add_template_btn = QPushButton("Add Template")
+        self.add_template_btn.clicked.connect(self.add_node_from_palette)
+        palette_row.addWidget(self.add_template_btn)
+        right_layout.addLayout(palette_row)
+
+        right_layout.addWidget(QLabel("Bookmarks"))
+        self.bookmark_list = QListWidget()
+        self.bookmark_list.itemDoubleClicked.connect(lambda _: self.jump_to_bookmark())
+        right_layout.addWidget(self.bookmark_list)
+        bookmark_row = QHBoxLayout()
+        self.add_bookmark_btn = QPushButton("Add")
+        self.add_bookmark_btn.clicked.connect(self.add_selected_bookmark)
+        self.remove_bookmark_btn = QPushButton("Remove")
+        self.remove_bookmark_btn.clicked.connect(self.remove_selected_bookmark)
+        self.jump_bookmark_btn = QPushButton("Jump")
+        self.jump_bookmark_btn.clicked.connect(self.jump_to_bookmark)
+        bookmark_row.addWidget(self.add_bookmark_btn)
+        bookmark_row.addWidget(self.remove_bookmark_btn)
+        bookmark_row.addWidget(self.jump_bookmark_btn)
+        right_layout.addLayout(bookmark_row)
+
+        self.inspector_tabs = QTabWidget()
+
+        general_tab = QWidget()
+        general_form = QFormLayout(general_tab)
+        self.inspector_id = QLineEdit()
+        self.inspector_display = QLineEdit()
+        self.inspector_category = QComboBox()
+        self.inspector_category.addItems(sorted(CATEGORY_COLORS.keys()))
+        self.inspector_cost = QSpinBox()
+        self.inspector_cost.setRange(MIN_COST, MAX_COST)
+        self.inspector_level = QSpinBox()
+        self.inspector_level.setRange(MIN_LEVEL, MAX_LEVEL)
+        self.inspector_class = QLineEdit()
+        self.inspector_apply_general = QPushButton("Apply General")
+        self.inspector_apply_general.clicked.connect(self.apply_inspector_general)
+        general_form.addRow("id", self.inspector_id)
+        general_form.addRow("display", self.inspector_display)
+        general_form.addRow("category", self.inspector_category)
+        general_form.addRow("cost", self.inspector_cost)
+        general_form.addRow("required level", self.inspector_level)
+        general_form.addRow("required class", self.inspector_class)
+        general_form.addRow(self.inspector_apply_general)
+
+        req_tab = QWidget()
+        req_form = QFormLayout(req_tab)
+        self.inspector_requires = QLineEdit()
+        self.inspector_apply_requires = QPushButton("Apply Requirements")
+        self.inspector_apply_requires.clicked.connect(self.apply_inspector_requirements)
+        req_form.addRow("required node ids (comma)", self.inspector_requires)
+        req_form.addRow(self.inspector_apply_requires)
+
+        modifier_tab = QWidget()
+        modifier_layout = QVBoxLayout(modifier_tab)
+        self.inspector_modifier_editor = ModifierEditor()
+        self.inspector_apply_modifiers = QPushButton("Apply Modifiers")
+        self.inspector_apply_modifiers.clicked.connect(self.apply_inspector_modifiers)
+        modifier_layout.addWidget(self.inspector_modifier_editor)
+        modifier_layout.addWidget(self.inspector_apply_modifiers)
+
+        validation_tab = QWidget()
+        validation_layout = QVBoxLayout(validation_tab)
+        self.validation_summary = QTextEdit()
+        self.validation_summary.setReadOnly(True)
+        validation_layout.addWidget(self.validation_summary)
+        self.open_advanced_editor_btn = QPushButton("Open Advanced Editor")
+        self.open_advanced_editor_btn.clicked.connect(self.edit_selected_node)
+        validation_layout.addWidget(self.open_advanced_editor_btn)
+
+        self.inspector_tabs.addTab(general_tab, "General")
+        self.inspector_tabs.addTab(req_tab, "Requirements")
+        self.inspector_tabs.addTab(modifier_tab, "Modifiers")
+        self.inspector_tabs.addTab(validation_tab, "Validation")
+        right_layout.addWidget(self.inspector_tabs)
+
+        bulk_group = QWidget()
+        bulk_layout = QGridLayout(bulk_group)
+        self.bulk_category_check = QCheckBox("Set Category")
+        self.bulk_category_input = QComboBox()
+        self.bulk_category_input.addItems(sorted(CATEGORY_COLORS.keys()))
+        self.bulk_cost_check = QCheckBox("Set Cost")
+        self.bulk_cost_input = QSpinBox()
+        self.bulk_cost_input.setRange(MIN_COST, MAX_COST)
+        self.bulk_level_check = QCheckBox("Set Level")
+        self.bulk_level_input = QSpinBox()
+        self.bulk_level_input.setRange(MIN_LEVEL, MAX_LEVEL)
+        self.bulk_apply_btn = QPushButton("Apply Bulk Edits")
+        self.bulk_apply_btn.clicked.connect(self.apply_bulk_edits)
+        self.bulk_delete_btn = QPushButton("Bulk Delete")
+        self.bulk_delete_btn.clicked.connect(self.delete_selected_node)
+        bulk_layout.addWidget(self.bulk_category_check, 0, 0)
+        bulk_layout.addWidget(self.bulk_category_input, 0, 1)
+        bulk_layout.addWidget(self.bulk_cost_check, 1, 0)
+        bulk_layout.addWidget(self.bulk_cost_input, 1, 1)
+        bulk_layout.addWidget(self.bulk_level_check, 2, 0)
+        bulk_layout.addWidget(self.bulk_level_input, 2, 1)
+        bulk_layout.addWidget(self.bulk_apply_btn, 3, 0, 1, 2)
+        bulk_layout.addWidget(self.bulk_delete_btn, 4, 0, 1, 2)
+        right_layout.addWidget(bulk_group)
+
         right_layout.addWidget(QLabel("Minimap"))
         right_layout.addWidget(self.minimap)
         right_layout.addWidget(self.simulation_panel)
@@ -992,7 +1228,13 @@ class SkillTreeEditorWindow(QMainWindow):
         self.scene.node_move_finished.connect(self._on_node_moved)
         self.scene.link_requested.connect(self._request_link)
         self.scene.node_context_requested.connect(self._show_node_context_menu)
+        self.scene.empty_context_requested.connect(self._show_empty_context_menu)
         self.scene.node_clicked.connect(self._on_node_clicked)
+        self.scene.selectionChanged.connect(self._on_selection_changed)
+        self.undo_stack.cleanChanged.connect(self._on_clean_changed)
+        self.simulation_panel.sim_level.valueChanged.connect(self._update_simulation_visuals)
+        self.simulation_panel.sim_points.valueChanged.connect(self._update_simulation_visuals)
+        self.simulation_panel.sim_class.textChanged.connect(self._update_simulation_visuals)
 
     def _active_tree(self) -> SkillTreeData:
         return self.trees[self.current_tree_name]
@@ -1009,6 +1251,332 @@ class SkillTreeEditorWindow(QMainWindow):
         missing = sum(1 for item in self.scene.node_items.values() if item.missing_icon)
         self.icon_warning.setText(f"Missing icons: {missing}")
 
+    def _selected_node_ids(self) -> list[str]:
+        selected: list[str] = []
+        for item in self.scene.selectedItems():
+            if isinstance(item, SkillNodeItem):
+                selected.append(item.node_data.id)
+        return sorted(set(selected))
+
+    def _on_selection_changed(self) -> None:
+        self._refresh_inspector_from_selection()
+        self._apply_visual_filters()
+
+    def _refresh_filter_sources(self) -> None:
+        tree = self._active_tree()
+        current_class = self.class_filter.currentText()
+        current_modifier = self.modifier_filter.currentText()
+
+        classes = sorted({node.required_class.strip() for node in tree.nodes.values() if node.required_class.strip()})
+        modifiers = sorted({m.type.strip() for node in tree.nodes.values() for m in node.modifiers if m.type.strip()})
+
+        self.class_filter.blockSignals(True)
+        self.class_filter.clear()
+        self.class_filter.addItem("All Classes")
+        self.class_filter.addItem("(none)")
+        for class_id in classes:
+            self.class_filter.addItem(class_id)
+        if current_class:
+            idx = self.class_filter.findText(current_class)
+            if idx >= 0:
+                self.class_filter.setCurrentIndex(idx)
+        self.class_filter.blockSignals(False)
+
+        self.modifier_filter.blockSignals(True)
+        self.modifier_filter.clear()
+        self.modifier_filter.addItem("All Modifiers")
+        for modifier in modifiers:
+            self.modifier_filter.addItem(modifier)
+        if current_modifier:
+            idx = self.modifier_filter.findText(current_modifier)
+            if idx >= 0:
+                self.modifier_filter.setCurrentIndex(idx)
+        self.modifier_filter.blockSignals(False)
+
+    def _node_error_ids(self) -> set[str]:
+        ids: set[str] = set()
+        for err in TreeValidator.validate_tree(self._active_tree(), self.scene.sceneRect()):
+            marker = "Node '"
+            idx = err.find(marker)
+            if idx < 0:
+                continue
+            tail = err[idx + len(marker) :]
+            end = tail.find("'")
+            if end > 0:
+                ids.add(tail[:end])
+        return ids
+
+    def _branch_scope(self, root_id: str) -> set[str]:
+        tree = self._active_tree()
+        scope: set[str] = set()
+        stack = [root_id]
+        while stack:
+            node_id = stack.pop()
+            if node_id in scope:
+                continue
+            scope.add(node_id)
+            node = tree.nodes.get(node_id)
+            if node is None:
+                continue
+            stack.extend(node.required_nodes)
+            for other in tree.nodes.values():
+                if node_id in other.required_nodes:
+                    stack.append(other.id)
+        return scope
+
+    def _apply_visual_filters(self) -> None:
+        tree = self._active_tree()
+        search = self.search_input.text().strip().lower()
+        category = self.category_filter.currentText()
+        class_id = self.class_filter.currentText()
+        modifier_filter = self.modifier_filter.currentText()
+        validation_filter = self.validation_filter.currentText()
+        focus_branch = self.focus_branch_check.isChecked()
+
+        focus_ids: set[str] = set(tree.nodes.keys())
+        selected_ids = self._selected_node_ids()
+        if focus_branch and selected_ids:
+            focus_ids = self._branch_scope(selected_ids[0])
+
+        error_ids = self._node_error_ids() if validation_filter == "Validation Issues" else set()
+
+        visible_nodes: set[str] = set()
+        for node_id, item in self.scene.node_items.items():
+            node = tree.nodes.get(node_id)
+            if node is None:
+                item.setVisible(False)
+                continue
+
+            visible = node_id in focus_ids
+
+            if visible and search:
+                haystack = " ".join(
+                    [
+                        node.id,
+                        node.display_name,
+                        node.category,
+                        node.required_class,
+                        " ".join(m.type for m in node.modifiers),
+                    ]
+                ).lower()
+                visible = search in haystack
+
+            if visible and category != "All Categories":
+                visible = node.category == category
+
+            if visible and class_id == "(none)":
+                visible = not node.required_class.strip()
+            elif visible and class_id not in ("All Classes", ""):
+                visible = node.required_class.strip() == class_id
+
+            if visible and modifier_filter not in ("All Modifiers", ""):
+                visible = any(m.type == modifier_filter for m in node.modifiers)
+
+            if visible and validation_filter == "Validation Issues":
+                visible = node_id in error_ids
+            elif visible and validation_filter == "Missing Icons":
+                visible = item.missing_icon
+
+            item.setVisible(visible)
+            if visible:
+                visible_nodes.add(node_id)
+
+        for (source_id, target_id), link in self.scene.links.items():
+            link.setVisible(source_id in visible_nodes and target_id in visible_nodes)
+
+        self._refresh_empty_state()
+
+    def _refresh_empty_state(self) -> None:
+        if not self.scene.node_items:
+            self.validation_summary.setPlainText("No nodes yet. Use Add Node, palette templates, or right-click on canvas.")
+
+    def _refresh_bookmark_list(self) -> None:
+        self.bookmark_list.clear()
+        favorites = sorted(self.favorite_nodes.setdefault(self.current_tree_name, set()))
+        tree = self._active_tree()
+        for node_id in favorites:
+            node = tree.nodes.get(node_id)
+            if node is None:
+                continue
+            self.bookmark_list.addItem(f"{node_id} :: {node.display_name or node_id}")
+
+    def add_selected_bookmark(self) -> None:
+        selected = self._selected_node_ids()
+        if not selected:
+            return
+        fav = self.favorite_nodes.setdefault(self.current_tree_name, set())
+        for node_id in selected:
+            fav.add(node_id)
+        self._refresh_bookmark_list()
+
+    def remove_selected_bookmark(self) -> None:
+        current = self.bookmark_list.currentItem()
+        if current is None:
+            return
+        node_id = current.text().split(" :: ", 1)[0]
+        self.favorite_nodes.setdefault(self.current_tree_name, set()).discard(node_id)
+        self._refresh_bookmark_list()
+
+    def jump_to_bookmark(self) -> None:
+        current = self.bookmark_list.currentItem()
+        if current is None:
+            return
+        node_id = current.text().split(" :: ", 1)[0]
+        self._select_single(node_id)
+        item = self.scene.node_items.get(node_id)
+        if item is not None:
+            self.view.centerOn(item.pos())
+
+    def jump_to_search_match(self) -> None:
+        query = self.search_input.text().strip().lower()
+        if not query:
+            return
+        tree = self._active_tree()
+        for node in tree.nodes.values():
+            if query in node.id.lower() or query in node.display_name.lower():
+                self._select_single(node.id)
+                item = self.scene.node_items.get(node.id)
+                if item is not None:
+                    self.view.centerOn(item.pos())
+                return
+
+    def _refresh_inspector_from_selection(self) -> None:
+        selected = self._selected_node_ids()
+        self.selection_summary.setText(f"Selection: {len(selected)}")
+        if not selected:
+            return
+        node = self._active_tree().nodes.get(selected[0])
+        if node is None:
+            return
+
+        self._suspend_inspector_sync = True
+        self.inspector_id.setText(node.id)
+        self.inspector_display.setText(node.display_name)
+        self.inspector_category.setCurrentText(node.category)
+        self.inspector_cost.setValue(node.cost)
+        self.inspector_level.setValue(node.required_level)
+        self.inspector_class.setText(node.required_class)
+        self.inspector_requires.setText(", ".join(node.required_nodes))
+        self.inspector_modifier_editor.set_modifiers(node.modifiers)
+        self._suspend_inspector_sync = False
+
+        tree_errors = self._validate_current_tree()
+        node_errors = [err for err in tree_errors if f"Node '{node.id}'" in err]
+        if node_errors:
+            self.validation_summary.setPlainText("\n".join(node_errors))
+        else:
+            self.validation_summary.setPlainText("No validation issues for the selected node.")
+
+    def _on_clean_changed(self, is_clean: bool) -> None:
+        self._set_dirty(not is_clean)
+
+    def _set_dirty(self, dirty: bool) -> None:
+        self._dirty = dirty
+        suffix = "*" if dirty else ""
+        self.setWindowTitle(f"ExtremeCraft Skill Tree Editor{suffix}")
+
+    def _autosave_snapshot(self) -> None:
+        if not self._dirty:
+            self.autosave_label.setText("Autosave idle")
+            return
+        try:
+            self._write_project_to_path(RECOVERY_PROJECT_PATH)
+            self.autosave_label.setText(f"Autosaved {RECOVERY_PROJECT_PATH.name}")
+        except Exception as exc:  # noqa: BLE001
+            self.autosave_label.setText(f"Autosave failed: {exc}")
+
+    def _offer_recovery_if_present(self) -> None:
+        if not RECOVERY_PROJECT_PATH.exists():
+            return
+        restore = QMessageBox.question(
+            self,
+            "Recovery Found",
+            "A recovery snapshot was found. Restore it now?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if restore != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self._load_project_file(RECOVERY_PROJECT_PATH)
+            self._set_dirty(True)
+            self.autosave_label.setText("Recovered unsaved session")
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Recovery Failed", str(exc))
+
+    def set_zoom(self, factor: float) -> None:
+        self.view.resetTransform()
+        self.view.scale(factor, factor)
+
+    def center_view(self) -> None:
+        if self.scene.node_items:
+            self.view.fitInView(self.scene.itemsBoundingRect().adjusted(-120, -120, 120, 120), Qt.AspectRatioMode.KeepAspectRatio)
+        else:
+            self.view.centerOn(QPointF(0, 0))
+
+    def _apply_positions_command(self, title: str, after: dict[str, QPointF]) -> None:
+        if not after:
+            return
+        before: dict[str, QPointF] = {}
+        for node_id in after.keys():
+            node = self._active_tree().nodes.get(node_id)
+            if node is not None:
+                before[node_id] = QPointF(node.x, node.y)
+
+        def redo() -> None:
+            for node_id, pos in after.items():
+                self._set_node_position(node_id, pos)
+
+        def undo() -> None:
+            for node_id, pos in before.items():
+                self._set_node_position(node_id, pos)
+
+        self.undo_stack.push(CallbackCommand(title, redo, undo))
+
+    def align_left(self) -> None:
+        selected = self._selected_node_ids()
+        if len(selected) < 2:
+            return
+        left = min(self._active_tree().nodes[node_id].x for node_id in selected)
+        after = {node_id: QPointF(left, self._active_tree().nodes[node_id].y) for node_id in selected}
+        self._apply_positions_command("Align Left", after)
+
+    def align_top(self) -> None:
+        selected = self._selected_node_ids()
+        if len(selected) < 2:
+            return
+        top = min(self._active_tree().nodes[node_id].y for node_id in selected)
+        after = {node_id: QPointF(self._active_tree().nodes[node_id].x, top) for node_id in selected}
+        self._apply_positions_command("Align Top", after)
+
+    def distribute_horizontal(self) -> None:
+        selected = self._selected_node_ids()
+        if len(selected) < 3:
+            return
+        ordered = sorted(selected, key=lambda node_id: self._active_tree().nodes[node_id].x)
+        first = self._active_tree().nodes[ordered[0]].x
+        last = self._active_tree().nodes[ordered[-1]].x
+        gap = (last - first) / max(1, len(ordered) - 1)
+        after = {
+            node_id: QPointF(first + idx * gap, self._active_tree().nodes[node_id].y)
+            for idx, node_id in enumerate(ordered)
+        }
+        self._apply_positions_command("Distribute Horizontally", after)
+
+    def distribute_vertical(self) -> None:
+        selected = self._selected_node_ids()
+        if len(selected) < 3:
+            return
+        ordered = sorted(selected, key=lambda node_id: self._active_tree().nodes[node_id].y)
+        first = self._active_tree().nodes[ordered[0]].y
+        last = self._active_tree().nodes[ordered[-1]].y
+        gap = (last - first) / max(1, len(ordered) - 1)
+        after = {
+            node_id: QPointF(self._active_tree().nodes[node_id].x, first + idx * gap)
+            for idx, node_id in enumerate(ordered)
+        }
+        self._apply_positions_command("Distribute Vertically", after)
+
     def _load_tree_to_scene(self, tree_name: str) -> None:
         self.scene.clear_tree()
         tree = self.trees[tree_name]
@@ -1022,6 +1590,11 @@ class SkillTreeEditorWindow(QMainWindow):
                     self.scene.add_link_item(req, node.id)
 
         self._refresh_icon_warning()
+        self._refresh_filter_sources()
+        self._refresh_bookmark_list()
+        self._refresh_inspector_from_selection()
+        self._refresh_empty_state()
+        self._apply_visual_filters()
         self._update_simulation_visuals()
         self.minimap.update()
 
@@ -1035,21 +1608,42 @@ class SkillTreeEditorWindow(QMainWindow):
         return candidate
 
     def create_node(self) -> None:
-        tree = self._active_tree()
         viewport = self.view.viewport()
         if viewport is None:
             center = QPointF(0, 0)
         else:
             center = self.view.mapToScene(viewport.rect().center())
-        node_id = self._next_available_id(f"{self.current_tree_name}_node")
+        self._create_node_at(center)
+
+    def add_node_from_palette(self) -> None:
+        current = self.palette_list.currentItem()
+        if current is None:
+            QMessageBox.information(self, "Node Palette", "Select a template first.")
+            return
+        template_id = current.text().split(" :: ", 1)[0]
+        viewport = self.view.viewport()
+        center = self.view.mapToScene(viewport.rect().center()) if viewport is not None else QPointF(0, 0)
+        self._create_node_at(center, template_id)
+
+    def _create_node_at(self, position: QPointF, template_id: str | None = None) -> None:
+        template = NODE_TEMPLATES.get(template_id or "", None)
+        category = str(template.get("category")) if template else (
+            self.current_tree_name if self.current_tree_name in CATEGORY_COLORS else "combat"
+        )
+        display_name = str(template.get("display")) if template else ""
+        cost = int(template.get("cost")) if template else 1
+        level = int(template.get("level")) if template else 1
+
+        id_base = f"{self.current_tree_name}_{category}"
+        node_id = self._next_available_id(id_base)
         node = SkillNodeData(
             id=node_id,
-            display_name=node_id,
-            category=self.current_tree_name if self.current_tree_name in CATEGORY_COLORS else "combat",
-            cost=1,
-            required_level=1,
-            x=round(center.x() / SNAP_X) * SNAP_X,
-            y=round(center.y() / SNAP_Y) * SNAP_Y,
+            display_name=display_name or node_id,
+            category=category,
+            cost=cost,
+            required_level=level,
+            x=round(position.x() / SNAP_X) * SNAP_X,
+            y=round(position.y() / SNAP_Y) * SNAP_Y,
         )
 
         def redo() -> None:
@@ -1061,24 +1655,28 @@ class SkillTreeEditorWindow(QMainWindow):
         self.undo_stack.push(CallbackCommand("Create Node", redo, undo))
 
     def delete_selected_node(self) -> None:
-        selected = self.scene.selectedItems()
-        if not selected or not isinstance(selected[0], SkillNodeItem):
+        selected_ids = self._selected_node_ids()
+        if not selected_ids:
             return
-
-        node_id = selected[0].node_data.id
         tree = self._active_tree()
-        if node_id not in tree.nodes:
+        snapshot_nodes = {node_id: tree.nodes[node_id].clone() for node_id in selected_ids if node_id in tree.nodes}
+        if not snapshot_nodes:
             return
-
-        snapshot_node = tree.nodes[node_id].clone()
-        snapshot_links = {(s, t) for (s, t) in self.scene.links.keys() if node_id in (s, t)}
+        selected_set = set(snapshot_nodes.keys())
+        snapshot_links = {
+            (s, t)
+            for (s, t) in self.scene.links.keys()
+            if s in selected_set or t in selected_set
+        }
         snapshot_reqs = {nid: list(n.required_nodes) for nid, n in tree.nodes.items()}
 
         def redo() -> None:
-            self._remove_node(node_id)
+            for node_id in sorted(snapshot_nodes.keys()):
+                self._remove_node(node_id)
 
         def undo() -> None:
-            self._insert_node(snapshot_node.clone())
+            for node_id in sorted(snapshot_nodes.keys()):
+                self._insert_node(snapshot_nodes[node_id].clone())
             for source_id, target_id in snapshot_links:
                 self._add_link(source_id, target_id)
             for nid, reqs in snapshot_reqs.items():
@@ -1086,28 +1684,40 @@ class SkillTreeEditorWindow(QMainWindow):
                     tree.nodes[nid].required_nodes = list(reqs)
             self._sync_links_from_requirements()
 
-        self.undo_stack.push(CallbackCommand("Delete Node", redo, undo))
+        title = "Delete Nodes" if len(snapshot_nodes) > 1 else "Delete Node"
+        self.undo_stack.push(CallbackCommand(title, redo, undo))
 
     def duplicate_selected_node(self) -> None:
-        selected = self.scene.selectedItems()
-        if not selected or not isinstance(selected[0], SkillNodeItem):
+        selected_ids = self._selected_node_ids()
+        if not selected_ids:
             return
 
-        source_node = selected[0].node_data
-        duplicate = source_node.clone()
-        duplicate.id = self._next_available_id(source_node.id)
-        duplicate.display_name = f"{source_node.display_name or source_node.id} Copy"
-        duplicate.x += SNAP_X
-        duplicate.y += SNAP_Y
-        duplicate.required_nodes = []
+        tree = self._active_tree()
+        duplicates: dict[str, SkillNodeData] = {}
+        for node_id in selected_ids:
+            source_node = tree.nodes.get(node_id)
+            if source_node is None:
+                continue
+            duplicate = source_node.clone()
+            duplicate.id = self._next_available_id(source_node.id)
+            duplicate.display_name = f"{source_node.display_name or source_node.id} Copy"
+            duplicate.x += SNAP_X
+            duplicate.y += SNAP_Y
+            duplicate.required_nodes = []
+            duplicates[duplicate.id] = duplicate
+        if not duplicates:
+            return
 
         def redo() -> None:
-            self._insert_node(duplicate.clone())
+            for node in duplicates.values():
+                self._insert_node(node.clone())
 
         def undo() -> None:
-            self._remove_node(duplicate.id)
+            for node_id in duplicates.keys():
+                self._remove_node(node_id)
 
-        self.undo_stack.push(CallbackCommand("Duplicate Node", redo, undo))
+        title = "Duplicate Nodes" if len(duplicates) > 1 else "Duplicate Node"
+        self.undo_stack.push(CallbackCommand(title, redo, undo))
 
     def _insert_node(self, node: SkillNodeData) -> None:
         tree = self._active_tree()
@@ -1117,6 +1727,10 @@ class SkillTreeEditorWindow(QMainWindow):
         item = self.scene.add_node_item(node)
         item.setSelected(True)
         self._refresh_icon_warning()
+        self._refresh_filter_sources()
+        self._refresh_bookmark_list()
+        self._apply_visual_filters()
+        self._refresh_inspector_from_selection()
         self.minimap.update()
         self._update_simulation_visuals()
 
@@ -1134,6 +1748,11 @@ class SkillTreeEditorWindow(QMainWindow):
 
         self._sync_links_from_requirements()
         self._refresh_icon_warning()
+        self.favorite_nodes.setdefault(self.current_tree_name, set()).discard(node_id)
+        self._refresh_filter_sources()
+        self._refresh_bookmark_list()
+        self._apply_visual_filters()
+        self._refresh_inspector_from_selection()
         self.minimap.update()
         self._update_simulation_visuals()
 
@@ -1241,6 +1860,9 @@ class SkillTreeEditorWindow(QMainWindow):
         if node_id not in self._active_tree().nodes:
             return
 
+        view_pos = self.view.mapFromGlobal(screen_pos)
+        self._last_context_scene_pos = self.view.mapToScene(view_pos)
+
         menu = QMenu(self)
         delete_action = menu.addAction("Delete Node")
         duplicate_action = menu.addAction("Duplicate Node")
@@ -1248,6 +1870,7 @@ class SkillTreeEditorWindow(QMainWindow):
         center_action = menu.addAction("Center Camera On Node")
         highlight_action = menu.addAction("Highlight Dependencies")
         edit_action = menu.addAction("Edit Node Properties")
+        bookmark_action = menu.addAction("Toggle Bookmark")
 
         picked = menu.exec(screen_pos)
         if picked is delete_action:
@@ -1266,6 +1889,33 @@ class SkillTreeEditorWindow(QMainWindow):
             self._highlight_dependencies(node_id)
         elif picked is edit_action:
             self.edit_selected_node(node_id)
+        elif picked is bookmark_action:
+            fav = self.favorite_nodes.setdefault(self.current_tree_name, set())
+            if node_id in fav:
+                fav.remove(node_id)
+            else:
+                fav.add(node_id)
+            self._refresh_bookmark_list()
+
+    def _show_empty_context_menu(self, screen_pos: QPoint) -> None:
+        view_pos = self.view.mapFromGlobal(screen_pos)
+        self._last_context_scene_pos = self.view.mapToScene(view_pos)
+
+        menu = QMenu(self)
+        add_action = menu.addAction("Add Node Here")
+        template_menu = menu.addMenu("Add Template Here")
+        template_actions: dict[QAction, str] = {}
+        for template_id, payload in NODE_TEMPLATES.items():
+            action = template_menu.addAction(f"{template_id} ({payload['category']})")
+            template_actions[action] = template_id
+
+        picked = menu.exec(screen_pos)
+        if picked is add_action:
+            self._create_node_at(self._last_context_scene_pos)
+            return
+        template_id = template_actions.get(picked)
+        if template_id:
+            self._create_node_at(self._last_context_scene_pos, template_id)
 
     def _select_single(self, node_id: str) -> None:
         for item in self.scene.node_items.values():
@@ -1399,7 +2049,129 @@ class SkillTreeEditorWindow(QMainWindow):
 
         self._sync_links_from_requirements()
         self._refresh_icon_warning()
+        self._refresh_filter_sources()
+        self._refresh_bookmark_list()
+        self._apply_visual_filters()
+        self._refresh_inspector_from_selection()
         self._update_simulation_visuals()
+
+    def apply_inspector_general(self) -> None:
+        if self._suspend_inspector_sync:
+            return
+        selected = self._selected_node_ids()
+        if len(selected) != 1:
+            return
+        source_id = selected[0]
+        source = self._active_tree().nodes.get(source_id)
+        if source is None:
+            return
+        proposal = source.clone()
+        proposal.id = self.inspector_id.text().strip()
+        proposal.display_name = self.inspector_display.text().strip()
+        proposal.category = self.inspector_category.currentText().strip().lower() or "combat"
+        proposal.cost = self.inspector_cost.value()
+        proposal.required_level = self.inspector_level.value()
+        proposal.required_class = self.inspector_class.text().strip()
+
+        errors = self._validate_edit_proposal(source_id, proposal)
+        if errors:
+            self._show_validation_errors(errors)
+            return
+
+        old_node = source.clone()
+
+        def redo() -> None:
+            self._apply_node_edit(source_id, proposal.clone())
+
+        def undo() -> None:
+            self._apply_node_edit(proposal.id, old_node.clone())
+
+        self.undo_stack.push(CallbackCommand("Inspector Edit Node", redo, undo))
+
+    def apply_inspector_requirements(self) -> None:
+        selected = self._selected_node_ids()
+        if len(selected) != 1:
+            return
+        source_id = selected[0]
+        source = self._active_tree().nodes.get(source_id)
+        if source is None:
+            return
+        proposal = source.clone()
+        proposal.required_nodes = [v.strip() for v in self.inspector_requires.text().split(",") if v.strip()]
+        errors = self._validate_edit_proposal(source_id, proposal)
+        if errors:
+            self._show_validation_errors(errors)
+            return
+
+        old_node = source.clone()
+
+        def redo() -> None:
+            self._apply_node_edit(source_id, proposal.clone())
+
+        def undo() -> None:
+            self._apply_node_edit(proposal.id, old_node.clone())
+
+        self.undo_stack.push(CallbackCommand("Edit Requirements", redo, undo))
+
+    def apply_inspector_modifiers(self) -> None:
+        selected = self._selected_node_ids()
+        if len(selected) != 1:
+            return
+        source_id = selected[0]
+        source = self._active_tree().nodes.get(source_id)
+        if source is None:
+            return
+        proposal = source.clone()
+        proposal.modifiers = self.inspector_modifier_editor.modifiers()
+        errors = self._validate_edit_proposal(source_id, proposal)
+        if errors:
+            self._show_validation_errors(errors)
+            return
+
+        old_node = source.clone()
+
+        def redo() -> None:
+            self._apply_node_edit(source_id, proposal.clone())
+
+        def undo() -> None:
+            self._apply_node_edit(proposal.id, old_node.clone())
+
+        self.undo_stack.push(CallbackCommand("Edit Modifiers", redo, undo))
+
+    def apply_bulk_edits(self) -> None:
+        selected = self._selected_node_ids()
+        if not selected:
+            return
+        if not any([self.bulk_category_check.isChecked(), self.bulk_cost_check.isChecked(), self.bulk_level_check.isChecked()]):
+            return
+
+        tree = self._active_tree()
+        before = {node_id: tree.nodes[node_id].clone() for node_id in selected if node_id in tree.nodes}
+        after = {node_id: node.clone() for node_id, node in before.items()}
+
+        for node in after.values():
+            if self.bulk_category_check.isChecked():
+                node.category = self.bulk_category_input.currentText().strip().lower() or node.category
+            if self.bulk_cost_check.isChecked():
+                node.cost = self.bulk_cost_input.value()
+            if self.bulk_level_check.isChecked():
+                node.required_level = self.bulk_level_input.value()
+
+        for node_id, proposal in after.items():
+            errors = self._validate_edit_proposal(node_id, proposal)
+            if errors:
+                self._show_validation_errors(errors)
+                return
+
+        def redo() -> None:
+            for node_id, proposal in after.items():
+                self._apply_node_edit(node_id, proposal.clone())
+
+        def undo() -> None:
+            for node_id, previous in before.items():
+                self._apply_node_edit(node_id, previous.clone())
+
+        self.undo_stack.push(CallbackCommand("Bulk Edit Nodes", redo, undo))
 
     def _on_node_clicked(self, node_id: str) -> None:
         if not self.sim_mode_action.isChecked():
@@ -1451,6 +2223,7 @@ class SkillTreeEditorWindow(QMainWindow):
         if not errors:
             return
         message = "\n".join(f"- {err}" for err in errors)
+        self.validation_summary.setPlainText(message)
         QMessageBox.warning(self, "Validation Errors", message)
 
     def _validate_current_tree(self) -> list[str]:
@@ -1461,6 +2234,7 @@ class SkillTreeEditorWindow(QMainWindow):
             return
         if tree_name not in self.trees:
             self.trees[tree_name] = SkillTreeData(tree_name)
+        self.favorite_nodes.setdefault(tree_name, set())
         self.current_tree_name = tree_name
         self._load_tree_to_scene(tree_name)
 
@@ -1628,20 +2402,25 @@ class SkillTreeEditorWindow(QMainWindow):
 
             self.trees[tree_name] = tree
             self.sim_unlocked.setdefault(tree_name, set())
+            self.favorite_nodes.setdefault(tree_name, set())
             self.current_tree_name = tree_name
             self._refresh_tree_selector()
             self._load_tree_to_scene(tree_name)
+            self._set_dirty(True)
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, "Load Failed", f"Could not load tree JSON:\n{exc}")
 
     def new_project(self) -> None:
         self.undo_stack.clear()
+        self.undo_stack.setClean()
         self.trees = {name: SkillTreeData(name) for name in DEFAULT_TREES}
         self.sim_unlocked = {name: set() for name in DEFAULT_TREES}
+        self.favorite_nodes = {name: set() for name in DEFAULT_TREES}
         self.current_tree_name = DEFAULT_TREES[0]
         self.project_path = DEFAULT_PROJECT_PATH
         self._refresh_tree_selector()
         self._load_tree_to_scene(self.current_tree_name)
+        self._set_dirty(False)
 
     def open_project(self) -> None:
         file_path, _ = QFileDialog.getOpenFileName(
@@ -1654,31 +2433,7 @@ class SkillTreeEditorWindow(QMainWindow):
             return
 
         try:
-            payload = json.loads(Path(file_path).read_text(encoding="utf-8"))
-            loaded_trees: dict[str, SkillTreeData] = {}
-            for tree_name, tree_payload in payload.get("trees", {}).items():
-                tree = SkillTreeData(str(tree_name))
-                for raw in tree_payload.get("nodes", []):
-                    node = SkillNodeData.from_json(raw)
-                    if node.id:
-                        tree.nodes[node.id] = node
-                errors = TreeValidator.validate_tree(tree, self.scene.sceneRect())
-                if errors:
-                    self._show_validation_errors([f"[{tree_name}] {e}" for e in errors])
-                    return
-                loaded_trees[tree_name] = tree
-
-            if not loaded_trees:
-                raise ValueError("Project contains no trees.")
-
-            self.trees = loaded_trees
-            self.sim_unlocked = {tree_name: set() for tree_name in self.trees}
-            current = payload.get("ui", {}).get("currentTree", "")
-            self.current_tree_name = current if current in self.trees else sorted(self.trees.keys())[0]
-            self.project_path = Path(file_path)
-            self.undo_stack.clear()
-            self._refresh_tree_selector()
-            self._load_tree_to_scene(self.current_tree_name)
+            self._load_project_file(Path(file_path))
         except Exception as exc:  # noqa: BLE001
             QMessageBox.critical(self, "Open Project Failed", f"Could not load project:\n{exc}")
 
@@ -1696,6 +2451,49 @@ class SkillTreeEditorWindow(QMainWindow):
             path = Path(file_path)
             self.project_path = path
 
+        self._write_project_to_path(path)
+        if auto:
+            self.autosave_label.setText(f"Autosaved {path.name}")
+            return
+        if RECOVERY_PROJECT_PATH.exists():
+            RECOVERY_PROJECT_PATH.unlink(missing_ok=True)
+        self.undo_stack.setClean()
+        self._set_dirty(False)
+        self.autosave_label.setText("Saved")
+        if not auto:
+            QMessageBox.information(self, "Project Saved", f"Saved project:\n{path}")
+
+    def _load_project_file(self, path: Path) -> None:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        loaded_trees: dict[str, SkillTreeData] = {}
+        for tree_name, tree_payload in payload.get("trees", {}).items():
+            tree = SkillTreeData(str(tree_name))
+            for raw in tree_payload.get("nodes", []):
+                node = SkillNodeData.from_json(raw)
+                if node.id:
+                    tree.nodes[node.id] = node
+            errors = TreeValidator.validate_tree(tree, self.scene.sceneRect())
+            if errors:
+                self._show_validation_errors([f"[{tree_name}] {e}" for e in errors])
+                raise ValueError("Project validation failed.")
+            loaded_trees[tree_name] = tree
+
+        if not loaded_trees:
+            raise ValueError("Project contains no trees.")
+
+        self.trees = loaded_trees
+        self.sim_unlocked = {tree_name: set() for tree_name in self.trees}
+        self.favorite_nodes = {tree_name: set() for tree_name in self.trees}
+        current = payload.get("ui", {}).get("currentTree", "")
+        self.current_tree_name = current if current in self.trees else sorted(self.trees.keys())[0]
+        self.project_path = path
+        self.undo_stack.clear()
+        self.undo_stack.setClean()
+        self._set_dirty(False)
+        self._refresh_tree_selector()
+        self._load_tree_to_scene(self.current_tree_name)
+
+    def _write_project_to_path(self, path: Path) -> None:
         payload = {
             "version": 1,
             "ui": {
@@ -1711,22 +2509,57 @@ class SkillTreeEditorWindow(QMainWindow):
 
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        if not auto:
-            QMessageBox.information(self, "Project Saved", f"Saved project:\n{path}")
 
     def open_icon_folder(self) -> None:
         ICON_FOLDER.mkdir(parents=True, exist_ok=True)
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(ICON_FOLDER)))
 
+    def closeEvent(self, event: QCloseEvent) -> None:
+        if not self._dirty:
+            event.accept()
+            return
+
+        decision = QMessageBox.question(
+            self,
+            "Unsaved Changes",
+            "Save changes before closing?",
+            QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Save,
+        )
+        if decision == QMessageBox.StandardButton.Cancel:
+            event.ignore()
+            return
+        if decision == QMessageBox.StandardButton.Discard:
+            event.accept()
+            return
+
+        self.save_project(auto=False)
+        if self._dirty:
+            event.ignore()
+            return
+        event.accept()
+
     def keyPressEvent(self, event) -> None:
         if event.matches(QKeySequence.StandardKey.Delete):
             self.delete_selected_node()
             return
-        if event.matches(QKeySequence("Ctrl+D")):
+        if event.key() == Qt.Key.Key_D and event.modifiers() == Qt.KeyboardModifier.ControlModifier:
             self.duplicate_selected_node()
             return
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             self.edit_selected_node()
+            return
+        if event.key() == Qt.Key.Key_F and event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+            self.search_input.setFocus()
+            self.search_input.selectAll()
+            return
+        if event.key() == Qt.Key.Key_L and event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+            self.connect_action.trigger()
+            return
+        if event.key() == Qt.Key.Key_A and event.modifiers() == (
+            Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
+        ):
+            self.auto_arrange_tree()
             return
         super().keyPressEvent(event)
 
