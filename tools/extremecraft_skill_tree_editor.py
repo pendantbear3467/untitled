@@ -696,6 +696,10 @@ class SkillTreeScene(QGraphicsScene):
         if self.connect_mode and self._drag_line is not None and self._connect_start_id is not None:
             start_item = self.node_items.get(self._connect_start_id)
             if start_item is not None:
+                hover_item = self.itemAt(event.scenePos(), self.views()[0].transform() if self.views() else QTransform())
+                valid_target = isinstance(hover_item, SkillNodeItem) and hover_item.node_data.id != self._connect_start_id
+                drag_color = QColor(84, 214, 153, 210) if valid_target else QColor(232, 108, 108, 190)
+                self._drag_line.setPen(QPen(drag_color, 1.8, Qt.PenStyle.DashLine))
                 self._drag_line.setLine(
                     start_item.pos().x(),
                     start_item.pos().y(),
