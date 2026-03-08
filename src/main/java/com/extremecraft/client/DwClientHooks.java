@@ -60,7 +60,6 @@ public final class DwClientHooks {
 
         if (hit instanceof EntityHitResult ehr && isOffhandWeapon(off)) {
             event.setCanceled(true);
-            player.swing(InteractionHand.OFF_HAND);
             DwNetwork.sendToServer(new OffhandActionC2S(Action.ATTACK_ENTITY, ehr.getEntity().getId(), null, null));
             return;
         }

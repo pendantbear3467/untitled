@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from asset_studio.ai.workbench_service import AIWorkbenchService
 from asset_studio.code.editor_service import EditorService
 from asset_studio.core.app_context import StudioAppContext
 from asset_studio.core.command_registry import CommandRegistry, StudioCommand
@@ -56,6 +57,7 @@ class StudioSession:
         )
         self.plugin_service = PluginService(context.plugins, crash_guard=self.crash_guard)
         self.code_editor_service = EditorService(recovery_service=self.recovery_service)
+        self.ai_workbench_service = AIWorkbenchService()
         self.gui_studio_engine = GuiStudioEngine(context.workspace_root / "gui_screens")
         self.model_studio_engine = ModelStudioEngine(context.workspace_root / "models" / "studio")
         self.build_service = BuildService(context)
@@ -77,6 +79,7 @@ class StudioSession:
             "process_service": self.process_service,
             "plugin_service": self.plugin_service,
             "code_editor_service": self.code_editor_service,
+            "ai_workbench_service": self.ai_workbench_service,
             "gui_studio_engine": self.gui_studio_engine,
             "model_studio_engine": self.model_studio_engine,
             "build_service": self.build_service,
@@ -84,6 +87,7 @@ class StudioSession:
             "workspace_index_service": self.workspace_index_service,
             "document_migration_service": self.document_migration_service,
             "relationship_service": self.relationship_service,
+            "ai_workbench_service": self.ai_workbench_service,
             "log_model": self.log_model,
         }.items():
             self.app_context.register_service(name, service)
@@ -135,6 +139,7 @@ class StudioSession:
             "workspace_index_service": self.workspace_index_service,
             "document_migration_service": self.document_migration_service,
             "relationship_service": self.relationship_service,
+            "ai_workbench_service": self.ai_workbench_service,
             "plugin_service": self.plugin_service,
             "gui_studio_engine": self.gui_studio_engine,
             "model_studio_engine": self.model_studio_engine,
@@ -510,3 +515,7 @@ class StudioSession:
                     keywords=("plugin", "editor"),
                 )
             )
+
+
+
+

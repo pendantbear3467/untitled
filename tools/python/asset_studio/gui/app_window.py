@@ -32,6 +32,7 @@ from asset_studio.generators.content_pack_generator import ContentPackGenerator
 from asset_studio.generators.machine_generator import MachineGenerator
 from asset_studio.generators.ore_generator import OreGenerator
 from asset_studio.generators.tool_generator import ToolGenerator
+from asset_studio.gui.ai_workbench import AIWorkbenchPanel
 from asset_studio.gui.asset_wizard import AssetWizardPanel, ToolWizardInput
 from asset_studio.gui.code_studio import CodeStudioPanel
 from asset_studio.gui.console_panel import ConsolePanel
@@ -71,7 +72,7 @@ class AssetStudioWindow(QMainWindow):
             self.browser.bind_session(self.session)
         self.browser.load_workspace(self.context.workspace_root)
         if hasattr(self.browser, "file_open_requested"):
-            self.browser.file_open_requested.connect(self._open_file_from_browser)
+            self.browser.file_open_requested.connect(self._open_path)
         if hasattr(self.browser, "notifications"):
             self.browser.notifications.connect(lambda message: self._publish_notification("warning", "browser", message))
 
@@ -84,8 +85,16 @@ class AssetStudioWindow(QMainWindow):
         self.code_studio.notifications.connect(lambda message: self._publish_notification("info", "code", message))
         if hasattr(self.code_studio, "current_file_changed"):
             self.code_studio.current_file_changed.connect(self.browser.set_current_file)
+            self.code_studio.current_file_changed.connect(lambda _path: self._sync_workspace_context())
+        if hasattr(self.code_studio, "open_link_requested"):
+            self.code_studio.open_link_requested.connect(self._open_path)
         if hasattr(self.code_studio, "current_file"):
             self.browser.set_current_file(self.code_studio.current_file())
+
+        self.ai_workbench = AIWorkbenchPanel(self.session.ai_workbench_service)
+        self.ai_workbench.status_message.connect(self._set_cursor_status)
+        self.ai_workbench.notifications.connect(lambda message: self._publish_notification("info", "ai", message))
+        self.ai_workbench.artifact_apply_requested.connect(self._apply_ai_artifact)
 
         self.wizard = self._create_editor("asset_wizard", AssetWizardPanel)
         self.wizard.generate_tool_requested.connect(self._on_generate_tool)
@@ -730,5 +739,10 @@ def launch_gui(workspace_root: Path) -> int:
     window = AssetStudioWindow(workspace_root)
     window.show()
     return app.exec()
+
+
+
+
+
 
 

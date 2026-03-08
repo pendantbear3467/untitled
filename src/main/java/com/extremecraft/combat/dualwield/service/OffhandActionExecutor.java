@@ -22,6 +22,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -113,6 +114,10 @@ public final class OffhandActionExecutor {
             return;
         }
 
+        if (result != InteractionResult.PASS) {
+            return;
+        }
+
         InteractionResult fallback = player.gameMode.useItem(player, level, off, InteractionHand.OFF_HAND);
         if (fallback.consumesAction()) {
             player.swing(InteractionHand.OFF_HAND, true);
@@ -174,7 +179,7 @@ public final class OffhandActionExecutor {
             return false;
         }
 
-        int fireAspect = livingTarget == null ? 0 : EnchantmentHelper.getFireAspect(player);
+        int fireAspect = livingTarget == null ? 0 : EnchantmentHelper.getItemEnchantmentLevel(Enchantments.FIRE_ASPECT, offhand);
         boolean primedFire = fireAspect > 0 && !target.isOnFire();
         if (primedFire) {
             target.setSecondsOnFire(1);
@@ -188,7 +193,8 @@ public final class OffhandActionExecutor {
             return false;
         }
 
-        int knockback = Mth.floor(player.getAttributeValue(Attributes.ATTACK_KNOCKBACK)) + EnchantmentHelper.getKnockbackBonus(player);
+        int knockback = Mth.floor(player.getAttributeValue(Attributes.ATTACK_KNOCKBACK))
+            + EnchantmentHelper.getItemEnchantmentLevel(Enchantments.KNOCKBACK, offhand);
         if (player.isSprinting() && fullyCharged) {
             knockback++;
             player.setSprinting(false);
