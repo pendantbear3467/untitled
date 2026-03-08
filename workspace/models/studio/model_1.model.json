@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 2,
+  "documentType": "cube-model-studio",
+  "name": "model_1",
+  "namespace": "extremecraft",
+  "modelType": "entity",
+  "textureSize": [
+    64,
+    64
+  ],
+  "metadata": {
+    "runtimeContract": "extremecraft-model-runtime"
+  },
+  "bones": [
+    {
+      "id": "root",
+      "pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cubes": [
+        "body"
+      ],
+      "children": [],
+      "parent": null,
+      "metadata": {}
+    }
+  ],
+  "cubes": [
+    {
+      "id": "body",
+      "from": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "to": [
+        16.0,
+        16.0,
+        16.0
+      ],
+      "pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "inflate": 0.0,
+      "texture": "textures/block/default.png",
+      "mirror": false,
+      "faces": {
+        "down": {
+          "texture": "#0",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "rotation": 0
+        },
+        "east": {
+          "texture": "#0",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "rotation": 0
+        },
+        "north": {
+          "texture": "#0",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "rotation": 0
+        },
+        "south": {
+          "texture": "#0",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "rotation": 0
+        },
+        "up": {
+          "texture": "#0",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "rotation": 0
+        },
+        "west": {
+          "texture": "#0",
+          "uv": [
+            0.0,
+            0.0,
+            16.0,
+            16.0
+          ],
+          "rotation": 0
+        }
+      },
+      "metadata": {}
+    }
+  ]
+}

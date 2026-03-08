@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 2,
+  "documentType": "gui-studio",
+  "name": "screen_1",
+  "namespace": "extremecraft",
+  "screenType": "machine",
+  "width": 176,
+  "height": 166,
+  "rootWidgets": [
+    "root_panel"
+  ],
+  "metadata": {
+    "runtimeContract": "extremecraft-gui-runtime"
+  },
+  "widgets": [
+    {
+      "id": "panel",
+      "type": "panel",
+      "label": "Panel",
+      "bounds": {
+        "x": 18,
+        "y": 58,
+        "width": 120,
+        "height": 60
+      },
+      "anchor": {
+        "left": null,
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "centerX": null,
+        "centerY": null
+      },
+      "properties": {
+        "background": "textures/gui/default_panel.png"
+      },
+      "binding": null,
+      "children": [],
+      "tags": [
+        "panel"
+      ],
+      "visible": true,
+      "zIndex": 0
+    },
+    {
+      "id": "root_panel",
+      "type": "panel",
+      "label": "Root Panel",
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 176,
+        "height": 166
+      },
+      "anchor": {
+        "left": null,
+        "top": null,
+        "right": null,
+        "bottom": null,
+        "centerX": null,
+        "centerY": null
+      },
+      "properties": {
+        "background": "textures/gui/default_panel.png"
+      },
+      "binding": null,
+      "children": [
+        "panel"
+      ],
+      "tags": [
+        "root"
+      ],
+      "visible": true,
+      "zIndex": 0
+    }
+  ]
+}

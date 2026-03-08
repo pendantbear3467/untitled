@@ -60,6 +60,15 @@
       "tier": 4,
       "texture_style": "ancient",
       "type": "tool"
+    },
+    "ultimate gear": {
+      "material": "ultimate",
+      "durability": 1800,
+      "attack_damage": 7,
+      "mining_speed": 9,
+      "tier": 4,
+      "texture_style": "quantum",
+      "type": "tool"
     }
   },
   "machines": {

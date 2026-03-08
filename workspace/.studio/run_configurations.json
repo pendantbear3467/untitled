@@ -1,0 +1,27 @@
+{
+  "updatedAt": "2026-03-08T08:27:11Z",
+  "configurations": [
+    {
+      "name": "client",
+      "command": [
+        "I:\\minecraft mods\\Extreme Craft\\untitled\\gradlew.bat",
+        "runClient"
+      ],
+      "working_directory": "I:\\minecraft mods\\Extreme Craft\\untitled",
+      "environment": {},
+      "description": "Launch Minecraft client run configuration",
+      "kind": "client"
+    },
+    {
+      "name": "server",
+      "command": [
+        "I:\\minecraft mods\\Extreme Craft\\untitled\\gradlew.bat",
+        "runServer"
+      ],
+      "working_directory": "I:\\minecraft mods\\Extreme Craft\\untitled",
+      "environment": {},
+      "description": "Launch dedicated server run configuration",
+      "kind": "server"
+    }
+  ]
+}
