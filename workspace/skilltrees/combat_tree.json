@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 2,
+  "graphType": "skilltree",
+  "tree_name": "combat_tree",
+  "owner": "default",
+  "class_id": "adventurer",
+  "nodes": [
+    {
+      "id": "+1% attack",
+      "displayName": "warrior",
+      "category": "combat",
+      "x": -240,
+      "y": 200,
+      "cost": 1,
+      "requires": [],
+      "requiredLevel": 1,
+      "requiredClass": "",
+      "modifiers": [],
+      "tags": [
+        "root"
+      ],
+      "metadata": {},
+      "note": "",
+      "icon": ""
+    },
+    {
+      "id": "Attack_2",
+      "displayName": "warrior Copy",
+      "category": "combat",
+      "x": 180,
+      "y": 0,
+      "cost": 1,
+      "requires": [],
+      "requiredLevel": 1,
+      "requiredClass": "",
+      "modifiers": [],
+      "tags": [
+        "root"
+      ],
+      "metadata": {},
+      "note": "",
+      "icon": ""
+    },
+    {
+      "id": "Attack_3",
+      "displayName": "warrior Copy",
+      "category": "combat",
+      "x": 480,
+      "y": 280,
+      "cost": 1,
+      "requires": [],
+      "requiredLevel": 1,
+      "requiredClass": "",
+      "modifiers": [],
+      "tags": [
+        "root"
+      ],
+      "metadata": {},
+      "note": "",
+      "icon": ""
+    },
+    {
+      "id": "Attack_4",
+      "displayName": "warrior Copy",
+      "category": "combat",
+      "x": 480,
+      "y": -120,
+      "cost": 1,
+      "requires": [],
+      "requiredLevel": 1,
+      "requiredClass": "",
+      "modifiers": [],
+      "tags": [
+        "root"
+      ],
+      "metadata": {},
+      "note": "",
+      "icon": ""
+    },
+    {
+      "id": "Attack_5",
+      "displayName": "warrior Copy",
+      "category": "combat",
+      "x": 180,
+      "y": 240,
+      "cost": 1,
+      "requires": [],
+      "requiredLevel": 1,
+      "requiredClass": "",
+      "modifiers": [],
+      "tags": [
+        "root"
+      ],
+      "metadata": {},
+      "note": "",
+      "icon": ""
+    }
+  ],
+  "links": [],
+  "regions": [],
+  "annotations": [],
+  "bookmarks": [],
+  "metadata": {},
+  "preferences": {}
+}

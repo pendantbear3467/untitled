@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 2,
+  "graphType": "skilltree",
+  "tree_name": "combat_tree",
+  "owner": "default",
+  "class_id": "adventurer",
+  "nodes": [
+    {
+      "id": "Attack",
+      "displayName": "warrior",
+      "category": "combat",
+      "x": 0,
+      "y": 0,
+      "cost": 1,
+      "requires": [],
+      "requiredLevel": 1,
+      "requiredClass": "",
+      "modifiers": [],
+      "tags": [
+        "root"
+      ],
+      "metadata": {},
+      "note": "",
+      "icon": ""
+    }
+  ],
+  "links": [],
+  "regions": [],
+  "annotations": [],
+  "bookmarks": [],
+  "metadata": {
+    "autosaveReason": "autosave"
+  },
+  "preferences": {}
+}

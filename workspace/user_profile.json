@@ -1,5 +1,13 @@
 {
   "username": "default",
   "preferred_class": "adventurer",
-  "favorite_trees": []
+  "favorite_trees": [],
+  "skilltree_preferences": {
+    "autosave_enabled": true,
+    "autosave_interval_seconds": 30,
+    "last_tree": "combat_tree",
+    "last_search": "",
+    "export_format": "workspace",
+    "bookmarked_nodes": []
+  }
 }

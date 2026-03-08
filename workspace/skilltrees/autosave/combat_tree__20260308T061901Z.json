@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 2,
+  "graphType": "skilltree",
+  "tree_name": "combat_tree",
+  "owner": "default",
+  "class_id": "adventurer",
+  "nodes": [
+    {
+      "id": "starter",
+      "displayName": "Starter",
+      "category": "combat",
+      "x": -900,
+      "y": -600,
+      "cost": 1,
+      "requires": [],
+      "requiredLevel": 1,
+      "requiredClass": "",
+      "modifiers": [],
+      "tags": [
+        "root"
+      ],
+      "metadata": {},
+      "note": "",
+      "icon": ""
+    }
+  ],
+  "links": [],
+  "regions": [],
+  "annotations": [],
+  "bookmarks": [],
+  "metadata": {
+    "autosaveReason": "autosave"
+  },
+  "preferences": {}
+}
