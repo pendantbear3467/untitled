@@ -26,3 +26,11 @@ This repository is evolving from a single Forge mod into a platform architecture
 2. Move systems into dedicated module folders in small slices.
 3. Keep `com.extremecraft.api` backward-compatible across minor versions.
 4. Version-break only when API/protocol changes require it.
+
+## Shared implementation contract
+
+The cross-domain implementation baseline for the first major release is defined in:
+
+- `docs/SHARED_IMPLEMENTATION_CONTRACT.md`
+
+Contributors should treat that contract as mandatory for progression boundaries, server authority, safety caps, and first-release scope control.

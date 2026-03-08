@@ -137,6 +137,14 @@ These shims exist to preserve save compatibility and keep older systems operatio
 - Loader and debug message clarity.
 - Contributor docs and examples.
 
+## Shared Implementation Contract
+
+For first-major-release implementation boundaries and required systems, use:
+
+- `docs/SHARED_IMPLEMENTATION_CONTRACT.md`
+
+This contract is the canonical baseline for server authority, progression-domain separation, safety caps, and scope discipline.
+
 ## Senior-Scope Zones (Do Not Touch in Routine PRs)
 
 - Cross-system architecture rewrites.
