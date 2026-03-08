@@ -2185,6 +2185,8 @@ class SkillTreeEditorWindow(QMainWindow):
         if node is None:
             return
 
+        player_level, player_points, player_class = self.simulation_panel.simulation_constraints()
+
         if node_id in unlocked:
             # Allow lock only if no unlocked dependent nodes remain.
             for other in tree.nodes.values():
@@ -2192,7 +2194,11 @@ class SkillTreeEditorWindow(QMainWindow):
                     return
             unlocked.remove(node_id)
         else:
-            if all(req in unlocked for req in node.required_nodes):
+            dependency_ok = all(req in unlocked for req in node.required_nodes)
+            class_ok = not node.required_class or node.required_class == player_class
+            level_ok = node.required_level <= player_level
+            budget_ok = (sum(tree.nodes[nid].cost for nid in unlocked) + node.cost) <= player_points
+            if dependency_ok and class_ok and level_ok and budget_ok:
                 unlocked.add(node_id)
 
         self._update_simulation_visuals()
@@ -2201,13 +2207,17 @@ class SkillTreeEditorWindow(QMainWindow):
         tree = self._active_tree()
         unlocked = self.sim_unlocked.setdefault(self.current_tree_name, set())
         sim_mode = self.sim_mode_action.isChecked()
+        player_level, player_points, player_class = self.simulation_panel.simulation_constraints()
 
         total_cost = 0
         modifiers: dict[str, float] = {}
 
         for node_id, item in self.scene.node_items.items():
             node = tree.nodes[node_id]
-            available = all(req in unlocked for req in node.required_nodes)
+            dependency_ok = all(req in unlocked for req in node.required_nodes)
+            class_ok = not node.required_class or node.required_class == player_class
+            level_ok = node.required_level <= player_level
+            available = dependency_ok and class_ok and level_ok
             unlocked_state = node_id in unlocked
             item.set_simulation_state(unlocked_state if sim_mode else False, available if sim_mode else False)
 
@@ -2216,7 +2226,26 @@ class SkillTreeEditorWindow(QMainWindow):
                 for modifier in node.modifiers:
                     modifiers[modifier.type] = modifiers.get(modifier.type, 0.0) + modifier.value
 
-        self.simulation_panel.update_content(total_cost, modifiers)
+        self.simulation_panel.update_content(total_cost, modifiers, len(unlocked))
+
+        selected = self._selected_node_ids()
+        if sim_mode and selected:
+            node = tree.nodes.get(selected[0])
+            if node is not None:
+                reasons: list[str] = []
+                for req in node.required_nodes:
+                    if req not in unlocked:
+                        reasons.append(f"Requires node: {req}")
+                if node.required_level > player_level:
+                    reasons.append(f"Requires level {node.required_level}")
+                if node.required_class and node.required_class != player_class:
+                    reasons.append(f"Requires class '{node.required_class}'")
+                if node.id not in unlocked and total_cost + node.cost > player_points:
+                    reasons.append("Insufficient skill points")
+                self.simulation_panel.set_lock_reason("\n".join(reasons) if reasons else "Node can be unlocked.")
+        else:
+            self.simulation_panel.set_lock_reason("Enable Simulation Mode and select a node to inspect lock reasons.")
+
         self.minimap.update()
 
     def _show_validation_errors(self, errors: list[str]) -> None:
