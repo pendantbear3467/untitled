@@ -54,7 +54,10 @@ public class PulverizerBlock extends BaseEntityBlock implements EntityBlock {
         }
 
         if (!ProgressionGate.canUseMachine(player, "pulverizer")) {
-            player.displayClientMessage(Component.translatable("message.extremecraft.machine_locked", ProgressionStage.INDUSTRIAL.name()), true);
+            String requiredStage = ProgressionGate.requiredMachineStage("pulverizer")
+                    .map(ProgressionStage::name)
+                    .orElse(ProgressionStage.PRIMITIVE.name());
+            player.displayClientMessage(Component.translatable("message.extremecraft.machine_locked", requiredStage), true);
             return InteractionResult.FAIL;
         }
 

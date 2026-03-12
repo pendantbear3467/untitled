@@ -37,6 +37,29 @@ public final class ChunkContaminationService {
         data.setDirty();
     }
 
+    public static double scrubContamination(ServerLevel level, ChunkPos pos, double amount) {
+        if (level == null || pos == null || amount <= 0.0D) {
+            return 0.0D;
+        }
+
+        ContaminationData data = data(level);
+        long key = pos.toLong();
+        double current = data.contamination.getOrDefault(key, 0.0D);
+        if (current <= 0.0D) {
+            return 0.0D;
+        }
+
+        double removed = Math.min(current, amount);
+        double next = current - removed;
+        if (next <= 0.0D) {
+            data.contamination.remove(key);
+        } else {
+            data.contamination.put(key, next);
+        }
+        data.setDirty();
+        return removed;
+    }
+
     public static void releaseArea(ServerLevel level, net.minecraft.core.BlockPos center, double amount, int radius) {
         if (level == null || center == null || amount <= 0.0D) {
             return;
@@ -77,7 +100,7 @@ public final class ChunkContaminationService {
         for (ContaminationDefinition definition : ContaminationDataRegistry.registry().all()) {
             return definition;
         }
-        return new ContaminationDefinition("default", 10_000.0D, 0.45D, 8.0D, 0.2D, 25.0D);
+        return new ContaminationDefinition("default", 10_000.0D, 0.45D, 8.0D, 0.2D, 25.0D, 35.0D, 0, 6, java.util.List.of());
     }
 
     private static ContaminationData data(ServerLevel level) {

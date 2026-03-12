@@ -5,12 +5,19 @@ import com.extremecraft.progression.stage.ProgressionStage;
 import com.extremecraft.progression.stage.StageManager;
 import com.extremecraft.progression.unlock.UnlockRuleLoader;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Canonical gameplay gate for stage-locked machine and recipe access.
+ *
+ * <p>Checks and grants that affect the formal progression ladder should route through this
+ * class so stage ownership stays explicit even while legacy systems remain online.</p>
+ */
 public final class ProgressionGate {
     private static final Map<String, ProgressionStage> MACHINE_REQUIREMENTS = new HashMap<>();
     private static final Map<String, ProgressionStage> RECIPE_REQUIREMENTS = new HashMap<>();
@@ -72,5 +79,18 @@ public final class ProgressionGate {
         }
 
         return UnlockRuleLoader.canUnlock(player, "recipe:" + recipeId);
+    }
+
+    public static boolean grantStage(ServerPlayer player, String stageId) {
+        return ProgressionStage.byName(stageId)
+                .map(stage -> grantStage(player, stage))
+                .orElse(false);
+    }
+
+    public static boolean grantStage(ServerPlayer player, ProgressionStage stage) {
+        if (player == null || stage == null) {
+            return false;
+        }
+        return StageManager.upgradePlayerStage(player, stage);
     }
 }

@@ -1,8 +1,6 @@
 package com.extremecraft.progression;
 
 import com.extremecraft.progression.capability.ProgressApi;
-import com.extremecraft.progression.stage.ProgressionStage;
-import com.extremecraft.progression.stage.StageManager;
 import com.extremecraft.quest.QuestDefinition;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -39,8 +37,7 @@ public final class GuildQuestRewardService {
             ClassProgressionService.grantClassXp(player, classRewardTarget, classXpReward, ClassProgressionService.Source.GUILD_QUEST);
 
             if (!quest.rewardUnlockStage().isBlank()) {
-                ProgressionStage.byName(quest.rewardUnlockStage())
-                        .ifPresent(stage -> StageManager.upgradePlayerStage(player, stage));
+                ProgressionGate.grantStage(player, quest.rewardUnlockStage());
             }
 
             ProgressionService.flushDirty(player);
