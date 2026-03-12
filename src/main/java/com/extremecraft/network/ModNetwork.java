@@ -1,6 +1,8 @@
 package com.extremecraft.network;
 
 import com.extremecraft.combat.dualwield.CycleLoadoutC2S;
+import com.extremecraft.combat.dualwield.SaveLoadoutC2S;
+import com.extremecraft.combat.dualwield.SelectLoadoutC2S;
 import com.extremecraft.combat.dualwield.SyncDualWieldDataS2C;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.net.OffhandActionC2S;
@@ -223,6 +225,18 @@ public final class ModNetwork {
                 .encoder(CycleLoadoutC2S::encode)
                 .decoder(CycleLoadoutC2S::decode)
                 .consumerMainThread(CycleLoadoutC2S::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SelectLoadoutC2S.class, nextId())
+                .encoder(SelectLoadoutC2S::encode)
+                .decoder(SelectLoadoutC2S::decode)
+                .consumerMainThread(SelectLoadoutC2S::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SaveLoadoutC2S.class, nextId())
+                .encoder(SaveLoadoutC2S::encode)
+                .decoder(SaveLoadoutC2S::decode)
+                .consumerMainThread(SaveLoadoutC2S::handle)
                 .add();
 
         CHANNEL.messageBuilder(SyncDualWieldDataS2C.class, nextId())

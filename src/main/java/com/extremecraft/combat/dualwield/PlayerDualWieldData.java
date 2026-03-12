@@ -25,6 +25,10 @@ public class PlayerDualWieldData {
         return loadouts[Math.max(0, Math.min(loadouts.length - 1, index))];
     }
 
+    public int loadoutCount() {
+        return loadouts.length;
+    }
+
     public void ensureInitialized(Player player) {
         if (initialized || player == null) {
             return;
@@ -46,6 +50,20 @@ public class PlayerDualWieldData {
         saveActiveHands(player);
         activeLoadoutIndex = (activeLoadoutIndex + 1) % loadouts.length;
         applyActiveLoadout(player);
+        dirty = true;
+    }
+
+    public void selectLoadout(Player player, int index) {
+        int clamped = Math.max(0, Math.min(loadouts.length - 1, index));
+        saveActiveHands(player);
+        activeLoadoutIndex = clamped;
+        applyActiveLoadout(player);
+        dirty = true;
+    }
+
+    public void saveCurrentHandsToLoadout(Player player, int index) {
+        int clamped = Math.max(0, Math.min(loadouts.length - 1, index));
+        getLoadout(clamped).set(player.getMainHandItem(), player.getOffhandItem());
         dirty = true;
     }
 

@@ -35,7 +35,7 @@ public abstract class StandalonePlayerScreen extends BaseExtremeScreen {
         addRenderableWidget(Button.builder(Component.literal("Magic"), b -> Minecraft.getInstance().setScreen(new MagicScreen(player)))
                 .bounds(x + 70, y, w, h)
                 .build());
-        addRenderableWidget(Button.builder(Component.literal("Dual"), b -> Minecraft.getInstance().setScreen(new DualWieldScreen(player)))
+        addRenderableWidget(Button.builder(Component.literal("Dual"), b -> Minecraft.getInstance().setScreen(new DualWieldScreen(player, this)))
                 .bounds(x + 140, y, w, h)
                 .build());
         addRenderableWidget(Button.builder(Component.literal("Progress"), b -> Minecraft.getInstance().setScreen(new ProgressionScreen(player)))

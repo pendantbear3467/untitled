@@ -49,6 +49,16 @@ public final class ProgressionService {
         flushDirty(player);
     }
 
+    public static void grantUnlock(ServerPlayer player, String unlockId) {
+        ProgressApi.get(player).ifPresent(data -> data.grantUnlock(unlockId));
+        flushDirty(player);
+    }
+
+    public static void grantUnlocks(ServerPlayer player, java.util.Collection<String> unlockIds) {
+        ProgressApi.get(player).ifPresent(data -> data.grantUnlocks(unlockIds));
+        flushDirty(player);
+    }
+
     public static boolean switchClass(ServerPlayer player, String classId) {
         return ProgressApi.get(player).map(data -> {
             String normalized = ClassIdResolver.normalizeCanonical(classId);

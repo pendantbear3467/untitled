@@ -8,6 +8,7 @@ import net.minecraft.nbt.Tag;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
@@ -20,6 +21,7 @@ public class PlayerProgressData {
 
     private final Set<String> unlockedClasses = new HashSet<>();
     private final Set<String> completedQuests = new HashSet<>();
+    private final Set<String> unlockGrants = new HashSet<>();
     private final Map<String, Integer> questProgress = new HashMap<>();
     private final Set<String> discoveredRegions = new HashSet<>();
     private final Map<String, Integer> classExperience = new HashMap<>();
@@ -41,6 +43,7 @@ public class PlayerProgressData {
 
     public Set<String> unlockedClasses() { return unlockedClasses; }
     public Set<String> completedQuests() { return completedQuests; }
+    public Set<String> unlockGrants() { return unlockGrants; }
     public Map<String, Integer> questProgress() { return questProgress; }
     public Set<String> discoveredRegions() { return discoveredRegions; }
     public Map<String, Integer> classExperience() { return classExperience; }
@@ -166,6 +169,38 @@ public class PlayerProgressData {
         return completedQuests.contains(questId);
     }
 
+    public boolean hasUnlockGrant(String unlockId) {
+        if (unlockId == null || unlockId.isBlank()) {
+            return false;
+        }
+        return unlockGrants.contains(unlockId.trim().toLowerCase());
+    }
+
+    public boolean grantUnlock(String unlockId) {
+        if (unlockId == null || unlockId.isBlank()) {
+            return false;
+        }
+
+        String normalized = unlockId.trim().toLowerCase();
+        if (unlockGrants.add(normalized)) {
+            markSyncDirty();
+            return true;
+        }
+        return false;
+    }
+
+    public boolean grantUnlocks(Collection<String> unlockIds) {
+        if (unlockIds == null || unlockIds.isEmpty()) {
+            return false;
+        }
+
+        boolean changed = false;
+        for (String unlockId : unlockIds) {
+            changed |= grantUnlock(unlockId);
+        }
+        return changed;
+    }
+
     public void setQuestCompleted(String questId) {
         if (completedQuests.add(questId)) {
             markSyncDirty();
@@ -236,6 +271,10 @@ public class PlayerProgressData {
         completedQuests.forEach(q -> completed.add(StringTag.valueOf(q)));
         tag.put("completed_quests", completed);
 
+        ListTag grants = new ListTag();
+        unlockGrants.forEach(grant -> grants.add(StringTag.valueOf(grant)));
+        tag.put("unlock_grants", grants);
+
         CompoundTag progressTag = new CompoundTag();
         questProgress.forEach(progressTag::putInt);
         tag.put("quest_progress", progressTag);
@@ -281,6 +320,17 @@ public class PlayerProgressData {
         if (tag.contains("completed_quests", Tag.TAG_LIST)) {
             ListTag completed = tag.getList("completed_quests", Tag.TAG_STRING);
             for (Tag t : completed) completedQuests.add(t.getAsString());
+        }
+
+        unlockGrants.clear();
+        if (tag.contains("unlock_grants", Tag.TAG_LIST)) {
+            ListTag grants = tag.getList("unlock_grants", Tag.TAG_STRING);
+            for (Tag t : grants) {
+                String normalized = t.getAsString().trim().toLowerCase();
+                if (!normalized.isBlank()) {
+                    unlockGrants.add(normalized);
+                }
+            }
         }
 
         questProgress.clear();
@@ -338,6 +388,9 @@ public class PlayerProgressData {
 
         this.completedQuests.clear();
         this.completedQuests.addAll(other.completedQuests);
+
+        this.unlockGrants.clear();
+        this.unlockGrants.addAll(other.unlockGrants);
 
         this.questProgress.clear();
         this.questProgress.putAll(other.questProgress);

@@ -15,6 +15,22 @@ public final class DualWieldService {
         });
     }
 
+    public static void selectLoadout(ServerPlayer player, int loadoutIndex) {
+        PlayerDualWieldApi.get(player).ifPresent(data -> {
+            data.ensureInitialized(player);
+            data.selectLoadout(player, loadoutIndex);
+            sync(player, data);
+        });
+    }
+
+    public static void saveCurrentToLoadout(ServerPlayer player, int loadoutIndex) {
+        PlayerDualWieldApi.get(player).ifPresent(data -> {
+            data.ensureInitialized(player);
+            data.saveCurrentHandsToLoadout(player, loadoutIndex);
+            sync(player, data);
+        });
+    }
+
     public static void flushDirty(ServerPlayer player) {
         PlayerDualWieldApi.get(player).ifPresent(data -> {
             data.ensureInitialized(player);

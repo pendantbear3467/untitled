@@ -24,6 +24,7 @@ public final class GuildQuestRewardService {
             }
 
             data.setQuestCompleted(quest.id());
+            data.grantUnlock("quest:" + quest.id());
             ProgressionMutationService.grantXp(player, quest.rewardXp());
             data.addPlayerSkillPoints(quest.rewardPlayerSkillPoints());
             data.addClassSkillPoints(quest.rewardClassSkillPoints());

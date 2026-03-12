@@ -24,6 +24,14 @@ public final class ProgressionFacade {
         return ClassProgressionService.grantClassXp(player, classId, amount, source);
     }
 
+    public static void grantUnlock(ServerPlayer player, String unlockId) {
+        ProgressionService.grantUnlock(player, unlockId);
+    }
+
+    public static void grantUnlocks(ServerPlayer player, java.util.Collection<String> unlockIds) {
+        ProgressionService.grantUnlocks(player, unlockIds);
+    }
+
     public static boolean claimGuildQuestReward(ServerPlayer player, QuestDefinition quest) {
         return GuildQuestRewardService.claimQuestReward(player, quest);
     }

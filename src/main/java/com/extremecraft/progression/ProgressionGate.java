@@ -3,6 +3,7 @@ package com.extremecraft.progression;
 import com.extremecraft.machine.core.MachineCatalog;
 import com.extremecraft.progression.stage.ProgressionStage;
 import com.extremecraft.progression.stage.StageManager;
+import com.extremecraft.progression.unlock.UnlockAccessService;
 import com.extremecraft.progression.unlock.UnlockRuleLoader;
 import com.extremecraft.reactor.ReactorIdentity;
 import net.minecraft.resources.ResourceLocation;
@@ -68,7 +69,7 @@ public final class ProgressionGate {
             return false;
         }
 
-        return UnlockRuleLoader.canUnlock(player, "machine:" + normalizedMachineId);
+        return UnlockAccessService.canAccess(player, "machine:" + normalizedMachineId, UnlockAccessService.Action.USE);
     }
 
     public static boolean canUseRecipe(Player player, ResourceLocation recipeId) {
@@ -81,7 +82,7 @@ public final class ProgressionGate {
             return false;
         }
 
-        return UnlockRuleLoader.canUnlock(player, "recipe:" + recipeId);
+        return UnlockAccessService.canAccess(player, "recipe:" + recipeId, UnlockAccessService.Action.CRAFT);
     }
 
     public static boolean grantStage(ServerPlayer player, String stageId) {

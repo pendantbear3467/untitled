@@ -4,8 +4,10 @@ import com.extremecraft.core.ECConstants;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.RequestPlayerStatsPacket;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -33,5 +35,16 @@ public class InventoryButtonInjector {
                 });
 
         event.addListener(button);
+
+        Button dualWieldButton = Button.builder(Component.literal("DW"), btn -> {
+                    Minecraft mc = Minecraft.getInstance();
+                    if (mc.player != null) {
+                        mc.setScreen(new DualWieldScreen(mc.player, inventoryScreen));
+                    }
+                })
+                .bounds(x, y + 24, 20, 20)
+                .build();
+
+        event.addListener(dualWieldButton);
     }
 }

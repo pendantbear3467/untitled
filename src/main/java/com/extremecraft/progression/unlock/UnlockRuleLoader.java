@@ -4,6 +4,7 @@ import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.classsystem.ClassIdResolver;
 import com.extremecraft.progression.stage.ProgressionStage;
 import com.extremecraft.progression.stage.StageManager;
+import com.extremecraft.research.ResearchApi;
 import com.extremecraft.skills.SkillsApi;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -21,9 +22,12 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.slf4j.Logger;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public class UnlockRuleLoader extends SimpleJsonResourceReloadListener {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -58,9 +62,16 @@ public class UnlockRuleLoader extends SimpleJsonResourceReloadListener {
                 int requiredSkillLevel = Math.max(0, readInt(json, "required_skill_level", "skill_level", 0));
                 String requiredQuest = normalizeId(readString(json, "required_quest", "quest"));
                 String requiredStage = readString(json, "required_stage", "stage").trim();
+                Set<String> requiredUnlocks = new LinkedHashSet<>();
+                requiredUnlocks.addAll(readStringList(json, "required_unlocks"));
+                requiredUnlocks.addAll(prefixedValues(json, "required_research", "research:"));
+                requiredUnlocks.addAll(prefixedValues(json, "required_boss", "boss:"));
+                requiredUnlocks.addAll(prefixedValues(json, "required_event", "event:"));
+                requiredUnlocks.addAll(prefixedValues(json, "required_milestone", "milestone:"));
+                requiredUnlocks.addAll(prefixedValues(json, "required_guild", "guild:"));
 
                 UnlockRule previous = loaded.put(unlock,
-                        new UnlockRule(unlock, requiredClass, requiredSkill, requiredSkillLevel, requiredQuest, requiredStage));
+                    new UnlockRule(unlock, requiredClass, requiredSkill, requiredSkillLevel, requiredQuest, requiredStage, requiredUnlocks));
                 if (previous != null) {
                     LOGGER.warn("[Unlock] Duplicate unlock id '{}' detected; keeping latest from {}", unlock, entry.getKey());
                 }
@@ -131,16 +142,91 @@ public class UnlockRuleLoader extends SimpleJsonResourceReloadListener {
             }
         }
 
+        if (!rule.requiredUnlocks().isEmpty()) {
+            for (String requiredUnlock : rule.requiredUnlocks()) {
+                if (!hasRequiredUnlock(player, progress, requiredUnlock)) {
+                    return false;
+                }
+            }
+        }
+
         return true;
     }
 
     private static void addBuiltinDefaults(Map<String, UnlockRule> loaded) {
-        loaded.putIfAbsent("machine:electric_furnace", new UnlockRule("machine:electric_furnace", "", "engineering", 20, "", "ENERGY"));
-        loaded.putIfAbsent("machine:enrichment_chamber", new UnlockRule("machine:enrichment_chamber", "", "engineering", 20, "", "ENERGY"));
-        loaded.putIfAbsent("machine:rune_infuser", new UnlockRule("machine:rune_infuser", "", "arcane", 15, "", "ADVANCED"));
-        loaded.putIfAbsent("machine:quantum_fabricator", new UnlockRule("machine:quantum_fabricator", "engineer", "engineering", 35, "", "ADVANCED"));
-        loaded.putIfAbsent("machine:singularity_compressor", new UnlockRule("machine:singularity_compressor", "", "engineering", 50, "", "ENDGAME"));
-        loaded.putIfAbsent("recipe:titanium_mining", new UnlockRule("recipe:titanium_mining", "", "mining", 10, "", "INDUSTRIAL"));
+        loaded.putIfAbsent("machine:electric_furnace", new UnlockRule("machine:electric_furnace", "", "engineering", 20, "", "ENERGY", Set.of()));
+        loaded.putIfAbsent("machine:enrichment_chamber", new UnlockRule("machine:enrichment_chamber", "", "engineering", 20, "", "ENERGY", Set.of()));
+        loaded.putIfAbsent("machine:rune_infuser", new UnlockRule("machine:rune_infuser", "", "arcane", 15, "", "ADVANCED", Set.of()));
+        loaded.putIfAbsent("machine:quantum_fabricator", new UnlockRule("machine:quantum_fabricator", "engineer", "engineering", 35, "", "ADVANCED", Set.of()));
+        loaded.putIfAbsent("machine:singularity_compressor", new UnlockRule("machine:singularity_compressor", "", "engineering", 50, "", "ENDGAME", Set.of()));
+        loaded.putIfAbsent("recipe:titanium_mining", new UnlockRule("recipe:titanium_mining", "", "mining", 10, "", "INDUSTRIAL", Set.of()));
+    }
+
+    private static boolean hasRequiredUnlock(Player player,
+                                             Optional<com.extremecraft.progression.PlayerProgressData> progress,
+                                             String unlockId) {
+        if (unlockId == null || unlockId.isBlank()) {
+            return true;
+        }
+
+        String normalized = unlockId.trim().toLowerCase(Locale.ROOT);
+        if (normalized.startsWith("research:")) {
+            String researchId = normalized.substring("research:".length());
+            return ResearchApi.get(player).map(research -> research.hasResearch(researchId)).orElse(false);
+        }
+
+        if (normalized.startsWith("quest:")) {
+            String questId = normalized.substring("quest:".length());
+            return progress.map(data -> data.isQuestCompleted(questId)).orElse(false);
+        }
+
+        if (normalized.startsWith("class:")) {
+            String classId = ClassIdResolver.normalizeCanonical(normalized.substring("class:".length()));
+            return progress.map(data -> data.unlockedClasses().contains(classId)).orElse(false);
+        }
+
+        if (normalized.startsWith("stage:")) {
+            String stageName = normalized.substring("stage:".length());
+            ProgressionStage stage = ProgressionStage.byName(stageName).orElse(null);
+            return stage != null && StageManager.hasStage(player, stage);
+        }
+
+        return progress.map(data -> data.hasUnlockGrant(normalized)).orElse(false);
+    }
+
+    private static Set<String> prefixedValues(JsonObject json, String field, String prefix) {
+        Set<String> values = new LinkedHashSet<>();
+        for (String value : readStringList(json, field)) {
+            values.add(prefix + value);
+        }
+        return values;
+    }
+
+    private static Set<String> readStringList(JsonObject json, String field) {
+        Set<String> values = new LinkedHashSet<>();
+        if (!json.has(field) || json.get(field) == null || json.get(field).isJsonNull()) {
+            return values;
+        }
+
+        if (json.get(field).isJsonArray()) {
+            for (JsonElement value : json.getAsJsonArray(field)) {
+                if (value != null && value.isJsonPrimitive()) {
+                    String normalized = normalizeId(value.getAsString());
+                    if (!normalized.isBlank()) {
+                        values.add(normalized);
+                    }
+                }
+            }
+            return values;
+        }
+
+        if (json.get(field).isJsonPrimitive()) {
+            String normalized = normalizeId(json.get(field).getAsString());
+            if (!normalized.isBlank()) {
+                values.add(normalized);
+            }
+        }
+        return values;
     }
 
     private static String readString(JsonObject json, String primary, String legacy) {

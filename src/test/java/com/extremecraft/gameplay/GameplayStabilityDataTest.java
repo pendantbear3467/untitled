@@ -1,10 +1,5 @@
 package com.extremecraft.gameplay;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import org.junit.jupiter.api.Test;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -16,6 +11,11 @@ import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 class GameplayStabilityDataTest {
     private static final Path ROOT = Path.of("").toAbsolutePath();
@@ -74,6 +74,28 @@ class GameplayStabilityDataTest {
                     if (unlocks != null && !unlocks.isJsonNull()) {
                         assertTrue(unlocks.isJsonArray(), "Research unlocks must be an array in " + path.getFileName());
                     }
+                } catch (IOException exception) {
+                    throw new RuntimeException(exception);
+                }
+            });
+        }
+    }
+
+    @Test
+    void progressionUnlockRuleExtendedRequirementSchemaUsesArrays() throws IOException {
+        Path unlockDir = RESOURCES.resolve("data/extremecraft/progression/unlocks");
+        assertTrue(Files.exists(unlockDir), "Missing progression unlock data directory");
+
+        try (var files = Files.list(unlockDir)) {
+            files.filter(path -> path.toString().endsWith(".json")).forEach(path -> {
+                try {
+                    JsonObject root = readJson(path);
+                    assertPluralArrayIfPresent(root, path, "required_unlocks");
+                    assertPluralArrayIfPresent(root, path, "required_research");
+                    assertPluralArrayIfPresent(root, path, "required_boss");
+                    assertPluralArrayIfPresent(root, path, "required_event");
+                    assertPluralArrayIfPresent(root, path, "required_milestone");
+                    assertPluralArrayIfPresent(root, path, "required_guild");
                 } catch (IOException exception) {
                     throw new RuntimeException(exception);
                 }
@@ -189,6 +211,13 @@ class GameplayStabilityDataTest {
             }
         }
         return values;
+    }
+
+    private static void assertPluralArrayIfPresent(JsonObject root, Path path, String key) {
+        JsonElement value = root.get(key);
+        if (value != null && !value.isJsonNull()) {
+            assertTrue(value.isJsonArray(), key + " must be an array in " + path.getFileName());
+        }
     }
 
     private static String normalizeOreId(String materialId) {
