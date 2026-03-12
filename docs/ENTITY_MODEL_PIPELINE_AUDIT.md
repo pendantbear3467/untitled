@@ -3,6 +3,7 @@
 ## Runtime Rule
 
 Live in-game entity visuals are currently owned by Java classes:
+
 - `src/main/java/com/extremecraft/client/render/entity/*Renderer.java`
 - `src/main/java/com/extremecraft/client/model/entity/*Model.java`
 
@@ -39,7 +40,7 @@ The JSON files under `assets/extremecraft/entities` and `assets/extremecraft/mod
   - Renderer: `com.extremecraft.client.render.entity.RunicGolemRenderer`
   - Model: `com.extremecraft.client.model.entity.RunicGolemModel`
 - Current geometry:
-  - Java-baked `ECBipedEntityModel` placeholder with heavier deformation
+  - Java-baked `ECBipedEntityModel` derivative with a bulkier stone-guardian silhouette
 - Texture path:
   - `assets/extremecraft/textures/entity/runic_golem.png`
 - Metadata path:
@@ -60,7 +61,7 @@ The JSON files under `assets/extremecraft/entities` and `assets/extremecraft/mod
   - Renderer: `com.extremecraft.client.render.entity.ArcaneWraithRenderer`
   - Model: `com.extremecraft.client.model.entity.ArcaneWraithModel`
 - Current geometry:
-  - Java-baked `ECBipedEntityModel` placeholder, despite the intended floating-caster fantasy
+  - Java-baked `ECBipedEntityModel` derivative with a veiled floating-caster silhouette, still owned by the Java runtime path
 - Texture path:
   - `assets/extremecraft/textures/entity/arcane_wraith.png`
 - Metadata path:
@@ -70,11 +71,11 @@ The JSON files under `assets/extremecraft/entities` and `assets/extremecraft/mod
   - Code-driven idle/walk/attack in `ECBipedEntityModel`
 - Safe replacement workflow:
   1. Keep the entity id stable.
-  2. Replace the Java placeholder with a segmented floating runtime model path in one deliberate migration.
+  2. Replace the current Java runtime model with a segmented floating path in one deliberate migration if the silhouette needs to move beyond the existing baked model.
   3. Update metadata/handoff docs at the same time so the placeholder state is not hidden.
 
 ## Wider Audit Summary
 
-- `tech_construct`, `arcane_wraith`, `void_stalker`, `ancient_sentinel`, `energy_parasite`, `runic_golem`, `ancient_core_guardian`, `void_titan`, and `overcharged_machine_god` all currently render through Java placeholder cube-style models derived from `ECBipedEntityModel`.
+- `tech_construct`, `arcane_wraith`, `void_stalker`, `ancient_sentinel`, `energy_parasite`, `runic_golem`, `ancient_core_guardian`, `void_titan`, and `overcharged_machine_god` all currently render through Java-authored cube-style models derived from `ECBipedEntityModel`.
 - No runtime animation asset folder is currently consumed for entity animation.
 - Replacing art alone is safe. Replacing silhouette or animation runtime requires a deliberate Java runtime owner migration.

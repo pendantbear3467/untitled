@@ -42,7 +42,7 @@ All current ExtremeCraft placeholder mobs use the classic Forge `MobRenderer` pa
 ### Blaze-type example
 
 - Use `arcane_wraith` as the closest current replacement slot.
-- The current live model is still biped, so a true blaze-style replacement requires changing the model class and likely the renderer silhouette, not just swapping the PNG.
+- The current live model is still Java-authored on the biped base, so a true blaze-style replacement still requires changing the model class and likely the renderer silhouette, not just swapping the PNG.
 - If GeckoLib is introduced later, wire it through `ModEntityRenderers` instead of relying on `assets/extremecraft/entities/*.json`.
 
 ## Replacement workflow
