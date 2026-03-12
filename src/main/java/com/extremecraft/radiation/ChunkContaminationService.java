@@ -10,6 +10,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.saveddata.SavedData;
 
+import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,6 +38,10 @@ public final class ChunkContaminationService {
     }
 
     public static void releaseArea(ServerLevel level, net.minecraft.core.BlockPos center, double amount, int radius) {
+        if (level == null || center == null || amount <= 0.0D) {
+            return;
+        }
+
         int chunkRadius = Math.max(0, radius >> 4);
         ChunkPos origin = new ChunkPos(center);
         for (int x = -chunkRadius; x <= chunkRadius; x++) {
@@ -64,6 +69,8 @@ public final class ChunkContaminationService {
             data.setDirty();
             return false;
         });
+
+        ContaminationTerrainService.tickLevel(level, data.contamination);
     }
 
     public static ContaminationDefinition profile() {
@@ -93,7 +100,7 @@ public final class ChunkContaminationService {
         }
 
         @Override
-        public CompoundTag save(CompoundTag tag) {
+        public CompoundTag save(@Nonnull CompoundTag tag) {
             ListTag list = new ListTag();
             for (Map.Entry<Long, Double> entry : contamination.entrySet()) {
                 CompoundTag chunkTag = new CompoundTag();

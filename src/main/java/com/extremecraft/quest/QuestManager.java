@@ -1,5 +1,6 @@
 package com.extremecraft.quest;
 
+import com.extremecraft.progression.stage.ProgressionStage;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -57,7 +58,11 @@ public class QuestManager extends SimpleJsonResourceReloadListener {
                 int playerSkill = Math.max(0, GsonHelper.getAsInt(rewards, "player_skill_points", 0));
                 int classSkill = Math.max(0, GsonHelper.getAsInt(rewards, "class_skill_points", 0));
                 String unlockClass = normalizeId(GsonHelper.getAsString(rewards, "unlock_class", ""));
-                String unlockStage = GsonHelper.getAsString(rewards, "unlock_stage", "").trim();
+                String unlockStage = GsonHelper.getAsString(rewards, "unlock_stage", "").trim().toUpperCase(Locale.ROOT);
+                if (!unlockStage.isBlank() && ProgressionStage.byName(unlockStage).isEmpty()) {
+                    LOGGER.warn("[Quest] Unknown unlock stage '{}' for {} from {}; clearing reward stage", unlockStage, id, entry.getKey());
+                    unlockStage = "";
+                }
 
                 QuestDefinition previous = loaded.put(id,
                         new QuestDefinition(id, title, type, target, xp, playerSkill, classSkill, unlockClass, unlockStage));
