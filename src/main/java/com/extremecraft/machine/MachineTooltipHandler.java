@@ -7,11 +7,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
+import net.minecraftforge.registries.ForgeRegistries;
 
 public final class MachineTooltipHandler {
     public static void onTooltip(ItemTooltipEvent event) {
         ItemStack stack = event.getItemStack();
-        ResourceLocation id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
         if (id == null || !"extremecraft".equals(id.getNamespace())) {
             return;
         }
@@ -28,17 +29,17 @@ public final class MachineTooltipHandler {
             case "crusher" -> {
                 tooltip.add(Component.literal("Uses: 16 FE/t").withStyle(ChatFormatting.GRAY));
                 tooltip.add(Component.literal("Function: Doubles ores into raw materials").withStyle(ChatFormatting.DARK_GRAY));
-                tooltip.add(Component.literal("Hint: Crusher -> Advanced Pulverizer -> Smelter").withStyle(ChatFormatting.YELLOW));
+                tooltip.add(Component.literal("Hint: Crusher -> Smelter is the canonical early metal chain").withStyle(ChatFormatting.YELLOW));
             }
             case "pulverizer" -> {
                 tooltip.add(Component.literal("Uses: 24 FE/t").withStyle(ChatFormatting.GRAY));
                 tooltip.add(Component.literal("Function: Legacy dust processor kept for compatibility").withStyle(ChatFormatting.DARK_GRAY));
-                tooltip.add(Component.literal("Hint: New progression routes through the Advanced Pulverizer").withStyle(ChatFormatting.YELLOW));
+                tooltip.add(Component.literal("Hint: Crusher is the canonical early unlock; this block stays for legacy setups").withStyle(ChatFormatting.YELLOW));
             }
             case "advanced_pulverizer" -> {
                 tooltip.add(Component.literal("Uses: 24 FE/t").withStyle(ChatFormatting.GRAY));
                 tooltip.add(Component.literal("Function: Converts processed materials into refined dusts").withStyle(ChatFormatting.DARK_GRAY));
-                tooltip.add(Component.literal("Hint: Pair with the Crusher for the modern ore chain").withStyle(ChatFormatting.YELLOW));
+                tooltip.add(Component.literal("Hint: Later-tier refinement machine that builds on the Crusher").withStyle(ChatFormatting.YELLOW));
             }
             case "smelter" -> {
                 tooltip.add(Component.literal("Uses: 18 FE/t").withStyle(ChatFormatting.GRAY));
