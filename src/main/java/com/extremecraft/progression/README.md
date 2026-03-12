@@ -21,6 +21,7 @@ Consumed by:
 
 Legacy or adapter paths:
 - `level/LevelService` and `PlayerStatsService` are compatibility mirrors kept synchronized by `ProgressionMutationService`.
+- Canonical player skill points live in `PlayerProgressData`; `PlayerStatsCapability.skillPoints` is only a synchronized compatibility mirror for skill-tree/runtime/UI consumers that still read stats capability state.
 - `game/ProgressionSystem` is legacy and not the live owner.
 
 Safe future additions:

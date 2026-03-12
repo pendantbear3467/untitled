@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.player.Player;
 
 public final class RadiationService {
     private static final String TAG = "ec_radiation";
@@ -61,6 +62,25 @@ public final class RadiationService {
 
     public static void releaseMeltdown(ServerLevel level, net.minecraft.core.BlockPos center, double amount, int radius) {
         releaseContamination(level, center, amount, radius);
+    }
+
+    public static double ambientExposure(Player player) {
+        return playerState(player).getDouble("ambient");
+    }
+
+    public static double accumulatedDose(Player player) {
+        return playerState(player).getDouble("dose");
+    }
+
+    public static double contaminationPressure(Player player) {
+        return playerState(player).getDouble("contamination");
+    }
+
+    public static CompoundTag playerState(Player player) {
+        if (player == null) {
+            return new CompoundTag();
+        }
+        return player.getPersistentData().getCompound(TAG).copy();
     }
 
     private static void applyDebuffs(ServerPlayer player, double dose, double contamination) {

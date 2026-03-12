@@ -5,6 +5,7 @@ import com.extremecraft.future.registry.TechBlockEntities;
 import com.extremecraft.machine.menu.TechMachineMenu;
 import com.extremecraft.machine.sync.MachineStateSyncProvider;
 import com.extremecraft.machines.base.AbstractMachineBlockEntity;
+import com.extremecraft.reactor.ReactorControlService;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -221,6 +222,10 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
         tag.putInt("fuel_burn_time", fuelBurnTime);
         tag.putInt("fuel_burn_time_total", fuelBurnTimeTotal);
         tag.putInt("energy", energyStorage.getEnergyStored());
+        tag.putInt("max_energy", energyStorage.getMaxEnergyStored());
+        if (level != null && !level.isClientSide && ReactorControlService.isReactorController(getMachineId())) {
+            tag.put("reactor", ReactorControlService.snapshot(level, worldPosition));
+        }
         return tag;
     }
 

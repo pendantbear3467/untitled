@@ -20,7 +20,30 @@ public final class ReactorControlService {
     }
 
     public static boolean isReactorController(String machineId) {
-        return "fission_reactor".equals(machineId) || "fusion_reactor".equals(machineId);
+        return ReactorIdentity.isFirstReleaseReactor(machineId);
+    }
+
+    public static CompoundTag snapshot(Level level, BlockPos pos) {
+        CompoundTag tag = new CompoundTag();
+        if (!(level instanceof ServerLevel serverLevel) || pos == null) {
+            return tag;
+        }
+
+        ReactorState state = data(serverLevel).states.get(pos.asLong());
+        if (state == null) {
+            return tag;
+        }
+
+        tag.putDouble("heat", state.heat());
+        tag.putDouble("steam", state.steam());
+        tag.putDouble("waste", state.waste());
+        tag.putDouble("reactivity", state.reactivity());
+        tag.putDouble("radiation", state.radiation());
+        tag.putInt("fuel_ticks_remaining", state.fuelTicksRemaining());
+        tag.putInt("control_signal", state.controlSignal());
+        tag.putBoolean("scrammed", state.scrammed());
+        tag.putBoolean("melted_down", state.meltedDown());
+        return tag;
     }
 
     public static boolean tickController(Level level, BlockPos pos, com.extremecraft.machine.core.TechMachineBlockEntity machine) {

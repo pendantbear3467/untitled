@@ -41,6 +41,11 @@ public final class MachineTooltipHandler {
                 tooltip.add(Component.literal("Function: Converts processed materials into refined dusts").withStyle(ChatFormatting.DARK_GRAY));
                 tooltip.add(Component.literal("Hint: Later-tier refinement machine that builds on the Crusher").withStyle(ChatFormatting.YELLOW));
             }
+            case "fusion_reactor" -> {
+                tooltip.add(Component.literal("Generates: high-output FE from the first-release reactor line").withStyle(ChatFormatting.GRAY));
+                tooltip.add(Component.literal("Risk: heat, radiation, and contamination if safety fails").withStyle(ChatFormatting.DARK_GRAY));
+                tooltip.add(Component.literal("Hint: Treat this as the fission-age reactor and keep SCRAM margin ready").withStyle(ChatFormatting.YELLOW));
+            }
             case "smelter" -> {
                 tooltip.add(Component.literal("Uses: 18 FE/t").withStyle(ChatFormatting.GRAY));
                 tooltip.add(Component.literal("Function: Smelts dusts into ingots").withStyle(ChatFormatting.DARK_GRAY));

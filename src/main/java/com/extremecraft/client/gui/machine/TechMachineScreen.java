@@ -1,9 +1,12 @@
 package com.extremecraft.client.gui.machine;
 
 import com.extremecraft.machine.menu.TechMachineMenu;
+import com.extremecraft.network.sync.RuntimeSyncClientState;
+import com.extremecraft.reactor.ReactorIdentity;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
@@ -53,7 +56,7 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
         graphics.fill(panelX + 1, panelY + 1, panelX + panelW - 1, panelY + panelH - 1, 0xAA1C2533);
 
         graphics.drawString(font, Component.literal("Machine"), panelX + 6, panelY + 6, 0xE6F0FF, false);
-        graphics.drawString(font, Component.literal(menu.machineId()), panelX + 6, panelY + 17, 0xC9D6E8, false);
+        graphics.drawString(font, machineTitle(), panelX + 6, panelY + 17, 0xC9D6E8, false);
         graphics.drawString(font, Component.literal(machineStatusLine()), panelX + 6, panelY + 30, statusColor(), false);
 
         int rawEnergy = menu.rawEnergy();
@@ -65,21 +68,36 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
         graphics.drawString(font, Component.literal("Progress: " + rawProgress + " / " + rawProgressMax), panelX + 6, panelY + 55, 0xB8D8F0, false);
 
         if (isReactorMachine()) {
-            int temp = 280 + (int) ((rawEnergy / (float) rawEnergyMax) * 920);
-            int coolant = Math.max(0, 100 - Math.round((rawEnergy / (float) rawEnergyMax) * 60));
-            int steam = Math.round((rawProgress / (float) rawProgressMax) * 100);
-            int waste = Math.min(100, Math.round((rawProgress / (float) rawProgressMax) * 75));
-            int damage = Math.max(0, (temp - 900) / 20);
+            CompoundTag reactor = reactorState();
 
             graphics.drawString(font, Component.literal("Reactor Panel"), panelX + 6, panelY + 71, 0xFFD7AB8E, false);
-            graphics.drawString(font, Component.literal("Temp: " + temp + " K"), panelX + 6, panelY + 82, temp > 1000 ? 0xFFDF9A7A : 0xD6E7F7, false);
-            graphics.drawString(font, Component.literal("Coolant: " + coolant + "%"), panelX + 6, panelY + 93, coolant < 30 ? 0xFFE5A081 : 0xD6E7F7, false);
-            graphics.drawString(font, Component.literal("Steam Out: " + steam + "%"), panelX + 6, panelY + 104, 0xD6E7F7, false);
-            graphics.drawString(font, Component.literal("Waste: " + waste + "%"), panelX + 6, panelY + 115, waste > 70 ? 0xFFE5A081 : 0xD6E7F7, false);
-            graphics.drawString(font, Component.literal("Damage: " + damage + "%"), panelX + 6, panelY + 126, damage > 25 ? 0xFFE5A081 : 0xD6E7F7, false);
+            if (reactor.isEmpty()) {
+                graphics.drawString(font, Component.literal("Telemetry: awaiting sync"), panelX + 6, panelY + 82, 0xD6E7F7, false);
+                graphics.drawString(font, Component.literal("State is server-owned"), panelX + 6, panelY + 93, 0xD6E7F7, false);
+                graphics.drawString(font, Component.literal("Heat/rads are not estimated"), panelX + 6, panelY + 104, 0xFFDFB999, false);
+            } else {
+                double heat = reactor.getDouble("heat");
+                double steam = reactor.getDouble("steam");
+                double waste = reactor.getDouble("waste");
+                double reactivity = reactor.getDouble("reactivity");
+                double radiation = reactor.getDouble("radiation");
+                boolean scrammed = reactor.getBoolean("scrammed");
+                boolean meltedDown = reactor.getBoolean("melted_down");
 
-            if (scramRequested) {
-                graphics.drawString(font, Component.literal("SCRAM requested (client)"), panelX + 6, panelY + 148, 0xFFDFB999, false);
+                graphics.drawString(font, Component.literal("State: " + reactorStateLabel(reactor)), panelX + 6, panelY + 82, reactorStateColor(reactor), false);
+                graphics.drawString(font, Component.literal(String.format("Heat: %.1f", heat)), panelX + 6, panelY + 93, heat >= 800.0D ? 0xFFDF9A7A : 0xD6E7F7, false);
+                graphics.drawString(font, Component.literal(String.format("Reactivity: %.1f", reactivity)), panelX + 6, panelY + 104, 0xD6E7F7, false);
+                graphics.drawString(font, Component.literal(String.format("Steam: %.1f", steam)), panelX + 6, panelY + 115, 0xD6E7F7, false);
+                graphics.drawString(font, Component.literal(String.format("Waste: %.2f", waste)), panelX + 6, panelY + 126, waste >= 5.0D ? 0xFFE5A081 : 0xD6E7F7, false);
+                graphics.drawString(font, Component.literal(String.format("Radiation: %.1f", radiation)), panelX + 6, panelY + 137, radiation >= 5.0D ? 0xFFE5A081 : 0xD6E7F7, false);
+
+                if (scramRequested) {
+                    graphics.drawString(font, Component.literal("SCRAM requested (client)"), panelX + 6, panelY + 148, 0xFFDFB999, false);
+                } else if (meltedDown) {
+                    graphics.drawString(font, Component.literal("Containment failure recorded"), panelX + 6, panelY + 148, 0xFFDF9A7A, false);
+                } else if (scrammed) {
+                    graphics.drawString(font, Component.literal("Control rods fully inserted"), panelX + 6, panelY + 148, 0xFFDCC7A1, false);
+                }
             }
         } else {
             graphics.drawString(font, Component.literal("What powers it: fuel/energy"), panelX + 6, panelY + 74, 0xD6E7F7, false);
@@ -98,7 +116,7 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         super.renderLabels(graphics, mouseX, mouseY);
-        graphics.drawString(font, Component.literal(menu.machineId()), 8, 6, 0x404040, false);
+        graphics.drawString(font, machineTitle(), 8, 6, 0x404040, false);
 
         if (isHovering(8, 70, 5, 52, mouseX, mouseY)) {
             graphics.renderTooltip(font, Component.literal("Energy buffer"), mouseX - leftPos, mouseY - topPos);
@@ -109,16 +127,31 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
     }
 
     private boolean isReactorMachine() {
-        return menu.machineId().contains("reactor");
+        return ReactorIdentity.isFirstReleaseReactor(menu.machineId());
     }
 
     private String machineStatusLine() {
         ItemStack input = menu.getSlot(0).getItem();
         ItemStack fuel = menu.getSlot(1).getItem();
         ItemStack output = menu.getSlot(2).getItem();
+        CompoundTag reactor = reactorState();
 
-        if (isReactorMachine() && menu.rawEnergy() > (int) (menu.rawMaxEnergy() * 0.90F)) {
-            return "Reactor warning";
+        if (isReactorMachine()) {
+            if (reactor.isEmpty()) {
+                return "Telemetry pending";
+            }
+            if (reactor.getBoolean("melted_down")) {
+                return "Meltdown recorded";
+            }
+            if (reactor.getBoolean("scrammed")) {
+                return "SCRAMMED";
+            }
+            if (reactor.getDouble("heat") >= 800.0D || reactor.getDouble("radiation") >= 5.0D) {
+                return "Reactor warning";
+            }
+            if (reactor.getDouble("reactivity") > 0.0D || reactor.getInt("fuel_ticks_remaining") > 0) {
+                return "Stable";
+            }
         }
         if (menu.rawProgress() > 0) {
             return "Processing";
@@ -143,12 +176,54 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
 
     private int statusColor() {
         String status = machineStatusLine();
-        if ("Processing".equals(status)) {
+        if ("Processing".equals(status) || "Stable".equals(status)) {
             return 0xA8E8B7;
         }
-        if (status.contains("warning") || status.contains("Missing") || status.contains("Insufficient") || status.contains("No valid")) {
+        if ("SCRAMMED".equals(status)) {
+            return 0xFFE2B08A;
+        }
+        if (status.contains("Meltdown") || status.contains("warning") || status.contains("Missing") || status.contains("Insufficient") || status.contains("No valid")) {
             return 0xFFCA9B;
         }
         return 0xC9D6E8;
+    }
+
+    private Component machineTitle() {
+        return Component.translatable("block.extremecraft." + menu.machineId());
+    }
+
+    private CompoundTag machineState() {
+        return RuntimeSyncClientState.machineStates().getCompound(Long.toString(menu.blockPos().asLong()));
+    }
+
+    private CompoundTag reactorState() {
+        return machineState().getCompound("reactor");
+    }
+
+    private String reactorStateLabel(CompoundTag reactor) {
+        if (reactor.getBoolean("melted_down")) {
+            return "MELTDOWN";
+        }
+        if (reactor.getBoolean("scrammed")) {
+            return "SCRAMMED";
+        }
+        if (reactor.getDouble("heat") >= 800.0D || reactor.getDouble("radiation") >= 5.0D) {
+            return "Warning";
+        }
+        if (reactor.getDouble("reactivity") > 0.0D || reactor.getInt("fuel_ticks_remaining") > 0) {
+            return "Stable";
+        }
+        return "Idle";
+    }
+
+    private int reactorStateColor(CompoundTag reactor) {
+        String state = reactorStateLabel(reactor);
+        if ("Stable".equals(state) || "Idle".equals(state)) {
+            return 0xD6E7F7;
+        }
+        if ("SCRAMMED".equals(state)) {
+            return 0xFFDCC7A1;
+        }
+        return 0xFFDF9A7A;
     }
 }

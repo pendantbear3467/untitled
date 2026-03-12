@@ -2,12 +2,12 @@
 
 ## Core Loop
 1. Mine resource tiers and convert ore through machine chains.
-2. Unlock ability and research breakpoints to access stronger systems.
+2. Unlock stage breakpoints, then layer class, skill, and spell progression on top of them.
 3. Explore structures for rare components and boss encounters.
 4. Defeat bosses to obtain legendary components that open late-game craft paths.
 
 ## Early Game
-- Mine copper/tin/silver and craft crusher + pulverizer + smelter.
+- Mine copper/tin/silver and craft crusher + smelter.
 - Unlock base combat/utility abilities via spell artifacts.
 - Encounter mobs: Tech Construct, Arcane Wraith.
 - Explore small ruins like Ancient Research Lab for starter caches.
@@ -28,7 +28,7 @@
 - Complete challenge advancements for legendary reward caches.
 
 ## Progression Balancing
-- Early enemies focus on survivability checks and machine onboarding.
+- Early enemies focus on survivability checks and crusher-first machine onboarding.
 - Mid phase introduces burst damage, resource pressure, and exploration risk.
 - Late phase shifts to boss mechanics (shield phases, summoned waves, heavy rewards).
 - Reward rarity scales by structure difficulty and advancement tier.

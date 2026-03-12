@@ -22,6 +22,8 @@ Consumed by:
 
 Adapter notes:
 - `classsystem/` still exposes the bridge used by legacy consumers.
+- Legacy quest/class aliases are normalized through `ClassIdResolver` so first-release rewards resolve against canonical class data IDs.
+- Generic abilities and spells remain the primary extensible action systems; `ability/ClassAbilityService` is the narrow class-specific execution path.
 
 Safe future additions:
 1. Add new class abilities in the datapack folder and implement any new runtime effect in `ability/ClassAbilityService`.

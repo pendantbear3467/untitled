@@ -23,6 +23,7 @@ Metadata-only inputs:
 
 Legacy or adapter notes:
 - `machine/` and `machines/` contain older paths kept for compatibility and the single-block pulverizer chain.
+- The first-release reactor line still uses the compatibility runtime id `fusion_reactor`; treat it as the canonical first-release fission reactor in player-facing content and docs.
 
 Safe future additions:
 1. Add the machine definition in `MachineCatalog`.

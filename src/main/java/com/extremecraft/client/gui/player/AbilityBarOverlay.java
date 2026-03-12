@@ -4,6 +4,9 @@ import com.extremecraft.client.gui.debug.DeveloperOverlayState;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.magic.mana.ManaApi;
+import com.extremecraft.radiation.ChunkContaminationService;
+import com.extremecraft.radiation.RadiationService;
+import com.extremecraft.reactor.ReactorIdentity;
 import com.extremecraft.network.sync.RuntimeSyncClientState;
 import com.extremecraft.platform.data.registry.MachineDataRegistry;
 import com.extremecraft.platform.data.registry.RecipeDataRegistry;
@@ -99,25 +102,30 @@ public class AbilityBarOverlay {
 
     private void renderRadiationHud(GuiGraphics gui, LocalPlayer player, int x, int y) {
         int width = HUD_PANEL_WIDTH;
-        double radiation = player.getPersistentData().getDouble("ec_radiation");
-        double contamination = player.getPersistentData().getDouble("ec_contamination");
-        boolean warning = radiation >= 25.0D || contamination >= 0.40D;
+        double ambient = RadiationService.ambientExposure(player);
+        double dose = RadiationService.accumulatedDose(player);
+        double contamination = RadiationService.contaminationPressure(player);
+        double threshold = Math.max(1.0D, ChunkContaminationService.profile().debuffThreshold());
+        boolean warning = dose >= threshold || contamination >= threshold || ambient >= 2.0D;
 
         gui.fill(x, y, x + width, y + SLOT_SIZE + 18, warning ? 0xB03A120E : 0xB0111A12);
         gui.drawString(Minecraft.getInstance().font, Component.literal("Radiation"), x + 4, y + 3, warning ? 0xFFD4A27A : 0xBDE7C5, false);
-        gui.drawString(Minecraft.getInstance().font, Component.literal(String.format("%.1f uSv", radiation)), x + 4, y + 13, 0xD9E3EF, false);
+        gui.drawString(Minecraft.getInstance().font, Component.literal(String.format("Dose %.1f  Env %.1f", dose, ambient)), x + 4, y + 13, 0xD9E3EF, false);
 
         int barRight = x + width - 4;
         int barLeft = x + 62;
-        int contaminationFill = Math.min(barRight - barLeft, (int) Math.round((Math.min(1.0D, contamination)) * (barRight - barLeft)));
+        double contaminationRatio = Math.max(0.0D, Math.min(1.0D, contamination / threshold));
+        int contaminationFill = Math.min(barRight - barLeft, (int) Math.round(contaminationRatio * (barRight - barLeft)));
         gui.fill(barLeft, y + 15, barRight, y + 19, 0x88402A2A);
         if (contaminationFill > 0) {
             gui.fillGradient(barLeft, y + 15, barLeft + contaminationFill, y + 19, 0xFFB6744E, 0xFFE7B471);
         }
-        gui.drawString(Minecraft.getInstance().font, Component.literal("Contam"), x + 4, y + 14, 0xC8D8E8, false);
+        gui.drawString(Minecraft.getInstance().font, Component.literal(String.format("Contam %.1f", contamination)), x + 4, y + 14, 0xC8D8E8, false);
 
-        if (warning) {
+        if (dose >= threshold || contamination >= threshold) {
             gui.drawString(Minecraft.getInstance().font, Component.literal("WARNING: decon advised"), x + 4, y + SLOT_SIZE + 7, 0xFFE2B08A, false);
+        } else if (ambient >= 2.0D) {
+            gui.drawString(Minecraft.getInstance().font, Component.literal("Exposure rising"), x + 4, y + SLOT_SIZE + 7, 0xFFE2B08A, false);
         } else {
             gui.drawString(Minecraft.getInstance().font, Component.literal("Status: stable"), x + 4, y + SLOT_SIZE + 7, 0xA7C8AD, false);
         }
@@ -127,11 +135,17 @@ public class AbilityBarOverlay {
         for (String key : states.getAllKeys()) {
             CompoundTag machine = states.getCompound(key);
             String machineId = machine.getString("machine");
-            if (!machineId.contains("reactor")) {
+            if (!ReactorIdentity.isFirstReleaseReactor(machineId)) {
                 continue;
             }
-            int energy = machine.getInt("energy");
-            if (energy > 350_000) {
+            CompoundTag reactor = machine.getCompound("reactor");
+            if (reactor.isEmpty()) {
+                continue;
+            }
+            if (reactor.getBoolean("melted_down")
+                    || reactor.getBoolean("scrammed")
+                    || reactor.getDouble("heat") >= 800.0D
+                    || reactor.getDouble("radiation") >= 5.0D) {
                 reactorWarning = true;
                 break;
             }
@@ -299,5 +313,4 @@ public class AbilityBarOverlay {
         );
     }
 }
-
 

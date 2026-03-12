@@ -25,3 +25,4 @@ Common mistakes:
 - Adding another fallout/corruption subsystem outside this folder.
 - Adding a second periodic terrain tick outside `ChunkContaminationService -> ContaminationTerrainService`.
 - Editing terrain directly without config gates and bounded budgets.
+- Reading flat `ec_radiation` or `ec_contamination` tags in UI code; player hazard HUDs should read the nested `ec_radiation` state (`ambient`, `dose`, `contamination`) owned here.

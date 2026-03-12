@@ -15,16 +15,25 @@ import net.minecraftforge.items.SlotItemHandler;
 public class TechMachineMenu extends AbstractContainerMenu {
     private final TechMachineBlockEntity blockEntity;
     private final ContainerData data;
+    private final BlockPos blockPos;
 
     public TechMachineMenu(int containerId, Inventory inventory, BlockPos pos) {
-        this(containerId, inventory, (TechMachineBlockEntity) inventory.player.level().getBlockEntity(pos), new SimpleContainerData(4));
+        super(TechMenuTypes.TECH_MACHINE.get(), containerId);
+        this.blockEntity = (TechMachineBlockEntity) inventory.player.level().getBlockEntity(pos);
+        this.data = new SimpleContainerData(4);
+        this.blockPos = pos.immutable();
+        initSlots(inventory);
     }
 
     public TechMachineMenu(int containerId, Inventory inventory, TechMachineBlockEntity blockEntity, ContainerData data) {
         super(TechMenuTypes.TECH_MACHINE.get(), containerId);
         this.blockEntity = blockEntity;
         this.data = data;
+        this.blockPos = blockEntity.getBlockPos().immutable();
+        initSlots(inventory);
+    }
 
+    private void initSlots(Inventory inventory) {
         addSlot(new SlotItemHandler(blockEntity.getItemHandler(), TechMachineBlockEntity.INPUT_SLOT, 44, 35));
         addSlot(new SlotItemHandler(blockEntity.getItemHandler(), TechMachineBlockEntity.FUEL_SLOT, 8, 53));
         addSlot(new SlotItemHandler(blockEntity.getItemHandler(), TechMachineBlockEntity.OUTPUT_SLOT, 116, 35) {
@@ -70,6 +79,10 @@ public class TechMachineMenu extends AbstractContainerMenu {
 
     public String machineId() {
         return blockEntity.getMachineId();
+    }
+
+    public BlockPos blockPos() {
+        return blockPos;
     }
 
     @Override
