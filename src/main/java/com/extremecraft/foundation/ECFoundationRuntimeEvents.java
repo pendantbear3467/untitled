@@ -1,6 +1,7 @@
 package com.extremecraft.foundation;
 
 import com.extremecraft.endgame.EndgameCoreStructureService;
+import com.extremecraft.radiation.ContaminationTerrainService;
 import com.extremecraft.radiation.RadiationService;
 import com.extremecraft.reactor.ReactorMultiblockService;
 import net.minecraft.server.level.ServerLevel;
@@ -32,6 +33,10 @@ public final class ECFoundationRuntimeEvents {
 
     @SubscribeEvent
     public void onBlockBreak(BlockEvent.BreakEvent event) {
+        if (event.getPlayer() instanceof ServerPlayer player && event.getLevel() instanceof ServerLevel level) {
+            ContaminationTerrainService.handleContaminatedBlockBreak(level, event.getPos(), event.getState(), player);
+        }
+
         if (event.getLevel() instanceof Level level) {
             ReactorMultiblockService.invalidateAround(level, event.getPos());
             EndgameCoreStructureService.invalidateAround(level, event.getPos());

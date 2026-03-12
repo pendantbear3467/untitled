@@ -52,6 +52,7 @@ public final class TechItems {
         });
 
         TechBlocks.MACHINE_BLOCKS.forEach((id, block) -> ITEMS.register(id, () -> new BlockItem(block.get(), new Item.Properties())));
+        TechBlocks.CONTAMINATED_TERRAIN_BLOCKS.forEach((id, block) -> ITEMS.register(id, () -> new BlockItem(block.get(), new Item.Properties())));
         TechBlocks.CABLE_BLOCKS.forEach((tier, block) -> ITEMS.register(tier.id(), () -> new BlockItem(block.get(), new Item.Properties())));
 
         registerArmorSet("copper", ECArmorMaterial.COPPER);

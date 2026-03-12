@@ -29,4 +29,23 @@ public final class RadiationProtectionService {
         }
         return Math.min(0.85D, protection);
     }
+
+    public static double cleanupEfficiency(Player player) {
+        double protection = protectionFactor(player);
+        if (protection <= 0.0D) {
+            return 0.0D;
+        }
+
+        double efficiency = protection;
+        for (ItemStack stack : player.getArmorSlots()) {
+            if (stack.isEmpty()) {
+                continue;
+            }
+            String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+            if (id.contains("lead")) {
+                efficiency += 0.08D;
+            }
+        }
+        return Math.min(1.0D, efficiency);
+    }
 }
