@@ -20,6 +20,7 @@ public class ProgressionEvents {
         if (event.getEntity() instanceof ServerPlayer player) {
             ProgressApi.get(player).ifPresent(data -> data.markAttributesDirty());
             ProgressionService.flushDirty(player);
+            PlayerStatsService.syncProgressionMirror(player, true);
             ClassAbilityService.syncState(player);
         }
     }
