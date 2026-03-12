@@ -8,6 +8,7 @@ import com.extremecraft.modules.item.IModularItem;
 import com.extremecraft.modules.registry.ArmorModuleRegistry;
 import com.extremecraft.modules.registry.ModuleAbilityRegistry;
 import com.extremecraft.modules.registry.ToolModuleRegistry;
+import com.extremecraft.magic.mana.ManaService;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.SyncModuleAbilityStateS2CPacket;
 import com.extremecraft.progression.PlayerStatsService;
@@ -67,7 +68,7 @@ public final class ModuleRuntimeService {
                     continue;
                 }
 
-                if (!PlayerStatsApi.get(player).map(stats -> stats.tryConsumeMana(ability.manaCost())).orElse(false)) {
+                if (!ManaService.tryConsume(player, ability.manaCost())) {
                     continue;
                 }
 

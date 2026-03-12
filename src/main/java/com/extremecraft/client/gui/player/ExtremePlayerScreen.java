@@ -5,6 +5,7 @@ import com.extremecraft.config.DwConfig;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.classsystem.ClassRegistry;
 import com.extremecraft.classsystem.PlayerClass;
+import com.extremecraft.magic.mana.ManaApi;
 import com.extremecraft.magic.Spell;
 import com.extremecraft.magic.SpellRegistry;
 import com.extremecraft.modules.runtime.ModuleCatalogClientState;
@@ -203,6 +204,7 @@ public class ExtremePlayerScreen extends Screen {
 
     private void renderStatsTab(GuiGraphics graphics) {
         Optional<PlayerStatsCapability> statsOpt = getStats();
+        Optional<PlayerProgressData> progressOpt = ProgressApi.get(player);
         int x = leftPos + 16;
         int y = topPos + 62;
 
@@ -212,11 +214,16 @@ public class ExtremePlayerScreen extends Screen {
         }
 
         PlayerStatsCapability stats = statsOpt.get();
-        graphics.drawString(font, Component.literal("Level: " + stats.level()), x, y, 0xEAEFF7, false);
-        graphics.drawString(font, Component.literal("Stat Points: " + stats.statPoints()), x + 80, y, 0xF1C98F, false);
-        graphics.drawString(font, Component.literal("Skill Points: " + stats.skillPoints()), x + 182, y, 0xCFB5FF, false);
+        int playerLevel = progressOpt.map(PlayerProgressData::level).orElse(stats.level());
+        int playerXp = progressOpt.map(PlayerProgressData::xp).orElse(stats.experience());
+        int xpToNext = progressOpt.map(data -> PlayerProgressData.xpToNextLevel(data.level())).orElse(stats.experienceToNextLevel());
+        int playerSkillPoints = progressOpt.map(PlayerProgressData::playerSkillPoints).orElse(stats.skillPoints());
 
-        drawXpBar(graphics, x, y + 14, 220, stats.experience(), stats.experienceToNextLevel(), 0xFF4B8AE2, 0xFF6AAEF2);
+        graphics.drawString(font, Component.literal("Level: " + playerLevel), x, y, 0xEAEFF7, false);
+        graphics.drawString(font, Component.literal("Stat Points: " + stats.statPoints()), x + 80, y, 0xF1C98F, false);
+        graphics.drawString(font, Component.literal("Player Skill Points: " + playerSkillPoints), x + 152, y, 0xCFB5FF, false);
+
+        drawXpBar(graphics, x, y + 14, 220, playerXp, xpToNext, 0xFF4B8AE2, 0xFF6AAEF2);
 
         int rowStartY = y + 40;
         drawPrimaryRow(graphics, "Vitality", stats.vitality(), x, rowStartY);
@@ -228,8 +235,9 @@ public class ExtremePlayerScreen extends Screen {
 
         int rightPanelX = leftPos + guiWidth - 108;
         int rightPanelY = y + 40;
+        int manaCap = ManaApi.get(player).map(mana -> (int) Math.ceil(mana.maxMana())).orElse(stats.maxMana());
         graphics.drawString(font, Component.literal("HP " + stats.maxHealth()), rightPanelX, rightPanelY, 0xE6EAF2, false);
-        graphics.drawString(font, Component.literal("Mana " + stats.maxMana()), rightPanelX, rightPanelY + 14, 0xE6EAF2, false);
+        graphics.drawString(font, Component.literal("Mana Cap " + manaCap), rightPanelX, rightPanelY + 14, 0xE6EAF2, false);
         graphics.drawString(font, Component.literal("Crit " + (int) (stats.critChance() * 100) + "%"), rightPanelX, rightPanelY + 28, 0xE6EAF2, false);
         graphics.drawString(font, Component.literal("Move " + String.format("%.2f", stats.movementSpeed())), rightPanelX, rightPanelY + 42, 0xE6EAF2, false);
         graphics.drawString(font, Component.literal("Magic " + stats.magicPower()), rightPanelX, rightPanelY + 56, 0xE6EAF2, false);
@@ -298,10 +306,13 @@ public class ExtremePlayerScreen extends Screen {
         }
 
         PlayerStatsCapability stats = statsOpt.get();
-        graphics.drawString(font, Component.literal("Mana: " + stats.mana() + " / " + stats.maxMana()), x, y, 0xCFAEFF, false);
+        int currentMana = ManaApi.get(player).map(mana -> (int) Math.floor(mana.currentMana())).orElse(0);
+        int maxMana = Math.max(1, ManaApi.get(player).map(mana -> (int) Math.ceil(mana.maxMana())).orElse(stats.maxMana()));
+
+        graphics.drawString(font, Component.literal("Mana: " + currentMana + " / " + maxMana), x, y, 0xCFAEFF, false);
         graphics.drawString(font, Component.literal("Aether: backend telemetry pending"), x + 128, y, 0xB7E8FF, false);
         graphics.drawString(font, Component.literal("Magic Power: " + stats.magicPower()), x, y + 14, 0xCFAEFF, false);
-        graphics.drawString(font, Component.literal("Readiness: " + readinessLabel(stats)), x + 128, y + 14, 0xF0D4A8, false);
+        graphics.drawString(font, Component.literal("Readiness: " + readinessLabel(currentMana, maxMana)), x + 128, y + 14, 0xF0D4A8, false);
 
         int time = player.tickCount;
         for (int i = 0; i < 8; i++) {
@@ -336,7 +347,7 @@ public class ExtremePlayerScreen extends Screen {
         graphics.drawString(font, Component.literal("Spellbook"), listX, listY - 10, 0xE8C78D, false);
         graphics.drawString(font, Component.literal("School: " + schoolLabel(selected.element())), listX, listY + 4, schoolColor(selected.element()), false);
         graphics.drawString(font, Component.literal("Type: " + selected.type().name().toLowerCase(Locale.ROOT)), listX, listY + 16, 0xC8CFDB, false);
-        graphics.drawString(font, Component.literal("Cost: " + selected.manaCost() + " mana"), listX, listY + 28, selected.manaCost() <= stats.mana() ? 0x8FF3B2 : 0xFF9B9B, false);
+        graphics.drawString(font, Component.literal("Cost: " + selected.manaCost() + " mana"), listX, listY + 28, selected.manaCost() <= currentMana ? 0x8FF3B2 : 0xFF9B9B, false);
         graphics.drawString(font, Component.literal("Cooldown: " + (selected.cooldownTicks() / 20.0F) + "s"), listX + 104, listY + 28, 0xC8CFDB, false);
         graphics.drawString(font, Component.literal("Range: " + String.format("%.1f", selected.range())), listX, listY + 40, 0xC8CFDB, false);
         graphics.drawString(font, Component.literal("Radius: " + String.format("%.1f", selected.radius())), listX + 104, listY + 40, 0xC8CFDB, false);
@@ -486,11 +497,11 @@ public class ExtremePlayerScreen extends Screen {
         }
     }
 
-    private String readinessLabel(PlayerStatsCapability stats) {
-        if (stats.mana() <= 0) {
+    private String readinessLabel(int currentMana, int maxMana) {
+        if (currentMana <= 0) {
             return "No mana";
         }
-        if (stats.mana() < Math.max(10, stats.maxMana() / 4)) {
+        if (currentMana < Math.max(10, maxMana / 4)) {
             return "Low reserves";
         }
         return "Ready";

@@ -40,6 +40,7 @@ public final class GuildQuestRewardService {
                 ProgressionGate.grantStage(player, quest.rewardUnlockStage());
             }
 
+            PlayerStatsService.syncProgressionMirror(player, true);
             ProgressionService.flushDirty(player);
             return true;
         }).orElse(false);

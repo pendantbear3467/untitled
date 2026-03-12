@@ -1,6 +1,7 @@
 package com.extremecraft.machine.core;
 
 import com.extremecraft.progression.stage.ProgressionStage;
+import com.extremecraft.reactor.ReactorIdentity;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -45,7 +46,7 @@ public final class MachineCatalog {
     }
 
     public static Optional<MachineDefinition> byId(String id) {
-        return Optional.ofNullable(DEFINITIONS.get(id));
+        return Optional.ofNullable(DEFINITIONS.get(ReactorIdentity.normalizeMachineId(id)));
     }
 
     private MachineCatalog() {

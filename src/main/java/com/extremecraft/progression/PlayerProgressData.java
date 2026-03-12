@@ -275,6 +275,7 @@ public class PlayerProgressData {
         if (unlockedClasses.isEmpty()) {
             unlockedClasses.add(ClassIdResolver.DEFAULT_CLASS_ID);
         }
+        unlockedClasses.add(ClassIdResolver.defaultIfBlank(currentClass));
 
         completedQuests.clear();
         if (tag.contains("completed_quests", Tag.TAG_LIST)) {

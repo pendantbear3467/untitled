@@ -4,6 +4,7 @@ import com.extremecraft.machine.core.MachineCatalog;
 import com.extremecraft.progression.stage.ProgressionStage;
 import com.extremecraft.progression.stage.StageManager;
 import com.extremecraft.progression.unlock.UnlockRuleLoader;
+import com.extremecraft.reactor.ReactorIdentity;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -34,7 +35,7 @@ public final class ProgressionGate {
     }
 
     public static void registerMachineRequirement(String machineId, ProgressionStage stage) {
-        MACHINE_REQUIREMENTS.put(machineId, stage);
+        MACHINE_REQUIREMENTS.put(ReactorIdentity.normalizeMachineId(machineId), stage);
     }
 
     public static void registerRecipeRequirement(String recipeId, ProgressionStage stage) {
@@ -42,12 +43,13 @@ public final class ProgressionGate {
     }
 
     public static Optional<ProgressionStage> requiredMachineStage(String machineId) {
-        ProgressionStage direct = MACHINE_REQUIREMENTS.get(machineId);
+        String normalizedMachineId = ReactorIdentity.normalizeMachineId(machineId);
+        ProgressionStage direct = MACHINE_REQUIREMENTS.get(normalizedMachineId);
         if (direct != null) {
             return Optional.of(direct);
         }
 
-        return StageDataLoader.requiredStageForUnlock("machine:" + machineId);
+        return StageDataLoader.requiredStageForUnlock("machine:" + normalizedMachineId);
     }
 
     public static Optional<ProgressionStage> requiredRecipeStage(String recipeId) {
@@ -60,12 +62,13 @@ public final class ProgressionGate {
     }
 
     public static boolean canUseMachine(Player player, String machineId) {
-        boolean stageAllowed = requiredMachineStage(machineId).map(stage -> StageManager.hasStage(player, stage)).orElse(true);
+        String normalizedMachineId = ReactorIdentity.normalizeMachineId(machineId);
+        boolean stageAllowed = requiredMachineStage(normalizedMachineId).map(stage -> StageManager.hasStage(player, stage)).orElse(true);
         if (!stageAllowed) {
             return false;
         }
 
-        return UnlockRuleLoader.canUnlock(player, "machine:" + machineId);
+        return UnlockRuleLoader.canUnlock(player, "machine:" + normalizedMachineId);
     }
 
     public static boolean canUseRecipe(Player player, ResourceLocation recipeId) {

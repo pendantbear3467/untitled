@@ -53,7 +53,7 @@ public class UnlockRuleLoader extends SimpleJsonResourceReloadListener {
                     continue;
                 }
 
-                String requiredClass = normalizeId(readString(json, "required_class", "class"));
+                String requiredClass = ClassIdResolver.normalizeCanonical(normalizeId(readString(json, "required_class", "class")));
                 String requiredSkill = normalizeId(readString(json, "required_skill", "skill"));
                 int requiredSkillLevel = Math.max(0, readInt(json, "required_skill_level", "skill_level", 0));
                 String requiredQuest = normalizeId(readString(json, "required_quest", "quest"));

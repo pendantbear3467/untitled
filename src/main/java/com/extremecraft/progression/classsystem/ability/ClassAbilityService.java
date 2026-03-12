@@ -3,6 +3,7 @@ package com.extremecraft.progression.classsystem.ability;
 import com.extremecraft.combat.CombatEngine;
 import com.extremecraft.combat.DamageContext;
 import com.extremecraft.combat.DamageType;
+import com.extremecraft.magic.mana.ManaService;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.SyncClassAbilityStateS2CPacket;
 import com.extremecraft.progression.capability.PlayerStatsApi;
@@ -24,6 +25,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Server-authoritative class ability activation and cooldown management.
+ *
+ * <p>For first release this stays a narrow class-specific action path. Generic
+ * abilities and spells remain the primary extensible cast/action systems.</p>
  */
 public final class ClassAbilityService {
     private static final Map<UUID, Map<String, Long>> COOLDOWNS = new ConcurrentHashMap<>();
@@ -133,9 +137,7 @@ public final class ClassAbilityService {
             return true;
         }
 
-        return PlayerStatsApi.get(player)
-                .map(stats -> stats.tryConsumeMana(manaCost))
-                .orElse(false);
+        return ManaService.tryConsume(player, manaCost);
     }
 
     private static boolean applyAbilityEffect(ServerPlayer player, ClassAbilityDefinition ability) {
