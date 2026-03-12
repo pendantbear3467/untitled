@@ -1,5 +1,13 @@
 {
   "entity": "arcane_wraith",
-  "render_hint": "placeholder",
-  "lore": "Arcane Wraith entry"
+  "placeholder_status": "live_runtime_java_cube_placeholder",
+  "runtime_owner": "com.extremecraft.entity.mob.ArcaneWraithEntity",
+  "renderer_owner": "com.extremecraft.client.render.entity.ArcaneWraithRenderer",
+  "model_owner": "com.extremecraft.client.model.entity.ArcaneWraithModel",
+  "visual_family": "floating_caster_target",
+  "current_geometry": "cube_biped_placeholder",
+  "texture": "extremecraft:textures/entity/arcane_wraith.png",
+  "metadata_model": "assets/extremecraft/models/entity/arcane_wraith.json",
+  "animation_runtime": "ECBipedEntityModel idle/walk/attack",
+  "blockbench_replacement_safe": true
 }

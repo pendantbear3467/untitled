@@ -49,7 +49,6 @@ public final class RadiationService {
             return;
         }
         ChunkContaminationService.tickLevel(level);
-        ContaminationTerrainService.tickLevel(level);
     }
 
     public static void releaseContamination(ServerLevel level, net.minecraft.core.BlockPos center, double amount, int radius) {

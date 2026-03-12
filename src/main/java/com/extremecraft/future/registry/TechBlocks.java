@@ -62,6 +62,8 @@ public final class TechBlocks {
                 () -> new Block(BlockBehaviour.Properties.copy(Blocks.SAND).mapColor(MapColor.SAND))));
         CONTAMINATED_TERRAIN_BLOCKS.put("contaminated_grass", BLOCKS.register("contaminated_grass",
                 () -> new Block(BlockBehaviour.Properties.copy(Blocks.GRASS_BLOCK).mapColor(MapColor.GRASS))));
+        CONTAMINATED_TERRAIN_BLOCKS.put("vitrified_fallout", BLOCKS.register("vitrified_fallout",
+                () -> new Block(BlockBehaviour.Properties.copy(Blocks.TINTED_GLASS).mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops())));
 
         for (CableTier tier : CableTier.values()) {
             CABLE_BLOCKS.put(tier, BLOCKS.register(tier.id(), () -> new CableBlock(tier, BlockBehaviour.Properties.of()

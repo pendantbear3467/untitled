@@ -1,5 +1,12 @@
 {
   "entity": "tech_construct",
-  "render_hint": "placeholder",
-  "lore": "Tech Construct entry"
+  "placeholder_status": "live_runtime_java_cube_placeholder",
+  "runtime_owner": "com.extremecraft.entity.mob.TechConstructEntity",
+  "renderer_owner": "com.extremecraft.client.render.entity.TechConstructRenderer",
+  "model_owner": "com.extremecraft.client.model.entity.TechConstructModel",
+  "visual_family": "zombie_humanoid",
+  "texture": "extremecraft:textures/entity/tech_construct.png",
+  "metadata_model": "assets/extremecraft/models/entity/tech_construct.json",
+  "animation_runtime": "ECBipedEntityModel idle/walk/attack",
+  "blockbench_replacement_safe": true
 }

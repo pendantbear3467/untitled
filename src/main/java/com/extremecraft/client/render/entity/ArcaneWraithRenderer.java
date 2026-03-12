@@ -9,7 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 
 public final class ArcaneWraithRenderer extends MobRenderer<ArcaneWraithEntity, ArcaneWraithModel> {
     private static final ResourceLocation TEXTURE =
-            new ResourceLocation(ECConstants.MODID, "textures/entity/arcane_wraith.png");
+            ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/entity/arcane_wraith.png");
 
     public ArcaneWraithRenderer(EntityRendererProvider.Context context) {
         super(context, new ArcaneWraithModel(context.bakeLayer(ArcaneWraithModel.LAYER_LOCATION)), 0.5F);

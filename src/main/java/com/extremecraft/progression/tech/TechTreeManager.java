@@ -18,11 +18,11 @@ public final class TechTreeManager {
         // Tier 1: entry power + early ore processing.
         register("coal_generator", MachineTier.TIER_1, Set.of(), Set.of("copper", "iron"));
         register("crusher", MachineTier.TIER_1, Set.of("coal_generator"), Set.of("copper", "iron"));
-        register("pulverizer", MachineTier.TIER_1, Set.of("coal_generator"), Set.of("copper", "tin"));
-        register("basic_smelter", MachineTier.TIER_1, Set.of("coal_generator"), Set.of("copper", "iron"));
+        register("smelter", MachineTier.TIER_1, Set.of("coal_generator"), Set.of("copper", "iron"));
 
         // Tier 2: alloy pipeline and energy infrastructure.
-        register("alloy_furnace", MachineTier.TIER_2, Set.of("crusher"), Set.of("steel"));
+        register("advanced_pulverizer", MachineTier.TIER_2, Set.of("crusher"), Set.of("copper", "tin"));
+        register("alloy_furnace", MachineTier.TIER_2, Set.of("advanced_pulverizer"), Set.of("steel"));
         register("compressor", MachineTier.TIER_2, Set.of("alloy_furnace"), Set.of("bronze", "steel"));
         register("advanced_generator", MachineTier.TIER_2, Set.of("compressor"), Set.of("steel", "titanium_alloy"));
         register("energy_storage_block", MachineTier.TIER_2, Set.of("alloy_furnace"), Set.of("steel", "bronze"));

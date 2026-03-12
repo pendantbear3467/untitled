@@ -16,6 +16,13 @@ public final class ModEntityRenderers {
     private ModEntityRenderers() {
     }
 
+    /**
+     * Registers the canonical runtime entity renderer path.
+     *
+     * <p>Java layer definitions and renderer classes are the live owner for entity visuals. The
+     * JSON files under {@code assets/extremecraft/entities} and {@code assets/extremecraft/models/entity}
+     * are handoff metadata only and are not consumed by Forge rendering at runtime.</p>
+     */
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.TECH_CONSTRUCT.get(), TechConstructRenderer::new);
         event.registerEntityRenderer(ModEntities.ARCANE_WRAITH.get(), ArcaneWraithRenderer::new);

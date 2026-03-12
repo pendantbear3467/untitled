@@ -1,20 +1,20 @@
-# Asset Entity Metadata
+# Entity Asset Metadata
 
-This folder contains descriptive asset metadata for entity entries.
+Status: `METADATA_ONLY`
 
-What this folder does:
-- Stores small JSON notes like `render_hint` and lore text for entity assets.
+This folder documents the current placeholder/runtime ownership state for entities.
 
-What this folder does not do:
-- It does not bind live renderers.
-- It does not select model classes.
-- It does not control gameplay stats or spawn behavior.
+Owns:
+- Placeholder status
+- Runtime owner pointers
+- Texture/model metadata used for art handoff and Blockbench planning
 
-Live owners instead:
-- Renderer ownership: `src/main/java/com/extremecraft/client/render/entity/`
-- Model ownership: `src/main/java/com/extremecraft/client/model/entity/`
-- Texture ownership: `src/main/resources/assets/extremecraft/textures/entity/`
+Does not own:
+- Live renderer registration
+- Live model baking
+- Animation runtime execution
 
-Future additions should follow:
-- Keep ids aligned with renderer/model/texture ids.
-- Treat this folder as art handoff metadata until a runtime consumer is introduced.
+Safe future workflow:
+1. Keep entity ids stable.
+2. Update the metadata JSON when the Java runtime owner changes.
+3. Use these files to describe which entities are still placeholders versus final art.

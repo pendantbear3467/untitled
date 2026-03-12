@@ -1,35 +1,27 @@
-# Radiation Runtime
+# Radiation And Contamination
 
-This folder contains the live radiation and contamination runtime.
+Status: `LIVE_RUNTIME`
 
-What this folder does:
-- Samples ambient radiation and player protection.
-- Stores and decays chunk contamination.
-- Applies dose debuffs.
-- Releases fallout from meltdowns and other events.
-- Applies bounded contamination terrain mutations through the contamination terrain datapack rules.
+This folder owns the canonical environmental hazard pipeline for radiation dose, chunk contamination, terrain mutation, protection, and cleanup hooks.
 
-Safe gameplay edits:
-- Radiation math and thresholds in `RadiationService.java`, `RadiationSourceService.java`, and `ChunkContaminationService.java`.
-- Terrain fallout behavior in `ContaminationTerrainService.java`.
-- Built-in datapack inputs under `src/main/resources/data/extremecraft/radiation_sources/`, `contamination/`, and `contamination_terrain/`.
+Runtime-critical files:
+- `RadiationService` is the top-level gameplay owner for radiation and contamination ticking.
+- `RadiationSourceService` resolves ambient/item/event radiation sources.
+- `ChunkContaminationService` stores numeric chunk contamination authority.
+- `ContaminationTerrainService` converts chunk contamination pressure into bounded terrain mutation and cleanup pulses.
+- `RadiationProtectionService` owns armor-based mitigation and cleanup efficiency hooks.
 
-Metadata versus live runtime:
-- This folder is live runtime code.
-- `docs/` files and placeholder JSON notes are not authoritative runtime owners.
+Live data owner:
+- `data/extremecraft/radiation_sources/*.json`
+- `data/extremecraft/contamination/*.json`
+- `data/extremecraft/contamination_terrain/*.json`
 
-Loaders and services touching this subsystem:
-- `src/main/java/com/extremecraft/platform/data/loader/RadiationSourceDataLoader.java`
-- `src/main/java/com/extremecraft/platform/data/loader/ContaminationDataLoader.java`
-- `src/main/java/com/extremecraft/platform/data/loader/ContaminationTerrainDataLoader.java`
-- `src/main/java/com/extremecraft/reactor/ReactorSafetyService.java`
+Safe future additions:
+1. Put thresholds, cleanup behavior, and seed-release terrain variants in `data/extremecraft/contamination`, and put ongoing chunk mutation rules in `data/extremecraft/contamination_terrain`.
+2. Call `RadiationService.releaseContamination` or `ContaminationTerrainService.scrubArea` from future machines/items rather than writing a second hazard system.
+3. Reuse protection hooks instead of inventing separate decontamination stat checks.
 
-Future additions should follow:
-- Extend the existing services here instead of creating a second contamination manager.
-- Use datapack-backed definitions for new radiation sources and terrain rules.
-- If custom contaminated blocks are added later, plug them into `contamination_terrain` rules rather than bypassing chunk contamination.
-
-Common edit paths:
-- New radiation-emitting item/block/event: add a JSON entry under `radiation_sources/`.
-- Tune contamination decay: edit `contamination/default_profile.json`.
-- Add surface fallout conversion: edit `contamination_terrain/*.json`.
+Common mistakes:
+- Adding another fallout/corruption subsystem outside this folder.
+- Adding a second periodic terrain tick outside `ChunkContaminationService -> ContaminationTerrainService`.
+- Editing terrain directly without config gates and bounded budgets.

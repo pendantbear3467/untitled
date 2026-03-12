@@ -9,7 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 
 public final class VoidStalkerRenderer extends MobRenderer<VoidStalkerEntity, VoidStalkerModel> {
     private static final ResourceLocation TEXTURE =
-            new ResourceLocation(ECConstants.MODID, "textures/entity/void_stalker.png");
+            ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/entity/void_stalker.png");
 
     public VoidStalkerRenderer(EntityRendererProvider.Context context) {
         super(context, new VoidStalkerModel(context.bakeLayer(VoidStalkerModel.LAYER_LOCATION)), 0.52F);

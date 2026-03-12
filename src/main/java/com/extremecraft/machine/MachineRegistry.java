@@ -23,12 +23,16 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Runtime machine catalog backed by datapack reloads and API extension hooks.
+ * Legacy generic machine catalog backed by datapack reloads and API extension hooks.
  *
  * <p>This registry is read by machine block entities every server tick, so it keeps
  * immutable cached views for fast reads while still allowing full replacement when
  * datapacks reload. API and module integrations append definitions through the
  * registration methods and are merged with datapack content.</p>
+ *
+ * <p>The live multi-machine block path used by {@code future.registry.TechBlocks} now runs
+ * through {@code com.extremecraft.machine.core} plus vanilla recipe manager lookups. Keep this
+ * registry for compatibility hooks and older generic machine integrations only.</p>
  */
 public final class MachineRegistry {
     private static final Logger LOGGER = LogUtils.getLogger();

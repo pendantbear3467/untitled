@@ -1,34 +1,35 @@
-# Machine Core Runtime
+# Machine Core
 
-This folder contains the live generic machine runtime used by catalog-based tech blocks.
+Status: `LIVE_RUNTIME`
 
-What this folder does:
-- Declares canonical machine ids and stage gates in `MachineCatalog.java`.
-- Owns the shared block entity runtime in `TechMachineBlockEntity.java`.
-- Resolves recipes and processing through `MachineRecipeService.java` and `MachineProcessingService.java`.
-- Handles shared ticking, energy, menu sync, and fallback processing.
+This folder owns the active tech machine block runtime path.
 
-Safe gameplay edits:
-- Add or retune machine stage/process values in `MachineCatalog.java`.
-- Adjust shared processing behavior in `MachineProcessingService.java`.
-- Edit built-in machine metadata JSON under `src/main/resources/data/extremecraft/machines/`.
+Runtime-critical files:
+- `MachineCatalog` is the live machine definition/catalog owner for registered tech machines.
+- `MachineBlock` is the live block interaction gate for tech machines.
+- `TechMachineBlockEntity` is the live block entity for registered tech machines.
+- `MachineProcessingService` and `MachineRecipeService` own active machine processing and recipe lookup.
+- `MachineTickScheduler` owns bounded per-tick machine execution cadence.
 
-Metadata versus live runtime:
-- This folder is the live owner for generic machine behavior.
-- `src/main/resources/data/extremecraft/machines/*.json` is descriptive machine metadata, not the only authority for runtime stage gates.
-- `src/main/java/com/extremecraft/progression/tech/TechTreeManager.java` currently looks reference-only from this scan and is not the canonical machine runtime gate.
+Consumed by:
+- `future/registry/TechBlocks`
+- `future/registry/TechBlockEntities`
+- `future/registry/TechMenuTypes`
+- `client/gui/machine/TechMachineScreen`
 
-Loaders and services touching this subsystem:
-- `src/main/java/com/extremecraft/progression/ProgressionGate.java`
-- `src/main/java/com/extremecraft/entity/system/GameplayMechanicsEvents.java`
-- `src/main/java/com/extremecraft/command/ECValidationService.java`
+Metadata-only inputs:
+- `MachineCatalog` stage/tick numbers are code-owned.
+- Actual processing recipes come from `data/extremecraft/recipes/machine_processing`.
 
-Future additions should follow:
-- Add new generic machines by extending `MachineCatalog` and machine datapack metadata together.
-- Keep runtime ids aligned with actual block ids.
-- If a folder contains a legacy or prototype machine chain, document it rather than redirecting live gameplay ownership to it.
+Legacy or adapter notes:
+- `machine/` and `machines/` contain older paths kept for compatibility and the single-block pulverizer chain.
 
-Common edit paths:
-- Change unlock stage for a live machine: `MachineCatalog.java`.
-- Add baseline processing recipe coverage: `src/main/resources/data/extremecraft/recipes/machine_processing/generated/`.
-- Adjust UI sync/state: `TechMachineBlockEntity.java` and `TechMachineMenu.java`.
+Safe future additions:
+1. Add the machine definition in `MachineCatalog`.
+2. Register the block/item/menu path through `future/registry`.
+3. Add processing JSON under `recipes/machine_processing`.
+4. Add stage/unlock data under `data/extremecraft/progression`.
+
+Common mistakes:
+- Treating `data/extremecraft/machines/*.json` as the live owner for tech machine behavior.
+- Adding a block without its recipe, stage, and registry chain.

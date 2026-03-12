@@ -28,12 +28,17 @@ public final class MachineTooltipHandler {
             case "crusher" -> {
                 tooltip.add(Component.literal("Uses: 16 FE/t").withStyle(ChatFormatting.GRAY));
                 tooltip.add(Component.literal("Function: Doubles ores into raw materials").withStyle(ChatFormatting.DARK_GRAY));
-                tooltip.add(Component.literal("Hint: Crusher -> Pulverizer -> Smelter").withStyle(ChatFormatting.YELLOW));
+                tooltip.add(Component.literal("Hint: Crusher -> Advanced Pulverizer -> Smelter").withStyle(ChatFormatting.YELLOW));
             }
             case "pulverizer" -> {
                 tooltip.add(Component.literal("Uses: 24 FE/t").withStyle(ChatFormatting.GRAY));
-                tooltip.add(Component.literal("Function: Converts raw materials to dust").withStyle(ChatFormatting.DARK_GRAY));
-                tooltip.add(Component.literal("Hint: Dusts smelt better in the Smelter").withStyle(ChatFormatting.YELLOW));
+                tooltip.add(Component.literal("Function: Legacy dust processor kept for compatibility").withStyle(ChatFormatting.DARK_GRAY));
+                tooltip.add(Component.literal("Hint: New progression routes through the Advanced Pulverizer").withStyle(ChatFormatting.YELLOW));
+            }
+            case "advanced_pulverizer" -> {
+                tooltip.add(Component.literal("Uses: 24 FE/t").withStyle(ChatFormatting.GRAY));
+                tooltip.add(Component.literal("Function: Converts processed materials into refined dusts").withStyle(ChatFormatting.DARK_GRAY));
+                tooltip.add(Component.literal("Hint: Pair with the Crusher for the modern ore chain").withStyle(ChatFormatting.YELLOW));
             }
             case "smelter" -> {
                 tooltip.add(Component.literal("Uses: 18 FE/t").withStyle(ChatFormatting.GRAY));

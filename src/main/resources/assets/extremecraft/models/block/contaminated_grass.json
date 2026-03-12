@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "extremecraft:block/contaminated_dirt",
+    "top": "extremecraft:block/contaminated_grass_top",
+    "side": "extremecraft:block/contaminated_grass_side"
+  }
+}

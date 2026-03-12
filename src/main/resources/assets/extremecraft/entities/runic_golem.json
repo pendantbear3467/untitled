@@ -1,5 +1,12 @@
 {
   "entity": "runic_golem",
-  "render_hint": "placeholder",
-  "lore": "Runic Golem entry"
+  "placeholder_status": "live_runtime_java_cube_placeholder",
+  "runtime_owner": "com.extremecraft.entity.mob.RunicGolemEntity",
+  "renderer_owner": "com.extremecraft.client.render.entity.RunicGolemRenderer",
+  "model_owner": "com.extremecraft.client.model.entity.RunicGolemModel",
+  "visual_family": "golem_heavy",
+  "texture": "extremecraft:textures/entity/runic_golem.png",
+  "metadata_model": "assets/extremecraft/models/entity/runic_golem.json",
+  "animation_runtime": "ECBipedEntityModel idle/walk/attack",
+  "blockbench_replacement_safe": true
 }

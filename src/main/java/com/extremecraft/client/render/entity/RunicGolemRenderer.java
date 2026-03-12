@@ -9,7 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 
 public final class RunicGolemRenderer extends MobRenderer<RunicGolemEntity, RunicGolemModel> {
     private static final ResourceLocation TEXTURE =
-            new ResourceLocation(ECConstants.MODID, "textures/entity/runic_golem.png");
+            ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/entity/runic_golem.png");
 
     public RunicGolemRenderer(EntityRendererProvider.Context context) {
         super(context, new RunicGolemModel(context.bakeLayer(RunicGolemModel.LAYER_LOCATION)), 0.75F);
