@@ -13,6 +13,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,11 +25,13 @@ import java.util.function.Supplier;
 public class SkillTreeScreenPanel {
     private static final int NODE_SIZE = 18;
 
+    private final Player player;
     private final Supplier<Optional<PlayerStatsCapability>> statsSupplier;
     private final Map<String, NodeUiCache> nodeUiCache = new HashMap<>();
     private final List<Component> tooltipBuffer = new ArrayList<>(6);
 
-    public SkillTreeScreenPanel(Supplier<Optional<PlayerStatsCapability>> statsSupplier) {
+    public SkillTreeScreenPanel(Player player, Supplier<Optional<PlayerStatsCapability>> statsSupplier) {
+        this.player = player;
         this.statsSupplier = statsSupplier;
     }
 
@@ -129,7 +132,14 @@ public class SkillTreeScreenPanel {
             int y0 = centerY + Math.round(from.y() * zoom);
             int x1 = centerX + Math.round(to.x() * zoom);
             int y1 = centerY + Math.round(to.y() * zoom);
-            drawLine(graphics, x0, y0, x1, y1, 0x885E6D83);
+            SkillNodeStateService.NodeState fromState = nodeState(from);
+            SkillNodeStateService.NodeState toState = nodeState(to);
+            int color = toState == SkillNodeStateService.NodeState.UNLOCKED && fromState == SkillNodeStateService.NodeState.UNLOCKED
+                    ? 0xCC5AA6FF
+                    : toState == SkillNodeStateService.NodeState.UNLOCKABLE && fromState == SkillNodeStateService.NodeState.UNLOCKED
+                    ? 0xCCB6975A
+                    : 0x66404B60;
+            drawLine(graphics, x0, y0, x1, y1, color);
         }
     }
 
@@ -175,7 +185,7 @@ public class SkillTreeScreenPanel {
     private SkillNodeStateService.NodeState nodeState(SkillNode node) {
         Optional<PlayerStatsCapability> statsOpt = statsSupplier.get();
         return statsOpt
-            .map(stats -> SkillNodeStateService.stateFor(stats, node))
+            .map(stats -> SkillNodeStateService.stateFor(player, stats, node))
             .orElse(SkillNodeStateService.NodeState.LOCKED);
     }
 
@@ -221,4 +231,3 @@ public class SkillTreeScreenPanel {
         }
     }
 }
-

@@ -30,6 +30,7 @@ public final class CombatEngine {
      */
     private static final Logger LOGGER = LogManager.getLogger();
     private static final ThreadLocal<DamageContext> PENDING_CONTEXT = new ThreadLocal<>();
+    private static final ThreadLocal<DamageResult> RESOLVED_RESULT = new ThreadLocal<>();
     private static final ThreadLocal<Integer> REENTRANCY_DEPTH = ThreadLocal.withInitial(() -> 0);
     private static final ThreadLocal<Set<Integer>> ACTIVE_TARGET_IDS = ThreadLocal.withInitial(HashSet::new);
 
@@ -59,19 +60,23 @@ public final class CombatEngine {
             return previewDamage(context);
         }
 
+        DamageResult resolved = null;
         try {
             PENDING_CONTEXT.set(context);
+            RESOLVED_RESULT.remove();
             DamageSource source = resolveDamageSource(context);
             context.target().hurt(source, context.damageAmount());
         } catch (Exception ex) {
             LOGGER.error("CombatEngine failed to apply damage", ex);
         } finally {
+            resolved = RESOLVED_RESULT.get();
+            RESOLVED_RESULT.remove();
             PENDING_CONTEXT.remove();
             exitTargetScope(targetId);
             exitDamageScope();
         }
 
-        return previewDamage(context);
+        return resolved != null ? resolved : previewDamage(context);
     }
 
     public static DamageResult previewDamage(DamageContext context) {
@@ -125,6 +130,9 @@ public final class CombatEngine {
         }
 
         DamageResult result = previewDamage(context);
+        if (PENDING_CONTEXT.get() == context) {
+            RESOLVED_RESULT.set(result);
+        }
         event.setAmount(Math.max(0.0F, result.finalDamage()));
     }
 
@@ -155,7 +163,7 @@ public final class CombatEngine {
                 context.modifiers().multiplySkill(stats.damageMultiplier());
             });
 
-            float weaponDamage = weaponDamage(attacker);
+            float weaponDamage = weaponDamage(context, attacker);
             if (weaponDamage > 0.0F) {
                 context.modifiers().addWeaponFlatBonus(weaponDamage);
             }
@@ -193,19 +201,27 @@ public final class CombatEngine {
         return 1.5F;
     }
 
-    private static float weaponDamage(LivingEntity attacker) {
-        ItemStack weapon = attacker.getMainHandItem();
+    private static float weaponDamage(DamageContext context, LivingEntity attacker) {
+        ItemStack weapon = context.weaponSource().isEmpty() ? attacker.getMainHandItem() : context.weaponSource();
         if (weapon.isEmpty()) {
             return 0.0F;
         }
 
-        Collection<AttributeModifier> modifiers = weapon.getAttributeModifiers(EquipmentSlot.MAINHAND)
+        EquipmentSlot slot = context.weaponSource().isEmpty() ? EquipmentSlot.MAINHAND : preferredWeaponSlot(weapon);
+        Collection<AttributeModifier> modifiers = weapon.getAttributeModifiers(slot)
                 .get(Attributes.ATTACK_DAMAGE);
         float total = 0.0F;
         for (AttributeModifier modifier : modifiers) {
             total += (float) modifier.getAmount();
         }
         return Math.max(0.0F, total);
+    }
+
+    private static EquipmentSlot preferredWeaponSlot(ItemStack weapon) {
+        if (!weapon.getAttributeModifiers(EquipmentSlot.OFFHAND).get(Attributes.ATTACK_DAMAGE).isEmpty()) {
+            return EquipmentSlot.OFFHAND;
+        }
+        return EquipmentSlot.MAINHAND;
     }
 
     private static DamageSource resolveDamageSource(DamageContext context) {

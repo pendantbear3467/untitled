@@ -1,7 +1,13 @@
 package com.extremecraft.combat.dualwield.service;
 
+import com.extremecraft.combat.CombatEngine;
+import com.extremecraft.combat.DamageContext;
+import com.extremecraft.combat.DamageResult;
+import com.extremecraft.combat.DamageType;
 import com.extremecraft.combat.dualwield.validation.OffhandActionValidator;
 import com.extremecraft.net.OffhandActionC2S;
+import com.extremecraft.progression.capability.PlayerStatsApi;
+import com.extremecraft.progression.capability.PlayerStatsCapability;
 import com.extremecraft.server.DwServerTicker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -163,33 +169,62 @@ public final class OffhandActionExecutor {
         }
 
         float charge = Mth.clamp(attackStrengthScale, 0.0F, 1.0F);
+        float chargeScale = 0.2F + (charge * charge * 0.8F);
         LivingEntity livingTarget = target instanceof LivingEntity living ? living : null;
+        PlayerStatsCapability stats = PlayerStatsApi.get(player).orElse(null);
+        float critChance = stats == null ? 0.0F : stats.critChance();
+        float critMultiplier = stats == null ? 1.5F : Math.max(1.5F, stats.critDamage());
+        boolean guaranteedCrit = charge > 0.9F && isCriticalHit(player, target);
 
-        float baseDamage = (float) adjustedAttributeValue(player, Attributes.ATTACK_DAMAGE, offhand);
-        float scaledDamage = baseDamage * (0.2F + charge * charge * 0.8F);
-        float enchantmentDamage = livingTarget == null ? 0.0F : EnchantmentHelper.getDamageBonus(offhand, livingTarget.getMobType()) * charge;
+        float weaponDamage = (float) preferredWeaponContribution(offhand, Attributes.ATTACK_DAMAGE);
+        float combatBase = (float) Math.max(0.0D, adjustedAttributeValue(player, Attributes.ATTACK_DAMAGE, offhand) - weaponDamage);
+        float enchantmentDamage = livingTarget == null ? 0.0F : EnchantmentHelper.getDamageBonus(offhand, livingTarget.getMobType());
         boolean fullyCharged = charge > 0.9F;
-        boolean criticalHit = fullyCharged && isCriticalHit(player, target);
-        if (criticalHit) {
-            scaledDamage *= 1.5F;
-        }
-
-        float totalDamage = scaledDamage + enchantmentDamage;
-        if (totalDamage <= 0.0F) {
+        if ((combatBase + weaponDamage + enchantmentDamage) <= 0.0F) {
             return false;
         }
 
-        int fireAspect = livingTarget == null ? 0 : EnchantmentHelper.getItemEnchantmentLevel(Enchantments.FIRE_ASPECT, offhand);
-        boolean primedFire = fireAspect > 0 && !target.isOnFire();
-        if (primedFire) {
-            target.setSecondsOnFire(1);
+        DamageResult result;
+        if (livingTarget != null) {
+            DamageContext context = DamageContext.builder()
+                    .attacker(player)
+                    .target(livingTarget)
+                    .damageAmount(combatBase)
+                    .damageType(DamageType.PHYSICAL)
+                    .abilitySource("combat:offhand")
+                    .weaponSource(offhand.copy())
+                    .criticalChance(guaranteedCrit ? 1.0F : critChance)
+                    .criticalMultiplier(critMultiplier)
+                    .armorValue(livingTarget.getArmorValue())
+                    .build();
+            context.modifiers().addAbilityFlatBonus(enchantmentDamage);
+            context.modifiers().multiplyAbility(chargeScale);
+            result = CombatEngine.applyDamage(context);
+        } else {
+            float directDamage = Math.max(0.0F, (combatBase + weaponDamage) * chargeScale);
+            boolean hurt = target.hurt(player.damageSources().playerAttack(player), directDamage);
+            if (!hurt) {
+                return false;
+            }
+            result = new DamageResult(
+                    DamageType.PHYSICAL,
+                    directDamage,
+                    directDamage,
+                    directDamage,
+                    directDamage,
+                    false,
+                    1.0F,
+                    directDamage,
+                    0.0F,
+                    directDamage,
+                    0.0F,
+                    directDamage,
+                    1.0F,
+                    directDamage
+            );
         }
 
-        boolean hurt = target.hurt(player.damageSources().playerAttack(player), totalDamage);
-        if (!hurt) {
-            if (primedFire) {
-                target.clearFire();
-            }
+        if (result.finalDamage() <= 0.0F) {
             return false;
         }
 
@@ -204,16 +239,17 @@ public final class OffhandActionExecutor {
             livingTarget.knockback(knockback * 0.5D, Mth.sin((float) yawRadians), -Mth.cos((float) yawRadians));
         }
 
+        int fireAspect = livingTarget == null ? 0 : EnchantmentHelper.getItemEnchantmentLevel(Enchantments.FIRE_ASPECT, offhand);
+        if (fireAspect > 0) {
+            target.setSecondsOnFire(fireAspect * 4);
+        }
         if (livingTarget != null) {
             offhand.hurtEnemy(livingTarget, player);
             EnchantmentHelper.doPostHurtEffects(livingTarget, player);
         }
         EnchantmentHelper.doPostDamageEffects(player, target);
 
-        if (fireAspect > 0) {
-            target.setSecondsOnFire(fireAspect * 4);
-        }
-        if (criticalHit) {
+        if (result.criticalHit()) {
             player.crit(target);
         } else if (enchantmentDamage > 0.0F) {
             player.magicCrit(target);
@@ -221,7 +257,7 @@ public final class OffhandActionExecutor {
 
         maybeDisableShield(player, offhand, target, fullyCharged);
         player.setLastHurtMob(target);
-        player.awardStat(Stats.DAMAGE_DEALT, Math.round(totalDamage * 10.0F));
+        player.awardStat(Stats.DAMAGE_DEALT, Math.round(result.finalDamage() * 10.0F));
         player.causeFoodExhaustion(ATTACK_EXHAUSTION);
         return true;
     }
@@ -298,4 +334,3 @@ public final class OffhandActionExecutor {
         return additive * (1.0D + multiplyBase) * multiplyTotal;
     }
 }
-

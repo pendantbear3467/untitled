@@ -1,6 +1,7 @@
 package com.extremecraft.client;
 
 import com.extremecraft.client.ExtremeCraftKeybinds;
+import com.extremecraft.combat.dualwield.CycleLoadoutC2S;
 import com.extremecraft.client.gui.debug.DeveloperOverlayState;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.net.DwNetwork;
@@ -126,6 +127,10 @@ public final class DwClientHooks {
         }
 
         updateHeldBreakState(mc, mc.player);
+
+        if (DwKeybinds.CYCLE_LOADOUT != null && DwKeybinds.CYCLE_LOADOUT.consumeClick()) {
+            ModNetwork.CHANNEL.sendToServer(new CycleLoadoutC2S());
+        }
 
         boolean abilityCastTriggered = false;
         abilityCastTriggered |= consumeAbilitySlot(mc.player, ExtremeCraftKeybinds.ABILITY_SLOT_1, 0);

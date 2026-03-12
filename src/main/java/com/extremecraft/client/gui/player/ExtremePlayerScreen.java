@@ -1,6 +1,10 @@
 package com.extremecraft.client.gui.player;
 
 import com.extremecraft.client.gui.layout.GuiScaleContext;
+import com.extremecraft.client.DwKeybinds;
+import com.extremecraft.combat.dualwield.DualWieldLoadout;
+import com.extremecraft.combat.dualwield.PlayerDualWieldApi;
+import com.extremecraft.combat.dualwield.PlayerDualWieldData;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.classsystem.ClassRegistry;
@@ -72,7 +76,7 @@ public class ExtremePlayerScreen extends Screen {
         super(Component.literal("ExtremeCraft Player"));
         this.player = player;
         this.returnScreen = returnScreen;
-        this.skillTreePanel = new SkillTreeScreenPanel(this::getStats);
+        this.skillTreePanel = new SkillTreeScreenPanel(player, this::getStats);
     }
 
     public ExtremePlayerScreen(Player player, ExtremePlayerTabs.Tab defaultTab) {
@@ -310,7 +314,7 @@ public class ExtremePlayerScreen extends Screen {
         int maxMana = Math.max(1, ManaApi.get(player).map(mana -> (int) Math.ceil(mana.maxMana())).orElse(stats.maxMana()));
 
         graphics.drawString(font, Component.literal("Mana: " + currentMana + " / " + maxMana), x, y, 0xCFAEFF, false);
-        graphics.drawString(font, Component.literal("Aether: backend telemetry pending"), x + 128, y, 0xB7E8FF, false);
+        graphics.drawString(font, Component.literal("Cast " + keyLabel(DwKeybinds.CAST_SPELL) + "  Class " + keyLabel(DwKeybinds.CLASS_ABILITY)), x + 128, y, 0xB7E8FF, false);
         graphics.drawString(font, Component.literal("Magic Power: " + stats.magicPower()), x, y + 14, 0xCFAEFF, false);
         graphics.drawString(font, Component.literal("Readiness: " + readinessLabel(currentMana, maxMana)), x + 128, y + 14, 0xF0D4A8, false);
 
@@ -372,6 +376,8 @@ public class ExtremePlayerScreen extends Screen {
 
         ItemStack main = player.getMainHandItem();
         ItemStack off = player.getOffhandItem();
+        Optional<PlayerDualWieldData> dualWieldOpt = PlayerDualWieldApi.get(player);
+        int activeLoadout = dualWieldOpt.map(data -> data.activeLoadoutIndex() + 1).orElse(1);
 
         graphics.drawString(font, Component.literal("Main Hand"), x, y, 0xD8DEE9, false);
         graphics.drawString(font, Component.literal("Offhand"), x + 120, y, 0xD8DEE9, false);
@@ -386,8 +392,23 @@ public class ExtremePlayerScreen extends Screen {
             graphics.renderTooltip(font, off, mouseX, mouseY);
         }
 
-        graphics.drawString(font, Component.literal("Right-click entity: offhand attack"), x, y + 46, 0xB5C3D8, false);
-        graphics.drawString(font, Component.literal("Left-click: main hand (vanilla)"), x, y + 60, 0xB5C3D8, false);
+        graphics.drawString(font, Component.literal("Active loadout: " + activeLoadout + " / 3"), x, y + 46, 0xE8C78D, false);
+        graphics.drawString(font, Component.literal(keyLabel(DwKeybinds.OFFHAND_OVERRIDE) + " entity: offhand combat"), x, y + 60, 0xB5C3D8, false);
+        graphics.drawString(font, Component.literal(keyLabel(DwKeybinds.OFFHAND_OVERRIDE) + " block/item: offhand use"), x, y + 72, 0xB5C3D8, false);
+        graphics.drawString(font, Component.literal("Sneak + " + keyLabel(DwKeybinds.OFFHAND_OVERRIDE) + ": offhand break"), x, y + 84, 0xB5C3D8, false);
+        graphics.drawString(font, Component.literal("Cycle loadout: " + keyLabel(DwKeybinds.CYCLE_LOADOUT)), x, y + 96, 0xB5C3D8, false);
+        graphics.drawString(font, Component.literal("Left-click remains main-hand combat"), x, y + 108, 0xB5C3D8, false);
+
+        int loadoutY = y + 128;
+        for (int i = 0; i < 3; i++) {
+            final int loadoutIndex = i;
+            DualWieldLoadout loadout = dualWieldOpt.map(data -> data.getLoadout(loadoutIndex)).orElse(null);
+            String prefix = (i + 1) == activeLoadout ? "> " : "  ";
+            String mainLabel = loadout == null ? "-" : compactItemLabel(loadout.mainHandItem());
+            String offLabel = loadout == null ? "-" : compactItemLabel(loadout.offHandItem());
+            int color = (i + 1) == activeLoadout ? 0xF2E6C9 : 0xAFC0D8;
+            graphics.drawString(font, Component.literal(prefix + "L" + (i + 1) + "  " + mainLabel + " | " + offLabel), x, loadoutY + (i * 12), color, false);
+        }
     }
 
     private void drawItemSlot(GuiGraphics graphics, int x, int y, ItemStack stack) {
@@ -411,6 +432,7 @@ public class ExtremePlayerScreen extends Screen {
         graphics.drawString(font, Component.literal("Class Skill Points: " + classSkillPoints), x, y + 26, 0xE8C190, false);
         graphics.drawString(font, Component.literal("Player Skill Points: " + playerSkillPoints), x + 168, y + 26, 0xA4C8FF, false);
         graphics.drawString(font, Component.literal("Completed Guild Quests: " + completedQuests), x, y + 38, 0xD0D8E6, false);
+        graphics.drawString(font, Component.literal("Class Ability Key: " + keyLabel(DwKeybinds.CLASS_ABILITY)), x + 168, y + 38, 0xD0D8E6, false);
 
         graphics.drawString(font, Component.literal("XP Domains"), x, y + 56, 0xE8C78D, false);
         graphics.drawString(font, Component.literal("- Skill XP: combat + active gameplay"), x + 8, y + 68, 0xA4C8FF, false);
@@ -527,6 +549,22 @@ public class ExtremePlayerScreen extends Screen {
             case "void", "shadow" -> 0xD2B3FF;
             default -> 0xC8CFDB;
         };
+    }
+
+    private static String keyLabel(net.minecraft.client.KeyMapping keyMapping) {
+        return keyMapping == null ? "[unbound]" : "[" + keyMapping.getTranslatedKeyMessage().getString() + "]";
+    }
+
+    private static String compactItemLabel(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return "-";
+        }
+
+        String label = stack.getHoverName().getString();
+        if (label.length() <= 16) {
+            return label;
+        }
+        return label.substring(0, 13) + "...";
     }
 
     private void drawActionButton(GuiGraphics graphics, int x, int y, int w, int h, String label) {

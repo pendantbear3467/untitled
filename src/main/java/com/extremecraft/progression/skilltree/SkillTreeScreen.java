@@ -265,10 +265,16 @@ public class SkillTreeScreen extends BaseExtremeScreen {
             return false;
         }
         Minecraft mc = Minecraft.getInstance();
-        int playerLevel = mc.player == null ? 0 : com.extremecraft.progression.capability.PlayerStatsApi.get(mc.player)
-                .map(com.extremecraft.progression.capability.PlayerStatsCapability::level)
+        int playerLevel = mc.player == null ? 0 : ProgressApi.get(mc.player)
+                .map(data -> data.level())
+                .orElse(0);
+        int playerSkillPoints = mc.player == null ? 0 : ProgressApi.get(mc.player)
+                .map(data -> data.playerSkillPoints())
                 .orElse(0);
         if (playerLevel < node.requiredLevel()) {
+            return false;
+        }
+        if (playerSkillPoints < node.cost()) {
             return false;
         }
         if (node.requiredNodes().isEmpty()) {
