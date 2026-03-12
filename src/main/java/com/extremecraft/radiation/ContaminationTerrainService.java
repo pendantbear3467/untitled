@@ -39,11 +39,11 @@ public final class ContaminationTerrainService {
         }
 
         int maxChunks = Math.max(1, Math.min(DEFAULT_MAX_CHUNKS_PER_PULSE, ECFoundationConfig.catastrophicMaxAffectedBlocks() / 16));
-        int processedChunks = 0;
+        int visitedChunks = 0;
         RandomSource random = level.random;
 
         for (Map.Entry<Long, Double> entry : contaminationByChunk.entrySet()) {
-            if (processedChunks >= maxChunks) {
+            if (visitedChunks >= maxChunks) {
                 break;
             }
 
@@ -52,10 +52,10 @@ public final class ContaminationTerrainService {
                 continue;
             }
 
+            visitedChunks++;
+
             ChunkPos chunkPos = new ChunkPos(entry.getKey());
-            if (applyChunk(level, chunkPos, contamination, rules, random)) {
-                processedChunks++;
-            }
+            applyChunk(level, chunkPos, contamination, rules, random);
         }
     }
 
@@ -91,7 +91,12 @@ public final class ContaminationTerrainService {
                     continue;
                 }
 
-                Block replacement = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(rule.resultBlockId()));
+                ResourceLocation replacementId = ResourceLocation.tryParse(rule.resultBlockId());
+                if (replacementId == null) {
+                    continue;
+                }
+
+                Block replacement = ForgeRegistries.BLOCKS.getValue(replacementId);
                 if (replacement == null) {
                     continue;
                 }
@@ -100,7 +105,7 @@ public final class ContaminationTerrainService {
                 if (replacement == Blocks.AIR && currentState.isAir()) {
                     continue;
                 }
-                if (replacementState == currentState) {
+                if (replacementState.equals(currentState)) {
                     continue;
                 }
 

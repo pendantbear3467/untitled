@@ -15,6 +15,7 @@ import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.slf4j.Logger;
 
+import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,7 +37,7 @@ public class QuestManager extends SimpleJsonResourceReloadListener {
     }
 
     @Override
-    protected void apply(Map<ResourceLocation, JsonElement> map, ResourceManager manager, ProfilerFiller profiler) {
+    protected void apply(@Nonnull Map<ResourceLocation, JsonElement> map, @Nonnull ResourceManager manager, @Nonnull ProfilerFiller profiler) {
         Map<String, QuestDefinition> loaded = new LinkedHashMap<>();
         int malformed = 0;
 
@@ -49,8 +50,8 @@ public class QuestManager extends SimpleJsonResourceReloadListener {
                     continue;
                 }
 
-                String title = GsonHelper.getAsString(json, "title", id).trim();
-                QuestType type = parseQuestType(GsonHelper.getAsString(json, "type", "KILL"), id, entry.getKey());
+                String title = trimOrDefault(GsonHelper.getAsString(json, "title", id), id);
+                QuestType type = parseQuestType(trimOrDefault(GsonHelper.getAsString(json, "type", "KILL"), "KILL"), id, entry.getKey());
                 int target = Math.max(1, GsonHelper.getAsInt(json, "target", 1));
 
                 JsonObject rewards = GsonHelper.getAsJsonObject(json, "rewards", new JsonObject());
@@ -58,7 +59,7 @@ public class QuestManager extends SimpleJsonResourceReloadListener {
                 int playerSkill = Math.max(0, GsonHelper.getAsInt(rewards, "player_skill_points", 0));
                 int classSkill = Math.max(0, GsonHelper.getAsInt(rewards, "class_skill_points", 0));
                 String unlockClass = normalizeId(GsonHelper.getAsString(rewards, "unlock_class", ""));
-                String unlockStage = GsonHelper.getAsString(rewards, "unlock_stage", "").trim().toUpperCase(Locale.ROOT);
+                String unlockStage = trimOrDefault(GsonHelper.getAsString(rewards, "unlock_stage", ""), "").toUpperCase(Locale.ROOT);
                 if (!unlockStage.isBlank() && ProgressionStage.byName(unlockStage).isEmpty()) {
                     LOGGER.warn("[Quest] Unknown unlock stage '{}' for {} from {}; clearing reward stage", unlockStage, id, entry.getKey());
                     unlockStage = "";
@@ -143,5 +144,14 @@ public class QuestManager extends SimpleJsonResourceReloadListener {
             id = id.substring(id.lastIndexOf('/') + 1);
         }
         return id;
+    }
+
+    private static String trimOrDefault(String value, String fallback) {
+        if (value == null) {
+            return fallback;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? fallback : trimmed;
     }
 }
