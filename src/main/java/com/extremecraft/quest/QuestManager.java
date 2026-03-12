@@ -1,5 +1,6 @@
 package com.extremecraft.quest;
 
+import com.extremecraft.progression.classsystem.ClassIdResolver;
 import com.extremecraft.progression.stage.ProgressionStage;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -58,7 +59,7 @@ public class QuestManager extends SimpleJsonResourceReloadListener {
                 int xp = Math.max(0, GsonHelper.getAsInt(rewards, "xp", 0));
                 int playerSkill = Math.max(0, GsonHelper.getAsInt(rewards, "player_skill_points", 0));
                 int classSkill = Math.max(0, GsonHelper.getAsInt(rewards, "class_skill_points", 0));
-                String unlockClass = normalizeId(GsonHelper.getAsString(rewards, "unlock_class", ""));
+                String unlockClass = normalizeClassId(GsonHelper.getAsString(rewards, "unlock_class", ""));
                 String unlockStage = trimOrDefault(GsonHelper.getAsString(rewards, "unlock_stage", ""), "").toUpperCase(Locale.ROOT);
                 if (!unlockStage.isBlank() && ProgressionStage.byName(unlockStage).isEmpty()) {
                     LOGGER.warn("[Quest] Unknown unlock stage '{}' for {} from {}; clearing reward stage", unlockStage, id, entry.getKey());
@@ -97,12 +98,12 @@ public class QuestManager extends SimpleJsonResourceReloadListener {
     }
 
     private static void seedDefaultQuests(Map<String, QuestDefinition> target) {
-        target.put("fighter_trial", new QuestDefinition("fighter_trial", "Fighter Trial", QuestType.KILL, 25, 200, 1, 1, "fighter", ""));
-        target.put("miner_trial", new QuestDefinition("miner_trial", "Miner Trial", QuestType.COLLECTION, 64, 150, 1, 1, "miner", ""));
-        target.put("explorer_trial", new QuestDefinition("explorer_trial", "Explorer Trial", QuestType.EXPLORATION, 10, 180, 2, 1, "explorer", ""));
-        target.put("scientist_trial", new QuestDefinition("scientist_trial", "Scientist Trial", QuestType.CRAFTING, 20, 220, 2, 2, "scientist", "INDUSTRIAL"));
-        target.put("medic_trial", new QuestDefinition("medic_trial", "Medic Trial", QuestType.BOSS, 1, 300, 2, 2, "medic", ""));
-        target.put("trader_trial", new QuestDefinition("trader_trial", "Trader Trial", QuestType.COLLECTION, 128, 250, 2, 2, "trader", ""));
+        target.put("fighter_trial", new QuestDefinition("fighter_trial", "Fighter Trial", QuestType.KILL, 25, 200, 1, 1, "warrior", ""));
+        target.put("miner_trial", new QuestDefinition("miner_trial", "Miner Trial", QuestType.COLLECTION, 64, 150, 1, 1, "engineer", ""));
+        target.put("explorer_trial", new QuestDefinition("explorer_trial", "Explorer Trial", QuestType.EXPLORATION, 10, 180, 2, 1, "ranger", ""));
+        target.put("scientist_trial", new QuestDefinition("scientist_trial", "Scientist Trial", QuestType.CRAFTING, 20, 220, 2, 2, "technomancer", "INDUSTRIAL"));
+        target.put("medic_trial", new QuestDefinition("medic_trial", "Medic Trial", QuestType.BOSS, 1, 300, 2, 2, "warden", ""));
+        target.put("trader_trial", new QuestDefinition("trader_trial", "Trader Trial", QuestType.COLLECTION, 128, 250, 2, 2, "chronomancer", ""));
     }
 
     public static Collection<QuestDefinition> all() {
@@ -144,6 +145,10 @@ public class QuestManager extends SimpleJsonResourceReloadListener {
             id = id.substring(id.lastIndexOf('/') + 1);
         }
         return id;
+    }
+
+    private static String normalizeClassId(String raw) {
+        return ClassIdResolver.normalizeCanonical(normalizeId(raw));
     }
 
     private static String trimOrDefault(String value, String fallback) {
