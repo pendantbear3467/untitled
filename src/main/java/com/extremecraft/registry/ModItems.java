@@ -9,10 +9,11 @@ import com.extremecraft.modules.item.ModularMiningDrillItem;
 import com.extremecraft.modules.item.PioneerArmorItem;
 import com.extremecraft.modules.item.QuantumMultiToolItem;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.ForgeSpawnEggItem;
 import net.minecraft.world.item.Item;
+import net.minecraftforge.common.ForgeSpawnEggItem;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
@@ -53,7 +54,7 @@ public final class ModItems {
     public static final RegistryObject<Item> VOID_TITAN_SPAWN_EGG = registerSpawnEgg("void_titan", ModEntities.VOID_TITAN, 0x191326, 0xC44DFF);
     public static final RegistryObject<Item> OVERCHARGED_MACHINE_GOD_SPAWN_EGG = registerSpawnEgg("overcharged_machine_god", ModEntities.OVERCHARGED_MACHINE_GOD, 0x33404A, 0xF4D03F);
 
-    private static RegistryObject<Item> registerSpawnEgg(String id, Supplier<? extends EntityType<?>> entityType, int primaryColor, int secondaryColor) {
+        private static <T extends Mob> RegistryObject<Item> registerSpawnEgg(String id, Supplier<? extends EntityType<T>> entityType, int primaryColor, int secondaryColor) {
         return ITEMS.register(id + "_spawn_egg", () -> new ForgeSpawnEggItem(entityType, primaryColor, secondaryColor, new Item.Properties()));
     }
 
