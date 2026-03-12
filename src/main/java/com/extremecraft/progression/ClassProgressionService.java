@@ -1,6 +1,7 @@
 package com.extremecraft.progression;
 
 import com.extremecraft.progression.capability.ProgressApi;
+import com.extremecraft.progression.classsystem.ClassIdResolver;
 import net.minecraft.server.level.ServerPlayer;
 
 public final class ClassProgressionService {
@@ -56,10 +57,10 @@ public final class ClassProgressionService {
     }
 
     private static String resolveClassId(PlayerProgressData data, String classId) {
-        String normalized = classId == null ? "" : classId.trim().toLowerCase();
+        String normalized = ClassIdResolver.normalizeCanonical(classId);
         if (!normalized.isBlank()) {
             return normalized;
         }
-        return data.currentClass() == null ? "" : data.currentClass().trim().toLowerCase();
+        return ClassIdResolver.normalizeCanonical(data.currentClass());
     }
 }

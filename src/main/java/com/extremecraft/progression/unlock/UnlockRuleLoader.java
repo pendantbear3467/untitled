@@ -1,6 +1,7 @@
 package com.extremecraft.progression.unlock;
 
 import com.extremecraft.progression.capability.ProgressApi;
+import com.extremecraft.progression.classsystem.ClassIdResolver;
 import com.extremecraft.progression.stage.ProgressionStage;
 import com.extremecraft.progression.stage.StageManager;
 import com.extremecraft.skills.SkillsApi;
@@ -112,7 +113,7 @@ public class UnlockRuleLoader extends SimpleJsonResourceReloadListener {
 
         if (!rule.requiredClass().isBlank() && progress.isPresent()) {
             String current = progress.get().currentClass();
-            if (!rule.requiredClass().equalsIgnoreCase(current)) {
+            if (!ClassIdResolver.matches(rule.requiredClass(), current)) {
                 return false;
             }
         }

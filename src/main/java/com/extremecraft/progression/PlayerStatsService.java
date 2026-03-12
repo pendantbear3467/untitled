@@ -4,6 +4,7 @@ import com.extremecraft.item.module.ModuleEffectService;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.PlayerStatsPacket;
 import com.extremecraft.network.sync.RuntimeSyncService;
+import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.capability.PlayerStatsApi;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
 import com.extremecraft.progression.skilltree.SkillNode;
@@ -26,7 +27,7 @@ public final class PlayerStatsService {
             boolean changed;
             if (upgradeId.startsWith("skill:")) {
                 String nodeId = upgradeId.substring("skill:".length());
-                changed = unlockSkillNode(stats, nodeId);
+                changed = unlockSkillNode(player, stats, nodeId);
             } else {
                 changed = stats.upgradePrimaryStat(upgradeId);
             }
@@ -93,13 +94,37 @@ public final class PlayerStatsService {
         RuntimeSyncService.syncSkillUnlocks(player);
     }
 
-    private static boolean unlockSkillNode(PlayerStatsCapability stats, String nodeId) {
+    public static boolean syncProgressionMirror(ServerPlayer player, boolean syncImmediately) {
+        if (player == null) {
+            return false;
+        }
+
+        PlayerStatsCapability stats = PlayerStatsApi.get(player).orElse(null);
+        if (stats == null) {
+            return false;
+        }
+
+        int canonicalSkillPoints = ProgressApi.get(player)
+                .map(com.extremecraft.progression.PlayerProgressData::playerSkillPoints)
+                .orElse(stats.skillPoints());
+
+        boolean changed = stats.setSkillPoints(canonicalSkillPoints);
+        if (changed && syncImmediately) {
+            sync(player, stats);
+        }
+        return changed;
+    }
+
+    private static boolean unlockSkillNode(ServerPlayer player, PlayerStatsCapability stats, String nodeId) {
         SkillNode node = SkillTreeManager.getNode(nodeId);
         if (node == null || stats.isSkillUnlocked(node.id())) {
             return false;
         }
 
-        if (stats.level() < node.requiredLevel()) {
+        int level = ProgressApi.get(player)
+                .map(com.extremecraft.progression.PlayerProgressData::level)
+                .orElse(stats.level());
+        if (level < node.requiredLevel()) {
             return false;
         }
 
@@ -109,7 +134,21 @@ public final class PlayerStatsService {
             }
         }
 
-        return stats.unlockSkillNode(node.id(), node.cost());
+        com.extremecraft.progression.PlayerProgressData progress = ProgressApi.get(player).orElse(null);
+        if (progress == null || !progress.consumePlayerSkillPoints(node.cost())) {
+            return false;
+        }
+
+        stats.setSkillPoints(progress.playerSkillPoints());
+        if (!stats.unlockSkillNode(node.id())) {
+            progress.addPlayerSkillPoints(node.cost());
+            stats.setSkillPoints(progress.playerSkillPoints());
+            return false;
+        }
+
+        progress.markSyncDirty();
+        ProgressionService.flushDirty(player);
+        return true;
     }
 }
 

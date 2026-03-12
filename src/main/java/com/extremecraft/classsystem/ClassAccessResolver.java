@@ -1,5 +1,6 @@
 package com.extremecraft.classsystem;
 
+import com.extremecraft.progression.classsystem.ClassIdResolver;
 import com.extremecraft.progression.classsystem.ClassDefinition;
 import com.extremecraft.progression.classsystem.data.ClassDefinitions;
 
@@ -70,6 +71,6 @@ public final class ClassAccessResolver {
     }
 
     private static String normalize(String raw) {
-        return raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
+        return ClassIdResolver.normalizeCanonical(raw);
     }
 }

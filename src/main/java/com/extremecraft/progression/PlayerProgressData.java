@@ -1,5 +1,6 @@
 package com.extremecraft.progression;
 
+import com.extremecraft.progression.classsystem.ClassIdResolver;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
@@ -15,7 +16,7 @@ public class PlayerProgressData {
     private int xp = 0;
     private int playerSkillPoints = 0;
     private int classSkillPoints = 0;
-    private String currentClass = PlayerClass.WARRIOR.id();
+    private String currentClass = ClassIdResolver.DEFAULT_CLASS_ID;
 
     private final Set<String> unlockedClasses = new HashSet<>();
     private final Set<String> completedQuests = new HashSet<>();
@@ -28,7 +29,7 @@ public class PlayerProgressData {
     private boolean attributesDirty = true;
 
     public PlayerProgressData() {
-        unlockedClasses.add(PlayerClass.WARRIOR.id());
+        unlockedClasses.add(ClassIdResolver.DEFAULT_CLASS_ID);
         ensureClassTrackers(currentClass);
     }
 
@@ -46,23 +47,25 @@ public class PlayerProgressData {
     public Map<String, Integer> classLevels() { return classLevels; }
 
     public void setCurrentClass(String classId) {
-        if (classId == null || classId.isBlank() || classId.equalsIgnoreCase(this.currentClass)) {
+        String normalized = normalizeClassId(classId);
+        if (normalized.isBlank() || normalized.equalsIgnoreCase(this.currentClass)) {
             return;
         }
 
-        this.currentClass = classId;
-        ensureClassTrackers(classId);
+        this.currentClass = normalized;
+        ensureClassTrackers(normalized);
         markAttributesDirty();
         markSyncDirty();
     }
 
     public void unlockClass(String classId) {
-        if (classId == null || classId.isBlank()) {
+        String normalized = normalizeClassId(classId);
+        if (normalized.isBlank()) {
             return;
         }
 
-        if (unlockedClasses.add(classId)) {
-            ensureClassTrackers(classId);
+        if (unlockedClasses.add(normalized)) {
+            ensureClassTrackers(normalized);
             markSyncDirty();
         }
     }
@@ -257,14 +260,21 @@ public class PlayerProgressData {
         xp = Math.max(0, tag.getInt("xp"));
         playerSkillPoints = Math.max(0, tag.getInt("player_skill_points"));
         classSkillPoints = Math.max(0, tag.getInt("class_skill_points"));
-        currentClass = tag.contains("current_class") ? tag.getString("current_class") : PlayerClass.WARRIOR.id();
+        currentClass = ClassIdResolver.defaultIfBlank(tag.contains("current_class") ? tag.getString("current_class") : "");
 
         unlockedClasses.clear();
         if (tag.contains("unlocked_classes", Tag.TAG_LIST)) {
             ListTag unlocked = tag.getList("unlocked_classes", Tag.TAG_STRING);
-            for (Tag t : unlocked) unlockedClasses.add(t.getAsString());
+            for (Tag t : unlocked) {
+                String normalized = normalizeClassId(t.getAsString());
+                if (!normalized.isBlank()) {
+                    unlockedClasses.add(normalized);
+                }
+            }
         }
-        if (unlockedClasses.isEmpty()) unlockedClasses.add(PlayerClass.WARRIOR.id());
+        if (unlockedClasses.isEmpty()) {
+            unlockedClasses.add(ClassIdResolver.DEFAULT_CLASS_ID);
+        }
 
         completedQuests.clear();
         if (tag.contains("completed_quests", Tag.TAG_LIST)) {
@@ -290,7 +300,10 @@ public class PlayerProgressData {
         if (tag.contains("class_experience", Tag.TAG_COMPOUND)) {
             CompoundTag xpTag = tag.getCompound("class_experience");
             for (String key : xpTag.getAllKeys()) {
-                classExperience.put(key, Math.max(0, xpTag.getInt(key)));
+                String normalized = normalizeClassId(key);
+                if (!normalized.isBlank()) {
+                    classExperience.merge(normalized, Math.max(0, xpTag.getInt(key)), Math::max);
+                }
             }
         }
 
@@ -298,7 +311,10 @@ public class PlayerProgressData {
         if (tag.contains("class_levels", Tag.TAG_COMPOUND)) {
             CompoundTag levelTag = tag.getCompound("class_levels");
             for (String key : levelTag.getAllKeys()) {
-                classLevels.put(key, Math.max(1, levelTag.getInt(key)));
+                String normalized = normalizeClassId(key);
+                if (!normalized.isBlank()) {
+                    classLevels.merge(normalized, Math.max(1, levelTag.getInt(key)), Math::max);
+                }
             }
         }
 
@@ -349,6 +365,6 @@ public class PlayerProgressData {
     }
 
     private static String normalizeClassId(String classId) {
-        return classId == null ? "" : classId.trim().toLowerCase();
+        return ClassIdResolver.normalizeCanonical(classId);
     }
 }

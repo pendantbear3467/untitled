@@ -24,6 +24,7 @@ public final class ProgressionMutationService {
         // Legacy mirrors kept in sync for existing systems/UI during migration.
         int levelUps = LevelService.grantLegacyXp(player, amount, false);
         PlayerStatsService.addExperience(player, amount, false);
+        PlayerStatsService.syncProgressionMirror(player, false);
 
         LevelService.sync(player);
         PlayerStatsService.sync(player);
@@ -43,6 +44,7 @@ public final class ProgressionMutationService {
         // Legacy mirrors kept in sync for existing systems/UI during migration.
         LevelService.setLegacyLevel(player, safeLevel, false);
         PlayerStatsService.setLevel(player, safeLevel, false);
+        PlayerStatsService.syncProgressionMirror(player, false);
 
         LevelService.sync(player);
         PlayerStatsService.sync(player);

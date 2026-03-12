@@ -215,6 +215,19 @@ public class PlayerStatsCapability {
         return true;
     }
 
+    public boolean unlockSkillNode(String nodeId) {
+        if (nodeId == null || nodeId.isBlank()) {
+            return false;
+        }
+
+        if (!unlockedSkillNodes.add(nodeId)) {
+            return false;
+        }
+
+        recalculateDerivedStats();
+        return true;
+    }
+
     public boolean isSkillUnlocked(String nodeId) {
         return unlockedSkillNodes.contains(nodeId);
     }
@@ -349,12 +362,14 @@ public class PlayerStatsCapability {
 
     public void regenerateResources() {
         int staminaRegen = Math.max(1, endurance / 3);
-        int manaRegen = Math.max(1, intelligence / 4) + Math.max(0, Math.round(manaRegenBonus));
 
         stamina = Math.min(maxStamina, stamina + staminaRegen);
-        mana = Math.min(maxMana, mana + manaRegen);
+        mana = Math.min(mana, maxMana);
     }
 
+    /**
+     * Legacy adapter only. First-release mana authority lives in ManaCapability/ManaService.
+     */
     public boolean tryConsumeMana(int amount) {
         if (amount <= 0) {
             return true;
@@ -365,6 +380,16 @@ public class PlayerStatsCapability {
         }
 
         mana -= amount;
+        return true;
+    }
+
+    public boolean setSkillPoints(int value) {
+        int safeValue = Math.max(0, value);
+        if (skillPoints == safeValue) {
+            return false;
+        }
+
+        skillPoints = safeValue;
         return true;
     }
 

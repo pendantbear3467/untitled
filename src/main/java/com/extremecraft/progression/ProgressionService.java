@@ -1,8 +1,11 @@
 package com.extremecraft.progression;
 
+import com.extremecraft.classsystem.ClassAccessResolver;
+import com.extremecraft.classsystem.ClassPassives;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.SyncProgressPacket;
 import com.extremecraft.progression.capability.ProgressApi;
+import com.extremecraft.progression.classsystem.ClassIdResolver;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -32,6 +35,7 @@ public final class ProgressionService {
     }
     public static void addPlayerSkillPoints(ServerPlayer player, int amount) {
         ProgressApi.get(player).ifPresent(data -> data.addPlayerSkillPoints(amount));
+        PlayerStatsService.syncProgressionMirror(player, false);
         flushDirty(player);
     }
 
@@ -47,8 +51,11 @@ public final class ProgressionService {
 
     public static boolean switchClass(ServerPlayer player, String classId) {
         return ProgressApi.get(player).map(data -> {
-            if (!data.unlockedClasses().contains(classId)) return false;
-            data.setCurrentClass(classId);
+            String normalized = ClassIdResolver.normalizeCanonical(classId);
+            if (normalized.isBlank() || !data.unlockedClasses().contains(normalized)) {
+                return false;
+            }
+            data.setCurrentClass(normalized);
             flushDirty(player);
             return true;
         }).orElse(false);
@@ -69,7 +76,11 @@ public final class ProgressionService {
     public static void applyAttributes(ServerPlayer player) {
         ProgressApi.get(player).ifPresent(data -> {
             int level = data.level();
-            PlayerClass klass = PlayerClass.byId(data.currentClass()).orElse(PlayerClass.WARRIOR);
+            com.extremecraft.classsystem.PlayerClass klass = ClassAccessResolver.resolve(data.currentClass());
+            if (klass == null) {
+                klass = ClassAccessResolver.resolve(ClassIdResolver.DEFAULT_CLASS_ID);
+            }
+            java.util.Map<String, Double> passives = ClassPassives.resolve(klass);
 
             double levelHealth = (level - 1) * 0.4D;
             double levelAttack = (level - 1) * 0.15D;
@@ -77,11 +88,16 @@ public final class ProgressionService {
             applyAdd(player.getAttribute(Attributes.MAX_HEALTH), LEVEL_HEALTH_MOD, "ec_level_health", levelHealth);
             applyAdd(player.getAttribute(Attributes.ATTACK_DAMAGE), LEVEL_ATTACK_MOD, "ec_level_attack", levelAttack);
 
-            double classHealth = Math.max(0.0D, player.getAttributeValue(Attributes.MAX_HEALTH) * klass.healthBonusPct());
+            double healthPct = passives.getOrDefault("health_bonus_pct", 0.0D);
+            double flatAttack = passives.getOrDefault("flat_attack_bonus", passives.getOrDefault("melee_damage", 0.0D));
+            double moveSpeed = passives.getOrDefault("move_speed_bonus", passives.getOrDefault("move_speed", 0.0D));
+            double luck = passives.getOrDefault("luck_bonus", passives.getOrDefault("luck", 0.0D));
+
+            double classHealth = Math.max(0.0D, player.getAttributeValue(Attributes.MAX_HEALTH) * healthPct);
             applyAdd(player.getAttribute(Attributes.MAX_HEALTH), CLASS_HEALTH_MOD, "ec_class_health", classHealth);
-            applyAdd(player.getAttribute(Attributes.ATTACK_DAMAGE), CLASS_ATTACK_MOD, "ec_class_attack", klass.flatAttackBonus());
-            applyAdd(player.getAttribute(Attributes.MOVEMENT_SPEED), CLASS_SPEED_MOD, "ec_class_speed", klass.moveSpeedBonus());
-            applyAdd(player.getAttribute(Attributes.LUCK), CLASS_LUCK_MOD, "ec_class_luck", klass.luckBonus());
+            applyAdd(player.getAttribute(Attributes.ATTACK_DAMAGE), CLASS_ATTACK_MOD, "ec_class_attack", flatAttack);
+            applyAdd(player.getAttribute(Attributes.MOVEMENT_SPEED), CLASS_SPEED_MOD, "ec_class_speed", moveSpeed);
+            applyAdd(player.getAttribute(Attributes.LUCK), CLASS_LUCK_MOD, "ec_class_luck", luck);
 
             if (player.getHealth() > player.getMaxHealth()) {
                 player.setHealth(player.getMaxHealth());
