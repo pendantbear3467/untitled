@@ -2,7 +2,9 @@ package com.extremecraft.progression.skilltree;
 
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.sync.RuntimeSyncService;
+import com.extremecraft.progression.PlayerProgressData;
 import com.extremecraft.progression.PlayerStatsService;
+import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.capability.PlayerStatsApi;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
 import com.extremecraft.progression.level.PlayerLevelApi;
@@ -88,12 +90,18 @@ public final class SkillTreeService {
             return false;
         }
 
-        int level = PlayerLevelApi.get(player).map(levelData -> levelData.level()).orElse(stats.level());
+        int level = ProgressApi.get(player)
+                .map(PlayerProgressData::level)
+                .or(() -> PlayerLevelApi.get(player).map(levelData -> levelData.level()))
+                .orElse(stats.level());
         if (level < node.requiredLevel()) {
             return false;
         }
 
-        if (stats.skillPoints() < node.cost()) {
+        int playerSkillPoints = ProgressApi.get(player)
+                .map(PlayerProgressData::playerSkillPoints)
+                .orElse(stats.skillPoints());
+        if (playerSkillPoints < node.cost()) {
             return false;
         }
 
