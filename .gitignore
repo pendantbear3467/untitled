@@ -37,6 +37,7 @@ bin/
 ### VS Code ###
 .vscode/
 .gradle-user-temp/
+.gradle-user-codex/
 .tmp-tests/
 .venv/
 *.egg-info/
