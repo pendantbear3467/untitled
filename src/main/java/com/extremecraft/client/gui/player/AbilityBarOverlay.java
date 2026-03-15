@@ -1,6 +1,8 @@
 package com.extremecraft.client.gui.player;
 
 import com.extremecraft.client.gui.debug.DeveloperOverlayState;
+import com.extremecraft.client.gui.theme.ECGuiPrimitives;
+import com.extremecraft.client.gui.theme.ECGuiTheme;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.core.ECConstants;
 import com.extremecraft.magic.mana.ManaApi;
@@ -89,15 +91,10 @@ public class AbilityBarOverlay {
         int width = HUD_PANEL_WIDTH;
         int currentMana = ManaApi.get(player).map(m -> (int) Math.floor(m.currentMana())).orElse(0);
         int maxMana = Math.max(1, ManaApi.get(player).map(m -> (int) Math.ceil(m.maxMana())).orElse(1));
-        int fill = Math.min(width - 8, Math.round((currentMana / (float) maxMana) * (width - 8)));
-
         gui.fill(x, y, x + width, y + SLOT_SIZE, 0xB0121821);
-        gui.drawString(Minecraft.getInstance().font, Component.literal("Mana"), x + 4, y + 3, 0xD8ECFF, false);
-        gui.fill(x + 4, y + 14, x + width - 4, y + 18, 0x88232D3D);
-        if (fill > 0) {
-            gui.fillGradient(x + 4, y + 14, x + 4 + fill, y + 18, 0xFF4B7FD6, 0xFF8CC8FF);
-        }
-        gui.drawString(Minecraft.getInstance().font, Component.literal(currentMana + "/" + maxMana), x + width - 40, y + 3, 0xC6DFF7, false);
+        ECGuiPrimitives.drawSectionHeader(gui, Minecraft.getInstance().font, Component.literal("Mana"), x + 4, y + 3, 40, ECGuiTheme.ACCENT_VIOLET);
+        ECGuiPrimitives.drawSegmentedBar(gui, x + 4, y + 14, width - 8, 4, currentMana / (float) maxMana, ECGuiTheme.ACCENT_VIOLET);
+        ECGuiPrimitives.drawStatusChip(gui, Minecraft.getInstance().font, x + width - 50, y + 2, Component.literal(currentMana + "/" + maxMana), currentMana > 0 ? ECGuiTheme.TEXT_SECONDARY : ECGuiTheme.STATE_ERROR);
     }
 
     private void renderRadiationHud(GuiGraphics gui, LocalPlayer player, int x, int y) {
@@ -109,25 +106,22 @@ public class AbilityBarOverlay {
         boolean warning = dose >= threshold || contamination >= threshold || ambient >= 2.0D;
 
         gui.fill(x, y, x + width, y + SLOT_SIZE + 18, warning ? 0xB03A120E : 0xB0111A12);
-        gui.drawString(Minecraft.getInstance().font, Component.literal("Radiation"), x + 4, y + 3, warning ? 0xFFD4A27A : 0xBDE7C5, false);
-        gui.drawString(Minecraft.getInstance().font, Component.literal(String.format("Dose %.1f  Env %.1f", dose, ambient)), x + 4, y + 13, 0xD9E3EF, false);
+        ECGuiPrimitives.drawSectionHeader(gui, Minecraft.getInstance().font, Component.literal("Radiation"), x + 4, y + 3, 72, warning ? ECGuiTheme.STATE_WARN : ECGuiTheme.STATE_READY);
+        gui.drawString(Minecraft.getInstance().font, Component.literal(String.format("Dose %.1f  Env %.1f", dose, ambient)), x + 4, y + 13, ECGuiTheme.TEXT_PRIMARY, false);
 
         int barRight = x + width - 4;
         int barLeft = x + 62;
         double contaminationRatio = Math.max(0.0D, Math.min(1.0D, contamination / threshold));
         int contaminationFill = Math.min(barRight - barLeft, (int) Math.round(contaminationRatio * (barRight - barLeft)));
-        gui.fill(barLeft, y + 15, barRight, y + 19, 0x88402A2A);
-        if (contaminationFill > 0) {
-            gui.fillGradient(barLeft, y + 15, barLeft + contaminationFill, y + 19, 0xFFB6744E, 0xFFE7B471);
-        }
-        gui.drawString(Minecraft.getInstance().font, Component.literal(String.format("Contam %.1f", contamination)), x + 4, y + 14, 0xC8D8E8, false);
+        ECGuiPrimitives.drawSegmentedBar(gui, barLeft, y + 15, barRight - barLeft, 4, (float) contaminationRatio, warning ? ECGuiTheme.STATE_WARN : ECGuiTheme.ACCENT_CYAN_DIM);
+        gui.drawString(Minecraft.getInstance().font, Component.literal(String.format("Contam %.1f", contamination)), x + 4, y + 14, ECGuiTheme.TEXT_SECONDARY, false);
 
         if (dose >= threshold || contamination >= threshold) {
-            gui.drawString(Minecraft.getInstance().font, Component.literal("WARNING: decon advised"), x + 4, y + SLOT_SIZE + 7, 0xFFE2B08A, false);
+            gui.drawString(Minecraft.getInstance().font, Component.literal("WARNING: decon advised"), x + 4, y + SLOT_SIZE + 7, ECGuiTheme.STATE_WARN, false);
         } else if (ambient >= 2.0D) {
-            gui.drawString(Minecraft.getInstance().font, Component.literal("Exposure rising"), x + 4, y + SLOT_SIZE + 7, 0xFFE2B08A, false);
+            gui.drawString(Minecraft.getInstance().font, Component.literal("Exposure rising"), x + 4, y + SLOT_SIZE + 7, ECGuiTheme.STATE_WARN, false);
         } else {
-            gui.drawString(Minecraft.getInstance().font, Component.literal("Status: stable"), x + 4, y + SLOT_SIZE + 7, 0xA7C8AD, false);
+            gui.drawString(Minecraft.getInstance().font, Component.literal("Status: stable"), x + 4, y + SLOT_SIZE + 7, ECGuiTheme.STATE_READY, false);
         }
 
         CompoundTag states = RuntimeSyncClientState.machineStates();
@@ -151,7 +145,7 @@ public class AbilityBarOverlay {
             }
         }
         if (reactorWarning) {
-            gui.drawString(Minecraft.getInstance().font, Component.literal("Reactor Alert"), x + width - 70, y + 3, 0xFFFFB08A, false);
+            ECGuiPrimitives.drawStatusChip(gui, Minecraft.getInstance().font, x + width - 72, y + 2, Component.literal("Reactor Alert"), ECGuiTheme.STATE_WARN);
         }
     }
 
@@ -176,6 +170,7 @@ public class AbilityBarOverlay {
         }
 
         gui.fill(x, y, x + SLOT_SIZE, y + SLOT_SIZE, 0xAA0F1218);
+        ECGuiPrimitives.drawFramedSlot(gui, x + 3, y + 3, cooldownTicks == 0 && !abilityId.isBlank());
         gui.blit(SLOT_BG, x, y, 0, 0, SLOT_SIZE, SLOT_SIZE, SLOT_SIZE, SLOT_SIZE);
 
         if (!abilityId.isBlank()) {
@@ -192,7 +187,7 @@ public class AbilityBarOverlay {
         }
 
         int currentMana = ManaApi.get(player).map(m -> (int) Math.floor(m.currentMana())).orElse(0);
-        int manaColor = currentMana >= manaCost ? 0x88A8E7FF : 0x88FF7A7A;
+        int manaColor = currentMana >= manaCost ? ECGuiTheme.ACCENT_CYAN : ECGuiTheme.STATE_ERROR;
         gui.fill(x + 2, y + SLOT_SIZE - 4, x + SLOT_SIZE - 2, y + SLOT_SIZE - 2, 0x6611141A);
         gui.drawString(Minecraft.getInstance().font, Component.literal(String.valueOf(manaCost)), x + 4, y + SLOT_SIZE - 11, manaColor, false);
 
@@ -202,7 +197,7 @@ public class AbilityBarOverlay {
                     Component.literal(abilityId),
                     x - 2,
                     y - 9,
-                    0xAACFD8E3,
+                ECGuiTheme.TEXT_MUTED,
                     false
             );
         }
@@ -278,16 +273,16 @@ public class AbilityBarOverlay {
         int panelHeight = 82;
 
         gui.fill(x, y, x + DEV_PANEL_WIDTH, y + panelHeight, 0xAA090D12);
-        gui.fill(x + 1, y + 1, x + DEV_PANEL_WIDTH - 1, y + panelHeight - 1, 0x880F1722);
+        ECGuiPrimitives.drawPanelChrome(gui, x, y, DEV_PANEL_WIDTH, panelHeight, 0);
 
         int lineY = y + 6;
-        gui.drawString(Minecraft.getInstance().font, "ExtremeCraft Dev Overlay", x + 6, lineY, 0xFFE6F1FF, false);
+        gui.drawString(Minecraft.getInstance().font, "ExtremeCraft Dev Overlay", x + 6, lineY, ECGuiTheme.TEXT_PRIMARY, false);
 
         lineY += 12;
-        gui.drawString(Minecraft.getInstance().font, "Loaded machines: " + PlatformDataClientState.machines().size(), x + 6, lineY, 0xFFBFD6E8, false);
+        gui.drawString(Minecraft.getInstance().font, "Loaded machines: " + PlatformDataClientState.machines().size(), x + 6, lineY, ECGuiTheme.TEXT_SECONDARY, false);
 
         lineY += 10;
-        gui.drawString(Minecraft.getInstance().font, "Loaded skill trees: " + PlatformDataClientState.skillTrees().size(), x + 6, lineY, 0xFFBFD6E8, false);
+        gui.drawString(Minecraft.getInstance().font, "Loaded skill trees: " + PlatformDataClientState.skillTrees().size(), x + 6, lineY, ECGuiTheme.TEXT_SECONDARY, false);
 
         lineY += 10;
         String datapackCounts = "Datapacks M/S/R: "
@@ -296,11 +291,11 @@ public class AbilityBarOverlay {
                 + SkillTreeDataRegistry.registry().size()
                 + "/"
                 + RecipeDataRegistry.registry().size();
-        gui.drawString(Minecraft.getInstance().font, datapackCounts, x + 6, lineY, 0xFFAFCCDF, false);
+        gui.drawString(Minecraft.getInstance().font, datapackCounts, x + 6, lineY, ECGuiTheme.TEXT_SECONDARY, false);
 
         lineY += 10;
         int runtimeMachines = RuntimeSyncClientState.machineStates().getAllKeys().size();
-        gui.drawString(Minecraft.getInstance().font, "Runtime machines synced: " + runtimeMachines, x + 6, lineY, 0xFFAFCCDF, false);
+        gui.drawString(Minecraft.getInstance().font, "Runtime machines synced: " + runtimeMachines, x + 6, lineY, ECGuiTheme.TEXT_SECONDARY, false);
 
         lineY += 10;
         gui.drawString(
@@ -308,7 +303,7 @@ public class AbilityBarOverlay {
                 "Validation status: " + DataValidationService.lastValidationStatus(),
                 x + 6,
                 lineY,
-                0xFFE7C18A,
+                ECGuiTheme.ACCENT_AMBER,
                 false
         );
     }

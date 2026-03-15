@@ -1,5 +1,7 @@
 package com.extremecraft.client.gui.player;
 
+import com.extremecraft.client.gui.theme.ECGuiPrimitives;
+import com.extremecraft.client.gui.theme.ECGuiTheme;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.progression.capability.PlayerStatsApi;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
@@ -42,14 +44,10 @@ public class InventoryXpOverlay {
 
         int xp = stats.experience();
         int xpNeeded = Math.max(1, stats.experienceToNextLevel());
-        int fill = Math.min(barWidth, Math.round((xp / (float) xpNeeded) * barWidth));
 
-        graphics.fill(x, y, x + barWidth, y + 8, 0xCC1B202A);
-        if (fill > 0) {
-            graphics.fillGradient(x, y, x + fill, y + 8, 0xFF3A7AE0, 0xFF5DB0F6);
-        }
+        ECGuiPrimitives.drawSegmentedBar(graphics, x, y, barWidth, 8, xp / (float) xpNeeded, ECGuiTheme.ACCENT_CYAN);
 
         Component label = Component.literal(xp + " / " + xpNeeded + " XP");
-        graphics.drawCenteredString(mc.font, label, x + (barWidth / 2), y - 10, 0xDDE6F7);
+        graphics.drawCenteredString(mc.font, label, x + (barWidth / 2), y - 10, ECGuiTheme.TEXT_SECONDARY);
     }
 }
