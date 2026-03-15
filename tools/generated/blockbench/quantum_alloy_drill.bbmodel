@@ -12,7 +12,7 @@
   "textures": [
     {
       "name": "texture",
-      "path": "textures/item/quantum_alloy_drill.png",
+      "path": "../../../src/main/resources/assets/extremecraft/textures/item/quantum_alloy_drill.png",
       "id": "0"
     }
   ],

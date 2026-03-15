@@ -12,7 +12,7 @@
   "textures": [
     {
       "name": "texture",
-      "path": "textures/item/silver_drill.png",
+      "path": "../../../src/main/resources/assets/extremecraft/textures/item/silver_drill.png",
       "id": "0"
     }
   ],

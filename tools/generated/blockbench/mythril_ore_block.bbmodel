@@ -12,7 +12,7 @@
   "textures": [
     {
       "name": "texture",
-      "path": "textures/block/mythril_ore.png",
+      "path": "../../../src/main/resources/assets/extremecraft/textures/block/mythril_ore.png",
       "id": "0"
     }
   ],

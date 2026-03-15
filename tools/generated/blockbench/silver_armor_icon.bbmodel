@@ -12,7 +12,7 @@
   "textures": [
     {
       "name": "texture",
-      "path": "textures/item/silver_helmet.png",
+      "path": "../../../src/main/resources/assets/extremecraft/textures/item/silver_helmet.png",
       "id": "0"
     }
   ],
