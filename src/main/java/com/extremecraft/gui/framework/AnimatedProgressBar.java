@@ -1,5 +1,7 @@
 package com.extremecraft.gui.framework;
 
+import com.extremecraft.client.gui.theme.ECGuiPrimitives;
+import com.extremecraft.client.gui.theme.ECGuiTheme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 
@@ -26,15 +28,10 @@ public class AnimatedProgressBar {
     }
 
     public void render(GuiGraphics graphics, int left, int top, int tickCount, boolean active) {
-        graphics.fill(left + x, top + y, left + x + width, top + y + height, 0x660F1926);
         int filled = Math.max(0, Math.min(width, scaled.getAsInt()));
-        if (filled <= 0) {
-            return;
-        }
-
-        int pulse = active ? ((tickCount % 24) / 3) : 0;
-        int accent = 0xFF34B6FF + (pulse << 16);
-        graphics.fill(left + x + 1, top + y + 1, left + x + filled, top + y + height - 1, accent);
+        float ratio = width <= 0 ? 0.0F : (filled / (float) width);
+        int color = active ? ECGuiTheme.ACCENT_CYAN : ECGuiTheme.ACCENT_CYAN_DIM;
+        ECGuiPrimitives.drawSegmentedBar(graphics, left + x, top + y, width, height, ratio, color);
     }
 
     public boolean isMouseOver(int left, int top, int mouseX, int mouseY) {

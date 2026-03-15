@@ -1,6 +1,8 @@
 package com.extremecraft.client.gui.player;
 
 import com.extremecraft.client.gui.layout.GuiScaleContext;
+import com.extremecraft.client.gui.theme.ECGuiPrimitives;
+import com.extremecraft.client.gui.theme.ECGuiTheme;
 import com.extremecraft.client.DwKeybinds;
 import com.extremecraft.combat.dualwield.DualWieldLoadout;
 import com.extremecraft.combat.dualwield.PlayerDualWieldApi;
@@ -50,12 +52,12 @@ public class ExtremePlayerScreen extends Screen {
 
     private static final int TAB_WIDTH = 58;
     private static final int TAB_HEIGHT = 18;
+    private static final int TAB_GAP = 4;
     private static final int MODULES_PAGE_SIZE = 4;
 
     private final Player player;
     private final Screen returnScreen;
     private final SkillTreeScreenPanel skillTreePanel;
-    private final List<Button> tabButtons = new ArrayList<>();
     private final List<Button> statButtons = new ArrayList<>();
 
     private ExtremePlayerTabs.Tab activeTab = ExtremePlayerTabs.Tab.PLAYER_STATS;
@@ -86,17 +88,7 @@ public class ExtremePlayerScreen extends Screen {
 
     @Override
     protected void init() {
-        tabButtons.clear();
         statButtons.clear();
-
-        for (ExtremePlayerTabs.Tab tab : ExtremePlayerTabs.Tab.values()) {
-            final ExtremePlayerTabs.Tab captured = tab;
-            Button button = Button.builder(tab.label(), b -> setActiveTab(captured))
-                    .bounds(0, 0, TAB_WIDTH, TAB_HEIGHT)
-                    .build();
-            tabButtons.add(button);
-            addRenderableWidget(button);
-        }
 
         statButtons.add(addRenderableWidget(statButton("vitality")));
         statButtons.add(addRenderableWidget(statButton("strength")));
@@ -148,14 +140,6 @@ public class ExtremePlayerScreen extends Screen {
         leftPos = layoutContext.left();
         topPos = layoutContext.top();
 
-        int tabsStartX = leftPos + 10;
-        int tabsY = topPos + 8;
-        for (int i = 0; i < tabButtons.size(); i++) {
-            Button button = tabButtons.get(i);
-            button.setX(tabsStartX + (i * (TAB_WIDTH + 4)));
-            button.setY(tabsY);
-        }
-
         int rowY = topPos + 89;
         int buttonX = leftPos + 214;
         for (int i = 0; i < statButtons.size(); i++) {
@@ -177,6 +161,7 @@ public class ExtremePlayerScreen extends Screen {
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics);
         renderFrame(graphics);
+        renderTabs(graphics, mouseX, mouseY);
 
         switch (activeTab) {
             case PLAYER_STATS -> renderStatsTab(graphics);
@@ -191,19 +176,33 @@ public class ExtremePlayerScreen extends Screen {
     }
 
     private void renderFrame(GuiGraphics graphics) {
+        int tick = player.tickCount;
         if (minecraft != null && minecraft.getResourceManager().getResource(BG_TEXTURE).isPresent()) {
             graphics.blit(BG_TEXTURE, leftPos, topPos, 0, 0, guiWidth, guiHeight, BASE_TEXTURE_WIDTH, BASE_TEXTURE_HEIGHT);
-        } else {
-            graphics.fill(leftPos, topPos, leftPos + guiWidth, topPos + guiHeight, 0xF01A1B22);
-            graphics.fill(leftPos + 2, topPos + 2, leftPos + guiWidth - 2, topPos + guiHeight - 2, 0xE0282B35);
         }
+        ECGuiPrimitives.drawPanelChrome(graphics, leftPos, topPos, guiWidth, guiHeight, tick);
 
-        int pulse = 80 + (int) (Math.sin((player.tickCount + (minecraft == null ? 0.0F : minecraft.getFrameTime())) * 0.07F) * 30);
-        int glow = (Mth.clamp(pulse, 30, 140) << 24) | 0x00468DFF;
-        graphics.fill(leftPos + 2, topPos + 2, leftPos + guiWidth - 2, topPos + 4, glow);
-
-        graphics.drawString(font, Component.literal("ExtremeCraft Progression"), leftPos + 10, topPos + 34, 0xF3D6A0, false);
+        graphics.drawString(font, Component.literal("ExtremeCraft Progression Console"), leftPos + 10, topPos + 34, ECGuiTheme.ACCENT_AMBER, false);
+        graphics.drawString(font, Component.literal("Domains: Skills | Class | Magic | Tech"), leftPos + 10, topPos + 44, ECGuiTheme.TEXT_MUTED, false);
         graphics.fill(leftPos + 8, topPos + 54, leftPos + guiWidth - 8, topPos + guiHeight - 10, 0xAA0C0F16);
+    }
+
+    private void renderTabs(GuiGraphics graphics, int mouseX, int mouseY) {
+        int y = topPos + 9;
+        ExtremePlayerTabs.Tab[] tabs = ExtremePlayerTabs.Tab.values();
+        for (int i = 0; i < tabs.length; i++) {
+            ExtremePlayerTabs.Tab tab = tabs[i];
+            int x = tabX(i);
+            boolean hovered = mouseOver(mouseX, mouseY, x, y, TAB_WIDTH, TAB_HEIGHT);
+            ECGuiPrimitives.drawTab(graphics, font, x, y, TAB_WIDTH, TAB_HEIGHT, tab.label(), activeTab == tab);
+            if (hovered && activeTab != tab) {
+                graphics.fill(x + 2, y + TAB_HEIGHT - 3, x + TAB_WIDTH - 2, y + TAB_HEIGHT - 2, 0x885E738D);
+            }
+        }
+    }
+
+    private int tabX(int index) {
+        return leftPos + 10 + (index * (TAB_WIDTH + TAB_GAP));
     }
 
     private void renderStatsTab(GuiGraphics graphics) {
@@ -213,7 +212,7 @@ public class ExtremePlayerScreen extends Screen {
         int y = topPos + 62;
 
         if (statsOpt.isEmpty()) {
-            graphics.drawString(font, Component.literal("Syncing stats..."), x, y, 0xD5D9E2, false);
+            graphics.drawString(font, Component.literal("Syncing stats..."), x, y, ECGuiTheme.TEXT_SECONDARY, false);
             return;
         }
 
@@ -223,9 +222,9 @@ public class ExtremePlayerScreen extends Screen {
         int xpToNext = progressOpt.map(data -> PlayerProgressData.xpToNextLevel(data.level())).orElse(stats.experienceToNextLevel());
         int playerSkillPoints = progressOpt.map(PlayerProgressData::playerSkillPoints).orElse(stats.skillPoints());
 
-        graphics.drawString(font, Component.literal("Level: " + playerLevel), x, y, 0xEAEFF7, false);
-        graphics.drawString(font, Component.literal("Stat Points: " + stats.statPoints()), x + 80, y, 0xF1C98F, false);
-        graphics.drawString(font, Component.literal("Player Skill Points: " + playerSkillPoints), x + 152, y, 0xCFB5FF, false);
+        ECGuiPrimitives.drawStatusChip(graphics, font, x, y - 14, Component.literal("LEVEL " + playerLevel), ECGuiTheme.ACCENT_CYAN);
+        ECGuiPrimitives.drawStatusChip(graphics, font, x + 78, y - 14, Component.literal("STAT PTS " + stats.statPoints()), ECGuiTheme.ACCENT_AMBER);
+        ECGuiPrimitives.drawStatusChip(graphics, font, x + 176, y - 14, Component.literal("SKILL PTS " + playerSkillPoints), ECGuiTheme.ACCENT_VIOLET);
 
         drawXpBar(graphics, x, y + 14, 220, playerXp, xpToNext, 0xFF4B8AE2, 0xFF6AAEF2);
 
@@ -240,23 +239,22 @@ public class ExtremePlayerScreen extends Screen {
         int rightPanelX = leftPos + guiWidth - 108;
         int rightPanelY = y + 40;
         int manaCap = ManaApi.get(player).map(mana -> (int) Math.ceil(mana.maxMana())).orElse(stats.maxMana());
-        graphics.drawString(font, Component.literal("HP " + stats.maxHealth()), rightPanelX, rightPanelY, 0xE6EAF2, false);
-        graphics.drawString(font, Component.literal("Mana Cap " + manaCap), rightPanelX, rightPanelY + 14, 0xE6EAF2, false);
-        graphics.drawString(font, Component.literal("Crit " + (int) (stats.critChance() * 100) + "%"), rightPanelX, rightPanelY + 28, 0xE6EAF2, false);
-        graphics.drawString(font, Component.literal("Move " + String.format("%.2f", stats.movementSpeed())), rightPanelX, rightPanelY + 42, 0xE6EAF2, false);
-        graphics.drawString(font, Component.literal("Magic " + stats.magicPower()), rightPanelX, rightPanelY + 56, 0xE6EAF2, false);
+        ECGuiPrimitives.drawSectionHeader(graphics, font, Component.literal("Combat Readout"), rightPanelX, rightPanelY - 12, 94, ECGuiTheme.ACCENT_CYAN_DIM);
+        graphics.drawString(font, Component.literal("HP " + stats.maxHealth()), rightPanelX, rightPanelY, ECGuiTheme.TEXT_PRIMARY, false);
+        graphics.drawString(font, Component.literal("Mana Cap " + manaCap), rightPanelX, rightPanelY + 14, ECGuiTheme.TEXT_PRIMARY, false);
+        graphics.drawString(font, Component.literal("Crit " + (int) (stats.critChance() * 100) + "%"), rightPanelX, rightPanelY + 28, ECGuiTheme.TEXT_PRIMARY, false);
+        graphics.drawString(font, Component.literal("Move " + String.format("%.2f", stats.movementSpeed())), rightPanelX, rightPanelY + 42, ECGuiTheme.TEXT_PRIMARY, false);
+        graphics.drawString(font, Component.literal("Magic " + stats.magicPower()), rightPanelX, rightPanelY + 56, ECGuiTheme.TEXT_PRIMARY, false);
     }
 
     private void drawPrimaryRow(GuiGraphics graphics, String label, int value, int x, int y) {
-        graphics.drawString(font, Component.literal(label), x, y + 3, 0xD9DEEA, false);
+        graphics.drawString(font, Component.literal(label), x, y + 3, ECGuiTheme.TEXT_SECONDARY, false);
 
         int barLeft = x + 72;
         int barWidth = 104;
-        graphics.fill(barLeft, y + 4, barLeft + barWidth, y + 11, 0xAA212735);
-        int fill = Math.min(barWidth - 1, (int) ((Math.min(40, value) / 40.0F) * (barWidth - 1)));
-        graphics.fill(barLeft + 1, y + 5, barLeft + 1 + fill, y + 10, 0xFF4B7FC9);
+        ECGuiPrimitives.drawSegmentedBar(graphics, barLeft, y + 4, barWidth, 7, Math.min(40, value) / 40.0F, ECGuiTheme.ACCENT_CYAN);
 
-        graphics.drawString(font, Component.literal(String.valueOf(value)), x + 182, y + 3, 0xF0F4FA, false);
+        graphics.drawString(font, Component.literal(String.valueOf(value)), x + 182, y + 3, ECGuiTheme.TEXT_PRIMARY, false);
     }
 
     private void drawXpBar(GuiGraphics graphics, int x, int y, int width, int xp, int xpNeeded, int leftColor, int rightColor) {
@@ -269,7 +267,7 @@ public class ExtremePlayerScreen extends Screen {
         }
 
         Component xpText = Component.literal(xp + " / " + clampedNeeded + " XP");
-        graphics.drawCenteredString(font, xpText, x + width / 2, y - 10, 0xDCE6F6);
+        graphics.drawCenteredString(font, xpText, x + width / 2, y - 10, ECGuiTheme.TEXT_SECONDARY);
     }
 
     private void renderSkillsTab(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -282,17 +280,17 @@ public class ExtremePlayerScreen extends Screen {
         int playerSkillPoints = progressOpt.map(PlayerProgressData::playerSkillPoints).orElse(0);
         int classSkillPoints = progressOpt.map(PlayerProgressData::classSkillPoints).orElse(0);
 
-        graphics.drawString(font, Component.literal("Skill Tree"), x, y - 10, 0xE8C78D, false);
-        graphics.drawString(font, Component.literal("Skill XP Domain: combat/mobs/active play"), x + 84, y - 10, 0xA4C8FF, false);
-        graphics.drawString(font, Component.literal("Class XP Domain: guild quests only"), x + 84, y + 2, 0xE8C190, false);
-        graphics.drawString(font, Component.literal("Skill Pts: " + playerSkillPoints), x + w - 144, y - 10, 0xA4C8FF, false);
-        graphics.drawString(font, Component.literal("Class Pts: " + classSkillPoints), x + w - 144, y + 2, 0xE8C190, false);
+        ECGuiPrimitives.drawSectionHeader(graphics, font, Component.literal("Skill Tree"), x, y - 10, 70, ECGuiTheme.ACCENT_VIOLET);
+        ECGuiPrimitives.drawStatusChip(graphics, font, x + 78, y - 12, Component.literal("Skill XP: Combat"), ECGuiTheme.ACCENT_CYAN);
+        ECGuiPrimitives.drawStatusChip(graphics, font, x + 186, y - 12, Component.literal("Class XP: Quests"), ECGuiTheme.ACCENT_AMBER);
+        ECGuiPrimitives.drawStatusChip(graphics, font, x + w - 140, y - 12, Component.literal("S " + playerSkillPoints + "  C " + classSkillPoints), ECGuiTheme.TEXT_PRIMARY);
 
         int treeButtonX = x;
         int treeButtonY = y + h - 12;
         for (String treeId : SkillTreeManager.treeIds()) {
-            int color = treeId.equals(activeSkillTree) ? 0xFFD6B37A : 0xFF9EA7B6;
-            graphics.drawString(font, Component.literal("[" + treeId + "]"), treeButtonX, treeButtonY, color, false);
+            boolean activeTree = treeId.equals(activeSkillTree);
+            int color = activeTree ? ECGuiTheme.ACCENT_AMBER : ECGuiTheme.TEXT_MUTED;
+            graphics.drawString(font, Component.literal((activeTree ? "[" : "{") + treeId + (activeTree ? "]" : "}")), treeButtonX, treeButtonY, color, false);
             treeButtonX += 62;
         }
 
@@ -305,7 +303,7 @@ public class ExtremePlayerScreen extends Screen {
 
         Optional<PlayerStatsCapability> statsOpt = getStats();
         if (statsOpt.isEmpty()) {
-            graphics.drawString(font, Component.literal("Syncing magic..."), x, y, 0xD5D9E2, false);
+            graphics.drawString(font, Component.literal("Syncing magic..."), x, y, ECGuiTheme.TEXT_SECONDARY, false);
             return;
         }
 
@@ -313,10 +311,10 @@ public class ExtremePlayerScreen extends Screen {
         int currentMana = ManaApi.get(player).map(mana -> (int) Math.floor(mana.currentMana())).orElse(0);
         int maxMana = Math.max(1, ManaApi.get(player).map(mana -> (int) Math.ceil(mana.maxMana())).orElse(stats.maxMana()));
 
-        graphics.drawString(font, Component.literal("Mana: " + currentMana + " / " + maxMana), x, y, 0xCFAEFF, false);
-        graphics.drawString(font, Component.literal("Cast " + keyLabel(DwKeybinds.CAST_SPELL) + "  Class " + keyLabel(DwKeybinds.CLASS_ABILITY)), x + 128, y, 0xB7E8FF, false);
-        graphics.drawString(font, Component.literal("Magic Power: " + stats.magicPower()), x, y + 14, 0xCFAEFF, false);
-        graphics.drawString(font, Component.literal("Readiness: " + readinessLabel(currentMana, maxMana)), x + 128, y + 14, 0xF0D4A8, false);
+        ECGuiPrimitives.drawStatusChip(graphics, font, x, y - 12, Component.literal("Mana " + currentMana + " / " + maxMana), ECGuiTheme.ACCENT_VIOLET);
+        ECGuiPrimitives.drawStatusChip(graphics, font, x + 128, y - 12, Component.literal("Readiness: " + readinessLabel(currentMana, maxMana)), readinessColor(currentMana, maxMana));
+        graphics.drawString(font, Component.literal("Cast " + keyLabel(DwKeybinds.CAST_SPELL) + "  Class " + keyLabel(DwKeybinds.CLASS_ABILITY)), x + 128, y + 4, ECGuiTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, Component.literal("Magic Power: " + stats.magicPower()), x, y + 4, ECGuiTheme.ACCENT_VIOLET, false);
 
         int time = player.tickCount;
         for (int i = 0; i < 8; i++) {
@@ -339,7 +337,7 @@ public class ExtremePlayerScreen extends Screen {
 
         List<Spell> spells = new ArrayList<>(SpellRegistry.all());
         if (spells.isEmpty()) {
-            graphics.drawString(font, Component.literal("No spell data loaded."), x + 132, y + 42, 0xC8CFDB, false);
+            graphics.drawString(font, Component.literal("No spell data loaded."), x + 132, y + 42, ECGuiTheme.TEXT_SECONDARY, false);
             return;
         }
 
@@ -348,13 +346,13 @@ public class ExtremePlayerScreen extends Screen {
         int listY = y + 42;
         int listX = x + 132;
 
-        graphics.drawString(font, Component.literal("Spellbook"), listX, listY - 10, 0xE8C78D, false);
+        ECGuiPrimitives.drawSectionHeader(graphics, font, Component.literal("Spellbook"), listX, listY - 10, 120, ECGuiTheme.ACCENT_VIOLET);
         graphics.drawString(font, Component.literal("School: " + schoolLabel(selected.element())), listX, listY + 4, schoolColor(selected.element()), false);
-        graphics.drawString(font, Component.literal("Type: " + selected.type().name().toLowerCase(Locale.ROOT)), listX, listY + 16, 0xC8CFDB, false);
-        graphics.drawString(font, Component.literal("Cost: " + selected.manaCost() + " mana"), listX, listY + 28, selected.manaCost() <= currentMana ? 0x8FF3B2 : 0xFF9B9B, false);
-        graphics.drawString(font, Component.literal("Cooldown: " + (selected.cooldownTicks() / 20.0F) + "s"), listX + 104, listY + 28, 0xC8CFDB, false);
-        graphics.drawString(font, Component.literal("Range: " + String.format("%.1f", selected.range())), listX, listY + 40, 0xC8CFDB, false);
-        graphics.drawString(font, Component.literal("Radius: " + String.format("%.1f", selected.radius())), listX + 104, listY + 40, 0xC8CFDB, false);
+        graphics.drawString(font, Component.literal("Type: " + selected.type().name().toLowerCase(Locale.ROOT)), listX, listY + 16, ECGuiTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, Component.literal("Cost: " + selected.manaCost() + " mana"), listX, listY + 28, selected.manaCost() <= currentMana ? ECGuiTheme.STATE_READY : ECGuiTheme.STATE_ERROR, false);
+        graphics.drawString(font, Component.literal("Cooldown: " + (selected.cooldownTicks() / 20.0F) + "s"), listX + 104, listY + 28, ECGuiTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, Component.literal("Range: " + String.format("%.1f", selected.range())), listX, listY + 40, ECGuiTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, Component.literal("Radius: " + String.format("%.1f", selected.radius())), listX + 104, listY + 40, ECGuiTheme.TEXT_SECONDARY, false);
 
         int rowY = listY + 56;
         int visible = Math.min(5, spells.size());
@@ -362,12 +360,12 @@ public class ExtremePlayerScreen extends Screen {
         for (int i = 0; i < visible; i++) {
             int idx = start + i;
             Spell spell = spells.get(idx);
-            int color = idx == selectedSpellIndex ? 0xF7E2B5 : 0xC4CEDD;
+            int color = idx == selectedSpellIndex ? ECGuiTheme.ACCENT_AMBER : ECGuiTheme.TEXT_SECONDARY;
             graphics.drawString(font, Component.literal((idx == selectedSpellIndex ? "> " : "  ") + spell.id()), listX, rowY + (i * 12), color, false);
         }
 
-        graphics.drawString(font, Component.literal("Use mouse wheel to browse spells"), listX, rowY + 66, 0x92A7C1, false);
-        graphics.drawString(font, Component.literal("Composition UI: awaiting backend support"), listX, rowY + 78, 0x92A7C1, false);
+        graphics.drawString(font, Component.literal("Use mouse wheel to browse spells"), listX, rowY + 66, ECGuiTheme.TEXT_MUTED, false);
+        graphics.drawString(font, Component.literal("Composition UI: awaiting backend support"), listX, rowY + 78, ECGuiTheme.TEXT_MUTED, false);
     }
 
     private void renderDualWieldTab(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -379,25 +377,26 @@ public class ExtremePlayerScreen extends Screen {
         Optional<PlayerDualWieldData> dualWieldOpt = PlayerDualWieldApi.get(player);
         int activeLoadout = dualWieldOpt.map(data -> data.activeLoadoutIndex() + 1).orElse(1);
 
-        graphics.drawString(font, Component.literal("Main Hand"), x, y, 0xD8DEE9, false);
-        graphics.drawString(font, Component.literal("Offhand"), x + 120, y, 0xD8DEE9, false);
+        ECGuiPrimitives.drawSectionHeader(graphics, font, Component.literal("Dual-Wield Control"), x, y - 10, 130, ECGuiTheme.ACCENT_CYAN);
+        graphics.drawString(font, Component.literal("Main Hand"), x, y + 4, ECGuiTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, Component.literal("Offhand"), x + 120, y + 4, ECGuiTheme.TEXT_SECONDARY, false);
 
-        drawItemSlot(graphics, x, y + 14, main);
-        drawItemSlot(graphics, x + 120, y + 14, off);
+        drawItemSlot(graphics, x, y + 18, main);
+        drawItemSlot(graphics, x + 120, y + 18, off);
 
-        if (mouseX >= x && mouseX <= x + 18 && mouseY >= y + 14 && mouseY <= y + 32) {
+        if (mouseX >= x && mouseX <= x + 18 && mouseY >= y + 18 && mouseY <= y + 36) {
             graphics.renderTooltip(font, main, mouseX, mouseY);
         }
-        if (mouseX >= x + 120 && mouseX <= x + 138 && mouseY >= y + 14 && mouseY <= y + 32) {
+        if (mouseX >= x + 120 && mouseX <= x + 138 && mouseY >= y + 18 && mouseY <= y + 36) {
             graphics.renderTooltip(font, off, mouseX, mouseY);
         }
 
-        graphics.drawString(font, Component.literal("Active loadout: " + activeLoadout + " / 3"), x, y + 46, 0xE8C78D, false);
-        graphics.drawString(font, Component.literal(keyLabel(DwKeybinds.OFFHAND_OVERRIDE) + " entity: offhand combat"), x, y + 60, 0xB5C3D8, false);
-        graphics.drawString(font, Component.literal(keyLabel(DwKeybinds.OFFHAND_OVERRIDE) + " block/item: offhand use"), x, y + 72, 0xB5C3D8, false);
-        graphics.drawString(font, Component.literal("Sneak + " + keyLabel(DwKeybinds.OFFHAND_OVERRIDE) + ": offhand break"), x, y + 84, 0xB5C3D8, false);
-        graphics.drawString(font, Component.literal("Cycle loadout: " + keyLabel(DwKeybinds.CYCLE_LOADOUT)), x, y + 96, 0xB5C3D8, false);
-        graphics.drawString(font, Component.literal("Left-click remains main-hand combat"), x, y + 108, 0xB5C3D8, false);
+        ECGuiPrimitives.drawStatusChip(graphics, font, x, y + 44, Component.literal("Active loadout: " + activeLoadout + " / 3"), ECGuiTheme.ACCENT_AMBER);
+        graphics.drawString(font, Component.literal(keyLabel(DwKeybinds.OFFHAND_OVERRIDE) + " entity: offhand combat"), x, y + 60, ECGuiTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, Component.literal(keyLabel(DwKeybinds.OFFHAND_OVERRIDE) + " block/item: offhand use"), x, y + 72, ECGuiTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, Component.literal("Sneak + " + keyLabel(DwKeybinds.OFFHAND_OVERRIDE) + ": offhand break"), x, y + 84, ECGuiTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, Component.literal("Cycle loadout: " + keyLabel(DwKeybinds.CYCLE_LOADOUT)), x, y + 96, ECGuiTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, Component.literal("Left-click remains main-hand combat"), x, y + 108, ECGuiTheme.TEXT_SECONDARY, false);
 
         int loadoutY = y + 128;
         for (int i = 0; i < 3; i++) {
@@ -406,14 +405,13 @@ public class ExtremePlayerScreen extends Screen {
             String prefix = (i + 1) == activeLoadout ? "> " : "  ";
             String mainLabel = loadout == null ? "-" : compactItemLabel(loadout.mainHandItem());
             String offLabel = loadout == null ? "-" : compactItemLabel(loadout.offHandItem());
-            int color = (i + 1) == activeLoadout ? 0xF2E6C9 : 0xAFC0D8;
+            int color = (i + 1) == activeLoadout ? ECGuiTheme.ACCENT_AMBER : ECGuiTheme.TEXT_SECONDARY;
             graphics.drawString(font, Component.literal(prefix + "L" + (i + 1) + "  " + mainLabel + " | " + offLabel), x, loadoutY + (i * 12), color, false);
         }
     }
 
     private void drawItemSlot(GuiGraphics graphics, int x, int y, ItemStack stack) {
-        graphics.fill(x, y, x + 18, y + 18, 0xAA1F2432);
-        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0x660A0C11);
+        ECGuiPrimitives.drawFramedSlot(graphics, x, y, !stack.isEmpty());
         graphics.renderItem(stack, x + 1, y + 1);
     }
 
@@ -427,22 +425,22 @@ public class ExtremePlayerScreen extends Screen {
         int playerSkillPoints = progressOpt.map(PlayerProgressData::playerSkillPoints).orElse(0);
         int completedQuests = progressOpt.map(data -> data.completedQuests().size()).orElse(0);
 
-        graphics.drawString(font, Component.literal("Class Progression"), x, y, 0xE3CDA0, false);
-        graphics.drawString(font, Component.literal("Current Class: " + currentClassId), x, y + 14, 0xF2E6C9, false);
-        graphics.drawString(font, Component.literal("Class Skill Points: " + classSkillPoints), x, y + 26, 0xE8C190, false);
-        graphics.drawString(font, Component.literal("Player Skill Points: " + playerSkillPoints), x + 168, y + 26, 0xA4C8FF, false);
-        graphics.drawString(font, Component.literal("Completed Guild Quests: " + completedQuests), x, y + 38, 0xD0D8E6, false);
-        graphics.drawString(font, Component.literal("Class Ability Key: " + keyLabel(DwKeybinds.CLASS_ABILITY)), x + 168, y + 38, 0xD0D8E6, false);
+        ECGuiPrimitives.drawSectionHeader(graphics, font, Component.literal("Class Progression"), x, y, 120, ECGuiTheme.ACCENT_AMBER);
+        graphics.drawString(font, Component.literal("Current Class: " + currentClassId), x, y + 14, ECGuiTheme.TEXT_PRIMARY, false);
+        ECGuiPrimitives.drawStatusChip(graphics, font, x, y + 24, Component.literal("Class Pts " + classSkillPoints), ECGuiTheme.ACCENT_AMBER);
+        ECGuiPrimitives.drawStatusChip(graphics, font, x + 106, y + 24, Component.literal("Skill Pts " + playerSkillPoints), ECGuiTheme.ACCENT_CYAN);
+        graphics.drawString(font, Component.literal("Completed Guild Quests: " + completedQuests), x, y + 40, ECGuiTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, Component.literal("Class Ability Key: " + keyLabel(DwKeybinds.CLASS_ABILITY)), x + 168, y + 40, ECGuiTheme.TEXT_SECONDARY, false);
 
-        graphics.drawString(font, Component.literal("XP Domains"), x, y + 56, 0xE8C78D, false);
-        graphics.drawString(font, Component.literal("- Skill XP: combat + active gameplay"), x + 8, y + 68, 0xA4C8FF, false);
-        graphics.drawString(font, Component.literal("- Class XP: quest completion only"), x + 8, y + 80, 0xE8C190, false);
+        graphics.drawString(font, Component.literal("XP Domains"), x, y + 58, ECGuiTheme.ACCENT_AMBER, false);
+        graphics.drawString(font, Component.literal("- Skill XP: combat + active gameplay"), x + 8, y + 70, ECGuiTheme.ACCENT_CYAN, false);
+        graphics.drawString(font, Component.literal("- Class XP: quest completion only"), x + 8, y + 82, ECGuiTheme.ACCENT_AMBER, false);
 
-        graphics.drawString(font, Component.literal("Available Classes"), x, y + 102, 0xE8C78D, false);
+        graphics.drawString(font, Component.literal("Available Classes"), x, y + 102, ECGuiTheme.ACCENT_AMBER, false);
         int rowY = y + 114;
         for (PlayerClass klass : ClassRegistry.all()) {
             boolean selected = klass.id().equalsIgnoreCase(currentClassId);
-            int color = selected ? 0xF6DEB2 : 0xC8CFDB;
+            int color = selected ? ECGuiTheme.ACCENT_AMBER : ECGuiTheme.TEXT_SECONDARY;
             graphics.drawString(font, Component.literal((selected ? "> " : "  ") + klass.id() + " req lvl " + klass.requiredLevel()), x + 8, rowY, color, false);
             rowY += 11;
             if (rowY > y + 168) {
@@ -450,8 +448,8 @@ public class ExtremePlayerScreen extends Screen {
             }
         }
 
-        graphics.drawString(font, Component.literal("Quest Pool: " + QuestManager.all().size() + " loaded"), x + 168, y + 102, 0xC8CFDB, false);
-        graphics.drawString(font, Component.literal("Class switching UI: backend-safe wiring pending"), x + 168, y + 114, 0x92A7C1, false);
+        graphics.drawString(font, Component.literal("Quest Pool: " + QuestManager.all().size() + " loaded"), x + 168, y + 102, ECGuiTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, Component.literal("Class switching UI: backend-safe wiring pending"), x + 168, y + 114, ECGuiTheme.TEXT_MUTED, false);
     }
 
     private void renderModulesTab(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -461,12 +459,12 @@ public class ExtremePlayerScreen extends Screen {
         ItemStack main = player.getMainHandItem();
         ItemStack chest = player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
 
-        graphics.drawString(font, Component.literal("Tech Console"), x, y, 0xE8C78D, false);
-        graphics.drawString(font, Component.literal("What powers it: Fuel or network energy"), x, y + 14, 0xB7C8DD, false);
-        graphics.drawString(font, Component.literal("Why stalled: missing fuel/input/output space/structure"), x, y + 26, 0xB7C8DD, false);
-        graphics.drawString(font, Component.literal("Hold a modular tool or wear modular chest armor."), x, y + 38, 0xC8CFDB, false);
-        graphics.drawString(font, Component.literal("Main: " + main.getHoverName().getString()), x, y + 50, 0xD8DEE9, false);
-        graphics.drawString(font, Component.literal("Chest: " + chest.getHoverName().getString()), x, y + 62, 0xD8DEE9, false);
+        ECGuiPrimitives.drawSectionHeader(graphics, font, Component.literal("Tech Console"), x, y, 96, ECGuiTheme.ACCENT_CYAN);
+        graphics.drawString(font, Component.literal("What powers it: Fuel or network energy"), x, y + 14, ECGuiTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, Component.literal("Why stalled: missing fuel/input/output space/structure"), x, y + 26, ECGuiTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, Component.literal("Hold a modular tool or wear modular chest armor."), x, y + 38, ECGuiTheme.TEXT_SECONDARY, false);
+        graphics.drawString(font, Component.literal("Main: " + main.getHoverName().getString()), x, y + 50, ECGuiTheme.TEXT_PRIMARY, false);
+        graphics.drawString(font, Component.literal("Chest: " + chest.getHoverName().getString()), x, y + 62, ECGuiTheme.TEXT_PRIMARY, false);
 
         int searchX = x;
         int searchY = y + 76;
@@ -485,15 +483,15 @@ public class ExtremePlayerScreen extends Screen {
         int armorX = x + 188;
         int listTopY = y + 100;
 
-        graphics.drawString(font, Component.literal("Tool Modules"), toolX, y + 94, 0xE0E6F2, false);
+        graphics.drawString(font, Component.literal("Tool Modules"), toolX, y + 94, ECGuiTheme.TEXT_PRIMARY, false);
         drawActionButton(graphics, toolX + 108, y + 92, 16, 16, "<");
         drawActionButton(graphics, toolX + 126, y + 92, 16, 16, ">");
-        graphics.drawString(font, Component.literal((toolPage + 1) + "/" + toolPages), toolX + 146, y + 96, 0xAFC0D8, false);
+        graphics.drawString(font, Component.literal((toolPage + 1) + "/" + toolPages), toolX + 146, y + 96, ECGuiTheme.TEXT_MUTED, false);
 
-        graphics.drawString(font, Component.literal("Armor Modules"), armorX, y + 94, 0xE0E6F2, false);
+        graphics.drawString(font, Component.literal("Armor Modules"), armorX, y + 94, ECGuiTheme.TEXT_PRIMARY, false);
         drawActionButton(graphics, armorX + 108, y + 92, 16, 16, "<");
         drawActionButton(graphics, armorX + 126, y + 92, 16, 16, ">");
-        graphics.drawString(font, Component.literal((armorPage + 1) + "/" + armorPages), armorX + 146, y + 96, 0xAFC0D8, false);
+        graphics.drawString(font, Component.literal((armorPage + 1) + "/" + armorPages), armorX + 146, y + 96, ECGuiTheme.TEXT_MUTED, false);
 
         List<ModuleCatalogClientState.ModuleEntry> toolModules = pagedModules(toolFiltered, toolPage);
         List<ModuleCatalogClientState.ModuleEntry> armorModules = pagedModules(armorFiltered, armorPage);
@@ -503,7 +501,7 @@ public class ExtremePlayerScreen extends Screen {
             int rowY = listTopY + (i * 18);
             drawActionButton(graphics, toolX, rowY, 16, 16, "+");
             drawActionButton(graphics, toolX + 18, rowY, 16, 16, "-");
-            graphics.drawString(font, Component.literal(entry.id() + " (" + entry.slotCost() + ")"), toolX + 40, rowY + 4, 0xD8DEE9, false);
+            graphics.drawString(font, Component.literal(entry.id() + " (" + entry.slotCost() + ")"), toolX + 40, rowY + 4, ECGuiTheme.TEXT_SECONDARY, false);
         }
 
         for (int i = 0; i < armorModules.size(); i++) {
@@ -511,12 +509,22 @@ public class ExtremePlayerScreen extends Screen {
             int rowY = listTopY + (i * 18);
             drawActionButton(graphics, armorX, rowY, 16, 16, "+");
             drawActionButton(graphics, armorX + 18, rowY, 16, 16, "-");
-            graphics.drawString(font, Component.literal(entry.id() + " (" + entry.slotCost() + ")"), armorX + 40, rowY + 4, 0xD8DEE9, false);
+            graphics.drawString(font, Component.literal(entry.id() + " (" + entry.slotCost() + ")"), armorX + 40, rowY + 4, ECGuiTheme.TEXT_SECONDARY, false);
         }
 
         if (toolFiltered.isEmpty() && armorFiltered.isEmpty()) {
-            graphics.drawString(font, Component.literal("No modules match current filter or waiting for sync."), x, y + 182, 0xC8CFDB, false);
+            graphics.drawString(font, Component.literal("No modules match current filter or waiting for sync."), x, y + 182, ECGuiTheme.TEXT_SECONDARY, false);
         }
+    }
+
+    private int readinessColor(int currentMana, int maxMana) {
+        if (currentMana <= 0) {
+            return ECGuiTheme.STATE_ERROR;
+        }
+        if (currentMana < Math.max(10, maxMana / 4)) {
+            return ECGuiTheme.STATE_WARN;
+        }
+        return ECGuiTheme.STATE_READY;
     }
 
     private String readinessLabel(int currentMana, int maxMana) {
@@ -568,9 +576,9 @@ public class ExtremePlayerScreen extends Screen {
     }
 
     private void drawActionButton(GuiGraphics graphics, int x, int y, int w, int h, String label) {
-        graphics.fill(x, y, x + w, y + h, 0xAA2A3142);
-        graphics.fill(x + 1, y + 1, x + w - 1, y + h - 1, 0xAA1A1F2A);
-        graphics.drawString(font, Component.literal(label), x + 4, y + 4, 0xE6ECF8, false);
+        graphics.fill(x, y, x + w, y + h, 0xAA44586F);
+        graphics.fill(x + 1, y + 1, x + w - 1, y + h - 1, 0xAA141D28);
+        graphics.drawString(font, Component.literal(label), x + 4, y + 4, ECGuiTheme.TEXT_PRIMARY, false);
     }
 
     private boolean mouseOver(double mouseX, double mouseY, int x, int y, int w, int h) {
@@ -682,6 +690,14 @@ public class ExtremePlayerScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
+            ExtremePlayerTabs.Tab clicked = tabAt(mouseX, mouseY);
+            if (clicked != null) {
+                setActiveTab(clicked);
+                return true;
+            }
+        }
+
         if (activeTab == ExtremePlayerTabs.Tab.SKILLS && button == InputConstants.MOUSE_BUTTON_LEFT) {
             int panelX = leftPos + 14;
             int panelY = topPos + 62;
@@ -705,6 +721,18 @@ public class ExtremePlayerScreen extends Screen {
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    private ExtremePlayerTabs.Tab tabAt(double mouseX, double mouseY) {
+        int y = topPos + 9;
+        ExtremePlayerTabs.Tab[] tabs = ExtremePlayerTabs.Tab.values();
+        for (int i = 0; i < tabs.length; i++) {
+            int x = tabX(i);
+            if (mouseOver(mouseX, mouseY, x, y, TAB_WIDTH, TAB_HEIGHT)) {
+                return tabs[i];
+            }
+        }
+        return null;
     }
 
     @Override

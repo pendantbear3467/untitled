@@ -1,5 +1,6 @@
 package com.extremecraft.gui.framework;
 
+import com.extremecraft.client.gui.theme.ECGuiTheme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 
@@ -33,7 +34,7 @@ public class AnimatedEnergyBar {
         }
 
         int wave = tickCount % 20;
-        int coreColor = 0xFF00D2FF + (Math.max(0, 8 - Math.abs(10 - wave)) << 16);
+        int coreColor = (0xFF << 24) | ((ECGuiTheme.ACCENT_CYAN & 0x00FFFFFF) + (Math.max(0, 8 - Math.abs(10 - wave)) << 16));
         graphics.fill(left + x + 1, top + y + height - filled, left + x + width - 1, top + y + height - 1, coreColor);
     }
 

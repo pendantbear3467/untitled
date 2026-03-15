@@ -1,5 +1,7 @@
 package com.extremecraft.gui.framework;
 
+import com.extremecraft.client.gui.theme.ECGuiPrimitives;
+import com.extremecraft.client.gui.theme.ECGuiTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -15,23 +17,22 @@ public final class GuiRenderUtils {
     public static void drawMachineBackground(GuiGraphics graphics, int left, int top, int width, int height) {
         ResourceLocation texture = resolveBackgroundTexture();
         graphics.blit(texture, left, top, 0, 0, width, height, width, height);
-
-        // Dark overlay keeps the theme readable even if fallback textures differ.
+        ECGuiPrimitives.drawPanelChrome(graphics, left, top, width, height, 0);
         graphics.fill(left + 3, top + 3, left + width - 3, top + height - 3, 0x880A1018);
     }
 
     public static void drawSlotHighlight(GuiGraphics graphics, int x, int y, int time) {
         int pulse = 45 + (time % 40);
         int alpha = Math.min(170, pulse + 30);
-        int glow = (alpha << 24) | 0x00D7F4FF;
+        int glow = (alpha << 24) | (ECGuiTheme.ACCENT_CYAN & 0x00FFFFFF);
         graphics.fill(x - 1, y - 1, x + 17, y + 17, glow);
-        graphics.fill(x, y, x + 16, y + 16, 0x5504060A);
+        ECGuiPrimitives.drawFramedSlot(graphics, x, y, true);
     }
 
     public static void drawMachineActiveAura(GuiGraphics graphics, int left, int top, int width, int height, int time) {
         int cycle = (time / 2) % 80;
         int alpha = 55 + Math.abs(40 - cycle);
-        int aura = (Math.min(150, alpha) << 24) | 0x0032D9FF;
+        int aura = (Math.min(150, alpha) << 24) | (ECGuiTheme.ACCENT_CYAN & 0x00FFFFFF);
         graphics.fill(left + 2, top + 2, left + width - 2, top + 4, aura);
         graphics.fill(left + 2, top + height - 4, left + width - 2, top + height - 2, aura);
     }

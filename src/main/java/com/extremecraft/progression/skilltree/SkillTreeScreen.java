@@ -1,6 +1,8 @@
 package com.extremecraft.progression.skilltree;
 
 import com.extremecraft.client.gui.BaseExtremeScreen;
+import com.extremecraft.client.gui.theme.ECGuiPrimitives;
+import com.extremecraft.client.gui.theme.ECGuiTheme;
 import com.extremecraft.core.ECConstants;
 
 import com.extremecraft.progression.capability.ProgressApi;
@@ -94,27 +96,43 @@ public class SkillTreeScreen extends BaseExtremeScreen {
             return;
         }
 
+        int skillPoints = Minecraft.getInstance().player == null ? 0 : ProgressApi.get(Minecraft.getInstance().player).map(data -> data.playerSkillPoints()).orElse(0);
+        int level = Minecraft.getInstance().player == null ? 0 : ProgressApi.get(Minecraft.getInstance().player).map(data -> data.level()).orElse(0);
         List<Component> tooltip = new ArrayList<>();
         tooltip.add(Component.literal(hoveredNode.resolvedDisplayName()));
-        tooltip.add(Component.literal(hoveredNode.resolvedDescription()));
+        tooltip.add(Component.literal("Purpose: " + hoveredNode.resolvedDescription()));
+        tooltip.add(Component.literal("Effect: " + hoveredNode.bonusText()));
         tooltip.add(Component.literal("Cost: " + hoveredNode.cost() + " skill point(s)"));
         tooltip.add(Component.literal("Required Level: " + hoveredNode.requiredLevel()));
         if (!hoveredNode.requiredNodes().isEmpty()) {
             tooltip.add(Component.literal("Requirements: " + String.join(", ", hoveredNode.requiredNodes())));
+        }
+        if (isNodeUnlocked(hoveredNode.id())) {
+            tooltip.add(Component.literal("State: UNLOCKED"));
+        } else if (canUnlockNode(hoveredNode)) {
+            tooltip.add(Component.literal("State: UNLOCKABLE"));
+        } else if (level < hoveredNode.requiredLevel()) {
+            tooltip.add(Component.literal("Blocked: requires level " + hoveredNode.requiredLevel()));
+        } else if (skillPoints < hoveredNode.cost()) {
+            tooltip.add(Component.literal("Blocked: not enough skill points"));
+        } else {
+            tooltip.add(Component.literal("Blocked: prerequisite node missing"));
         }
         guiGraphics.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
     }
 
     private void drawHeader(GuiGraphics guiGraphics) {
         int skillPoints = Minecraft.getInstance().player == null ? 0 : ProgressApi.get(Minecraft.getInstance().player).map(data -> data.playerSkillPoints()).orElse(0);
-        guiGraphics.drawString(this.font, Component.literal("Skill Tree: " + activeTreeId.toUpperCase(Locale.ROOT)), panelLeft + 16, panelTop + 14, 0xF2D28C, false);
-        guiGraphics.drawString(this.font, Component.literal("Points: " + skillPoints), panelLeft + 16, panelTop + 28, 0xD8DEE8, false);
-        guiGraphics.drawString(this.font, Component.literal("Drag=Pan  Scroll=Zoom"), panelLeft + 132, panelTop + 14, 0xA6B0C0, false);
+        ECGuiPrimitives.drawSectionHeader(guiGraphics, this.font, Component.literal("Skill Tree: " + activeTreeId.toUpperCase(Locale.ROOT)), panelLeft + 16, panelTop + 14, 160, ECGuiTheme.ACCENT_VIOLET);
+        ECGuiPrimitives.drawStatusChip(guiGraphics, this.font, panelLeft + 16, panelTop + 26, Component.literal("Points " + skillPoints), ECGuiTheme.ACCENT_VIOLET);
+        guiGraphics.drawString(this.font, Component.literal("Drag=Pan  Scroll=Zoom"), panelLeft + 132, panelTop + 14, ECGuiTheme.TEXT_MUTED, false);
     }
 
     private void drawTreeBounds(GuiGraphics guiGraphics) {
         guiGraphics.fill(treeLeft(), treeTop(), treeRight(), treeBottom(), 0x7A101420);
         guiGraphics.fillGradient(treeLeft(), treeTop(), treeRight(), treeBottom(), 0x2200729C, 0x220D1230);
+        guiGraphics.fill(treeLeft(), treeTop(), treeRight(), treeTop() + 1, 0x664EDCFF);
+        guiGraphics.fill(treeLeft(), treeBottom() - 1, treeRight(), treeBottom(), 0x443D5068);
     }
 
     private void drawConnections(GuiGraphics guiGraphics, SkillTree tree) {

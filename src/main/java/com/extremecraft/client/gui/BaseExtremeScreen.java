@@ -1,6 +1,7 @@
 package com.extremecraft.client.gui;
 
 import com.extremecraft.core.ECConstants;
+import com.extremecraft.client.gui.theme.ECGuiPrimitives;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -34,7 +35,7 @@ public abstract class BaseExtremeScreen extends Screen {
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(guiGraphics);
+        ECGuiPrimitives.drawScreenBackdrop(guiGraphics, this.width, this.height);
         drawBackdrop(guiGraphics);
         drawPanel(guiGraphics);
         drawGradientOverlay(guiGraphics);
@@ -44,17 +45,19 @@ public abstract class BaseExtremeScreen extends Screen {
     }
 
     protected void drawBackdrop(GuiGraphics guiGraphics) {
-        guiGraphics.fillGradient(0, 0, this.width, this.height, 0xAA06070C, 0xCC0B0F1A);
         guiGraphics.fill(panelLeft - 8, panelTop - 8, panelLeft + panelWidth + 8, panelTop + panelHeight + 8, 0x66000000);
     }
 
     protected void drawPanel(GuiGraphics guiGraphics) {
-        guiGraphics.blit(PANEL_TEXTURE, panelLeft, panelTop, 0, 0, panelWidth, panelHeight, 256, 256);
+        if (minecraft != null && minecraft.getResourceManager().getResource(PANEL_TEXTURE).isPresent()) {
+            guiGraphics.blit(PANEL_TEXTURE, panelLeft, panelTop, 0, 0, panelWidth, panelHeight, 256, 256);
+        }
+        ECGuiPrimitives.drawPanelChrome(guiGraphics, panelLeft, panelTop, panelWidth, panelHeight, minecraft == null || minecraft.player == null ? 0 : minecraft.player.tickCount);
     }
 
     protected void drawGradientOverlay(GuiGraphics guiGraphics) {
         guiGraphics.fillGradient(panelLeft + 4, panelTop + 4, panelLeft + panelWidth - 4, panelTop + panelHeight - 4,
-                0x33006B9E, 0x331B0C29);
+                0x22006B9E, 0x331B0C29);
     }
 
     protected abstract void drawContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick);
