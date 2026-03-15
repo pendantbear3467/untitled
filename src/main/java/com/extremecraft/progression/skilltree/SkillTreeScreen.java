@@ -17,18 +17,18 @@ import java.util.List;
 import java.util.Locale;
 
 public class SkillTreeScreen extends BaseExtremeScreen {
-    private static final ResourceLocation NODE_LOCKED = new ResourceLocation(ECConstants.MODID, "textures/gui/skill_node_locked.png");
-    private static final ResourceLocation NODE_UNLOCKED = new ResourceLocation(ECConstants.MODID, "textures/gui/skill_node_unlocked.png");
-    private static final ResourceLocation NODE_HOVER = new ResourceLocation(ECConstants.MODID, "textures/gui/skill_node_hover.png");
+    private static final ResourceLocation NODE_LOCKED = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/skill_node_locked.png");
+    private static final ResourceLocation NODE_UNLOCKED = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/skill_node_unlocked.png");
+    private static final ResourceLocation NODE_HOVER = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/skill_node_hover.png");
 
-    private static final ResourceLocation CONNECTION_LOCKED = new ResourceLocation(ECConstants.MODID, "textures/gui/skill_connection_locked.png");
-    private static final ResourceLocation CONNECTION_AVAILABLE = new ResourceLocation(ECConstants.MODID, "textures/gui/skill_connection_unlocked.png");
-    private static final ResourceLocation CONNECTION_ACTIVE = new ResourceLocation(ECConstants.MODID, "textures/gui/skill_connection_active.png");
+    private static final ResourceLocation CONNECTION_LOCKED = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/skill_connection_locked.png");
+    private static final ResourceLocation CONNECTION_AVAILABLE = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/skill_connection_unlocked.png");
+    private static final ResourceLocation CONNECTION_ACTIVE = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/skill_connection_active.png");
 
-    private static final ResourceLocation ICON_ATTACK = new ResourceLocation(ECConstants.MODID, "textures/gui/skills/attack.png");
-    private static final ResourceLocation ICON_MINING = new ResourceLocation(ECConstants.MODID, "textures/gui/skills/mining.png");
-    private static final ResourceLocation ICON_DEFENSE = new ResourceLocation(ECConstants.MODID, "textures/gui/skills/defense.png");
-    private static final ResourceLocation ICON_MAGIC = new ResourceLocation(ECConstants.MODID, "textures/gui/skills/magic.png");
+    private static final ResourceLocation ICON_ATTACK = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/skills/attack.png");
+    private static final ResourceLocation ICON_MINING = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/skills/mining.png");
+    private static final ResourceLocation ICON_DEFENSE = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/skills/defense.png");
+    private static final ResourceLocation ICON_MAGIC = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/skills/magic.png");
 
     private static final int NODE_SIZE = 26;
 
@@ -108,15 +108,15 @@ public class SkillTreeScreen extends BaseExtremeScreen {
             tooltip.add(Component.literal("Requirements: " + String.join(", ", hoveredNode.requiredNodes())));
         }
         if (isNodeUnlocked(hoveredNode.id())) {
-            tooltip.add(Component.literal("State: UNLOCKED"));
+            tooltip.add(Component.literal("Status: Unlocked"));
         } else if (canUnlockNode(hoveredNode)) {
-            tooltip.add(Component.literal("State: UNLOCKABLE"));
+            tooltip.add(Component.literal("Status: Unlockable"));
         } else if (level < hoveredNode.requiredLevel()) {
             tooltip.add(Component.literal("Blocked: requires level " + hoveredNode.requiredLevel()));
         } else if (skillPoints < hoveredNode.cost()) {
             tooltip.add(Component.literal("Blocked: not enough skill points"));
         } else {
-            tooltip.add(Component.literal("Blocked: prerequisite node missing"));
+            tooltip.add(Component.literal("Blocked: missing prerequisite node"));
         }
         guiGraphics.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
     }
@@ -315,7 +315,7 @@ public class SkillTreeScreen extends BaseExtremeScreen {
                     return parsed;
                 }
             } else {
-                return new ResourceLocation(ECConstants.MODID, iconPath);
+                return ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, iconPath);
             }
         }
 

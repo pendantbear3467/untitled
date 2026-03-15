@@ -11,7 +11,7 @@ import net.minecraft.resources.ResourceLocation;
  * Reusable themed screen shell for ExtremeCraft RPG-tech interfaces.
  */
 public abstract class BaseExtremeScreen extends Screen {
-    protected static final ResourceLocation PANEL_TEXTURE = new ResourceLocation(ECConstants.MODID, "textures/gui/gui_panel.png");
+    protected static final ResourceLocation PANEL_TEXTURE = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/gui_panel.png");
 
     protected int panelWidth = 256;
     protected int panelHeight = 180;

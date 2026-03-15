@@ -44,8 +44,8 @@ import java.util.Optional;
 import java.util.Locale;
 
 public class ExtremePlayerScreen extends Screen {
-    private static final ResourceLocation BG_TEXTURE = new ResourceLocation(ECConstants.MODID, "textures/gui/extreme_player_menu.png");
-    private static final ResourceLocation MAGIC_SLOT = new ResourceLocation(ECConstants.MODID, "textures/gui/magic_slot.png");
+    private static final ResourceLocation BG_TEXTURE = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/extreme_player_menu.png");
+    private static final ResourceLocation MAGIC_SLOT = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/magic_slot.png");
 
     private static final int BASE_TEXTURE_WIDTH = 306;
     private static final int BASE_TEXTURE_HEIGHT = 206;

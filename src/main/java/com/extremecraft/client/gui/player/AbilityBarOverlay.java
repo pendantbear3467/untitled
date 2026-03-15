@@ -117,11 +117,11 @@ public class AbilityBarOverlay {
         gui.drawString(Minecraft.getInstance().font, Component.literal(String.format("Contam %.1f", contamination)), x + 4, y + 14, ECGuiTheme.TEXT_SECONDARY, false);
 
         if (dose >= threshold || contamination >= threshold) {
-            gui.drawString(Minecraft.getInstance().font, Component.literal("WARNING: decon advised"), x + 4, y + SLOT_SIZE + 7, ECGuiTheme.STATE_WARN, false);
+            gui.drawString(Minecraft.getInstance().font, Component.literal("Warning: Decon advised"), x + 4, y + SLOT_SIZE + 7, ECGuiTheme.STATE_WARN, false);
         } else if (ambient >= 2.0D) {
             gui.drawString(Minecraft.getInstance().font, Component.literal("Exposure rising"), x + 4, y + SLOT_SIZE + 7, ECGuiTheme.STATE_WARN, false);
         } else {
-            gui.drawString(Minecraft.getInstance().font, Component.literal("Status: stable"), x + 4, y + SLOT_SIZE + 7, ECGuiTheme.STATE_READY, false);
+            gui.drawString(Minecraft.getInstance().font, Component.literal("Status: Stable"), x + 4, y + SLOT_SIZE + 7, ECGuiTheme.STATE_READY, false);
         }
 
         CompoundTag states = RuntimeSyncClientState.machineStates();

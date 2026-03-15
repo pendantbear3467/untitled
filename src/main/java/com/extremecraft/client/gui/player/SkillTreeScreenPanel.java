@@ -184,7 +184,7 @@ public class SkillTreeScreenPanel {
                     present,
                     Component.literal(node.resolvedDisplayName()),
                     Component.literal("Purpose: " + node.resolvedDescription()),
-                    Component.literal("State: Locked"),
+                    Component.literal("Status: Locked"),
                     Component.literal("Effect: " + node.bonusText()),
                     Component.literal("Cost: " + node.cost() + " skill point(s)"),
                     buildRequirementLine(node),
@@ -225,10 +225,10 @@ public class SkillTreeScreenPanel {
         int points = ProgressApi.get(player).map(PlayerProgressData::playerSkillPoints).orElse(stats.skillPoints());
 
         if (state == SkillNodeStateService.NodeState.UNLOCKED) {
-            return Component.literal("Blocked: already unlocked");
+            return Component.literal("Status: Unlocked");
         }
         if (state == SkillNodeStateService.NodeState.UNLOCKABLE) {
-            return Component.literal("Ready: left-click to unlock");
+            return Component.literal("Ready: Click to unlock");
         }
         if (level < node.requiredLevel()) {
             return Component.literal("Blocked: requires level " + node.requiredLevel());
@@ -281,9 +281,9 @@ public class SkillTreeScreenPanel {
     ) {
         private NodeUiCache withState(SkillNodeStateService.NodeState state, Component reason) {
             String status = switch (state) {
-                case UNLOCKED -> "State: UNLOCKED";
-                case UNLOCKABLE -> "State: UNLOCKABLE";
-                case LOCKED -> "State: LOCKED";
+                case UNLOCKED -> "Status: Unlocked";
+                case UNLOCKABLE -> "Status: Unlockable";
+                case LOCKED -> "Status: Locked";
             };
             return new NodeUiCache(nodeId, icon, iconPresent, displayName, purposeLine, Component.literal(status), effectLine, costLine, requirementLine, reason);
         }

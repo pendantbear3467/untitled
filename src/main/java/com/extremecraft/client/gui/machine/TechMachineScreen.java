@@ -15,7 +15,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
 public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> {
-    private static final ResourceLocation TEXTURE = new ResourceLocation("minecraft", "textures/gui/container/furnace.png");
+    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/container/furnace.png");
     private Button scramButton;
     private boolean scramRequested;
 
@@ -151,51 +151,51 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
 
         if (isReactorMachine()) {
             if (reactor.isEmpty()) {
-                return "Telemetry pending";
+                return "Blocked: Telemetry pending";
             }
             if (reactor.getBoolean("melted_down")) {
-                return "Meltdown recorded";
+                return "Error: Meltdown recorded";
             }
             if (reactor.getBoolean("scrammed")) {
-                return "SCRAMMED";
+                return "Warning: SCRAM engaged";
             }
             if (reactor.getDouble("heat") >= 800.0D || reactor.getDouble("radiation") >= 5.0D) {
-                return "Reactor warning";
+                return "Warning: Reactor unstable";
             }
             if (reactor.getDouble("reactivity") > 0.0D || reactor.getInt("fuel_ticks_remaining") > 0) {
-                return "Stable";
+                return "Ready: Stable";
             }
         }
         if (menu.rawProgress() > 0) {
-            return "Processing";
+            return "Active: Processing";
         }
         if (!output.isEmpty() && output.getCount() >= output.getMaxStackSize()) {
-            return "Output full";
+            return "Blocked: Output full";
         }
         if (menu.rawEnergy() <= 0) {
             if (menu.machineId().contains("mana") || menu.machineId().contains("arcane") || menu.machineId().contains("rune")) {
-                return "Insufficient Aether";
+                return "Blocked: Missing aether";
             }
             if (fuel.isEmpty()) {
-                return "Missing fuel";
+                return "Blocked: Missing fuel";
             }
-            return "Insufficient energy";
+            return "Blocked: Missing energy";
         }
         if (input.isEmpty()) {
-            return "No valid recipe";
+            return "Blocked: No valid recipe";
         }
-        return "Structure incomplete";
+        return "Blocked: Structure incomplete";
     }
 
     private int statusColor() {
         String status = machineStatusLine();
-        if ("Processing".equals(status) || "Stable".equals(status)) {
+        if (status.startsWith("Active:") || status.startsWith("Ready:")) {
             return ECGuiTheme.STATE_READY;
         }
-        if ("SCRAMMED".equals(status)) {
+        if (status.startsWith("Warning:")) {
             return ECGuiTheme.STATE_WARN;
         }
-        if (status.contains("Meltdown") || status.contains("warning") || status.contains("Missing") || status.contains("Insufficient") || status.contains("No valid")) {
+        if (status.startsWith("Error:") || status.startsWith("Blocked:")) {
             return ECGuiTheme.STATE_ERROR;
         }
         return ECGuiTheme.TEXT_SECONDARY;
