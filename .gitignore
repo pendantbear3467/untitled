@@ -57,3 +57,6 @@ crash-reports/
 __pycache__/
 *.pyc
 .fake
+
+### USD assets ###
+*.usd
