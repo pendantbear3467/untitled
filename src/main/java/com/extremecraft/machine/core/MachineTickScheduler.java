@@ -7,6 +7,12 @@ import com.extremecraft.endgame.EndgameCoreStructureService;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 
+/**
+ * Canonical per-tick server scheduler for active tech machines.
+ *
+ * <p>New tech-machine behavior should converge here instead of creating a parallel machine tick
+ * loop in legacy machine folders.</p>
+ */
 public final class MachineTickScheduler {
     private MachineTickScheduler() {
     }

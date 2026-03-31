@@ -4,6 +4,8 @@ ExtremeCraft consumes JSON datapack content from `data/extremecraft/**` (built-i
 
 Use this document as the contributor schema reference.
 
+For "which folder actually changes live gameplay?" see `docs/CANONICAL_OWNERSHIP_MAP.md`.
+
 ## Resource Location Rules
 
 - Use lowercase ids and paths.
@@ -13,11 +15,19 @@ Use this document as the contributor schema reference.
 
 Validation checks in `ECValidationService` will report malformed or missing references with concrete file paths and ids.
 
-## Machines
+## Machine Metadata Mirror
 
 Path:
 
 - `data/extremecraft/machines/<id>.json`
+
+Ownership note:
+
+- This folder is a metadata/validation mirror for machines.
+- Live tech machine runtime behavior is owned by:
+  - `src/main/java/com/extremecraft/machine/core/MachineCatalog.java`
+  - `src/main/resources/data/extremecraft/recipes/machine_processing/**`
+- Editing `machines/*.json` alone will not change active tech machine ticks.
 
 Schema:
 
@@ -45,7 +55,7 @@ Fields:
 - `recipes` string: recipe group/type key.
 - `display_name` string: optional UI label.
 
-Machine validation also checks common asset/reference hygiene:
+Machine metadata validation also checks common asset/reference hygiene:
 
 - Missing blockstate/block model/item model for machine id.
 - Missing referenced recipe ids (for local namespace refs).
@@ -73,6 +83,12 @@ Fields:
 - `max_level` number: cap for progression.
 - `bonus_per_level` number: per-level bonus value.
 
+Ownership note:
+
+- Skill definitions are live here.
+- Skill-tree topology is owned separately by `data/extremecraft/skill_trees/*.json`.
+- The older `data/extremecraft/skilltrees/*.json` folder is legacy and should not be the first edit target.
+
 ## Validation-Friendly Authoring Tips
 
 - Ensure every new block/item has model JSON (`assets/extremecraft/models/...`).
@@ -87,6 +103,11 @@ Paths:
 
 - `data/extremecraft/abilities/<id>.json` (runtime ability definitions)
 - `data/extremecraft/abilities_platform/<id>.json` (platform metadata definitions)
+
+Ownership note:
+
+- `abilities/*.json` is a shared live source for both generic ability runtime and module-triggered abilities.
+- `abilities_platform/*.json` is metadata-only.
 
 Runtime ability schema:
 
@@ -212,4 +233,7 @@ Platform recipe metadata (`ec_recipes`) typically includes:
 
 - Keep ids lowercase and namespace-safe.
 - Keep cross-references consistent (`machine` ids, item ids, loot table ids).
+- Use `extremecraft_quests/` for live quest content, not `quests/`.
+- Use `armor_modules/` and `tool_modules/` for live modular gear, not `modules/`.
+- Use `worldgen/` and `forge/` for live placement data, not `world_generation/`.
 - Run `./gradlew check` to execute content validation (`tools/content_completion.py`).

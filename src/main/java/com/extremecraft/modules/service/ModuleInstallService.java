@@ -17,6 +17,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Canonical live mutation path for installing and removing modular gear modules.
+ *
+ * <p>Route gameplay-triggered module install/remove operations through this service so runtime
+ * passive modifiers and module cooldown state stay synchronized.</p>
+ */
 public final class ModuleInstallService {
     public enum TargetSlot {
         MAIN_HAND,

@@ -16,11 +16,12 @@ ExtremeCraft is a large-scale Minecraft Forge mod for 1.20.1 focused on technolo
 - `scripts/`: Optional helper scripts for contributor workflows.
 
 Detailed folder-by-folder documentation: `docs/REPOSITORY_FOLDER_GUIDE.md`
+Canonical edit-first ownership map: `docs/CANONICAL_OWNERSHIP_MAP.md`
 Full documentation map: `docs/DOCUMENTATION_INDEX.md`
 
 ## What ExtremeCraft Includes
 
-- Data-driven machine definitions and processing recipes.
+- Code-owned machine catalogs plus data-driven machine processing recipes.
 - Ability runtime with cooldown/mana/class requirements.
 - Progression, quests, research, classes, and skill trees.
 - Entity extension hooks for custom mob/boss behavior.
@@ -69,6 +70,7 @@ Build distributable artifacts:
 
 - Core gameplay/runtime code: `src/main/java/com/extremecraft/**`
 - Runtime assets and builtin datapack content: `src/main/resources/assets/extremecraft/**`, `src/main/resources/data/extremecraft/**`
+- Edit-first ownership map for live gameplay changes: `docs/CANONICAL_OWNERSHIP_MAP.md`
 - Datapack contributor workspace: `datapacks/`
 - Python/tooling/generators: `tools/`, `tools/scripts/assetstudio.py`, `tools/scripts/generate_assets.py`, `tools/scripts/main.py`
 - API and integration-facing module: `api/`

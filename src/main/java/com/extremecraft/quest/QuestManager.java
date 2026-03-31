@@ -23,6 +23,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Canonical live quest definition registry.
+ *
+ * <p>This manager owns gameplay quest content loaded from
+ * {@code data/extremecraft/extremecraft_quests}. The similarly named
+ * {@code data/extremecraft/quests} folder is metadata-only.</p>
+ */
 public class QuestManager extends SimpleJsonResourceReloadListener {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Logger LOGGER = LogUtils.getLogger();

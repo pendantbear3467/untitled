@@ -14,6 +14,12 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
+/**
+ * Live gameplay event hooks for progression, quest progress, and gameplay-earned skill XP.
+ *
+ * <p>Keep class XP out of this event surface; live class XP comes from guild quest claim flow
+ * through {@link GuildQuestRewardService}.</p>
+ */
 public class ProgressionEvents {
     @SubscribeEvent
     public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {

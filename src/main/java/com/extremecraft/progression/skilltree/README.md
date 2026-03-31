@@ -1,14 +1,32 @@
 # progression/skilltree
 
-Skill tree data model, loaders, runtime services, and sync/interaction packets.
+Status: `LIVE_RUNTIME` with `COMPATIBILITY MIRROR` overlap
 
-Role:
+This package owns live skill-tree loading, unlock checks, and skill-tree state
+sync for gameplay.
 
-- load and validate skill tree definitions
-- manage unlock/simulation/runtime progression rules
-- sync skill tree state to client views
+Runtime-critical files:
+
+- `SkillTreeDataLoader`
+- `SkillTreeManager`
+- `SkillTreeService`
+- `PlayerSkillTreeEvents`
+
+Live data owner:
+
+- `src/main/resources/data/extremecraft/skill_trees/*.json`
+
+Compatibility overlap:
+
+- `SkillTreeRegistry` is a legacy mirror populated from `SkillTreeManager`
+- `platform/data/loader/SkillTreeDataLoader` mirrors skill trees for validation
+  and client snapshot sync only
+
+Legacy/disconnected data path:
+
+- `src/main/resources/data/extremecraft/skilltrees/*.json`
 
 Guidance:
 
-- keep unlock prerequisites and point-cost logic centralized
-- validate content inputs before committing unlock changes
+- Keep unlock prerequisites and point-cost logic centralized here.
+- Do not start new gameplay edits in `skilltrees/`.

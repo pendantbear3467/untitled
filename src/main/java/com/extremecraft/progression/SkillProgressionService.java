@@ -6,6 +6,12 @@ import com.extremecraft.skills.SkillsApi;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 
+/**
+ * Canonical live write path for skill XP.
+ *
+ * <p>Gameplay systems may award skill XP through this service; unrelated mirrors and client sync
+ * code should not mutate skill progression directly.</p>
+ */
 public final class SkillProgressionService {
     public enum Source {
         COMBAT,

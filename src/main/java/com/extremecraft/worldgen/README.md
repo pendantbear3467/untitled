@@ -7,7 +7,8 @@ This folder owns runtime-facing worldgen helpers, ore/material consistency check
 Runtime-critical files:
 - Vanilla/Forge worldgen content under `data/extremecraft/worldgen` and `data/extremecraft/forge`
 - `WorldgenConsistencyValidator` validates expected ore/configured/placed/biome-modifier coverage
-- `OreGenerationProfiles` and `OreMaterialCatalog` define ore generation source data
+- `OreGenerationProfiles` summarizes expected ore generation profiles
+- `machine/material/OreMaterialCatalog` defines the runtime ore material roster used by registries and validators
 
 Metadata-only overlap:
 - `platform/data/loader/WorldGenerationDataLoader` loads `data/extremecraft/world_generation` for metadata/debug use.

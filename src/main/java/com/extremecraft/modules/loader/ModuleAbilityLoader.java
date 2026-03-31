@@ -20,6 +20,13 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Loader for module-triggered ability definitions that intentionally reuse the shared
+ * {@code data/extremecraft/abilities} folder.
+ *
+ * <p>This is a shared live datapack path with the generic ability runtime. Module-triggered
+ * abilities read only the trigger/cooldown/mana/scaling subset they need.</p>
+ */
 public class ModuleAbilityLoader {
     private static final Gson GSON = new Gson();
     private static final Logger LOGGER = LogUtils.getLogger();

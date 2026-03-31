@@ -7,6 +7,13 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Canonical live definition catalog for active tech machines.
+ *
+ * <p>Edit this class to change the registered tech-machine roster, stage gates, default
+ * processing times, and default energy/tier behavior. The similarly named
+ * {@code data/extremecraft/machines/*.json} folder is metadata-only for now.</p>
+ */
 public final class MachineCatalog {
     public static final Map<String, MachineDefinition> DEFINITIONS = new LinkedHashMap<>();
 

@@ -29,6 +29,13 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Server-authoritative spell cast runtime.
+ *
+ * <p>Spell definitions live in {@code data/extremecraft/spells}. They are compiled into generic
+ * {@code AbilityDefinition} payloads at cast time, so editing {@code abilities/*.json} does not
+ * directly change spell behavior.</p>
+ */
 public final class SpellExecutor {
     public static final String SPELL_TAG = "ec_spell_id";
 

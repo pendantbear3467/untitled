@@ -23,6 +23,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Canonical loader for live installable armor/tool module definitions.
+ *
+ * <p>The current gameplay owner is {@code armor_modules} plus {@code tool_modules}. The generic
+ * {@code data/extremecraft/modules} folder is metadata-only.</p>
+ */
 public class ModuleDefinitionLoader {
     private static final Gson GSON = new Gson();
     private static final Logger LOGGER = LogUtils.getLogger();

@@ -82,6 +82,7 @@ Central index for repository documentation, folder READMEs, and subsystem guides
 ## Architecture and System Guides
 
 - [docs/ARCHITECTURE.md](ARCHITECTURE.md)
+- [docs/CANONICAL_OWNERSHIP_MAP.md](CANONICAL_OWNERSHIP_MAP.md)
 - [docs/REPOSITORY_FOLDER_GUIDE.md](REPOSITORY_FOLDER_GUIDE.md)
 - [docs/API_USAGE.md](API_USAGE.md)
 - [docs/ASSET_STUDIO.md](ASSET_STUDIO.md)

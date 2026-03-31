@@ -4,6 +4,12 @@ import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.quest.QuestDefinition;
 import net.minecraft.server.level.ServerPlayer;
 
+/**
+ * Canonical guild quest reward claim path.
+ *
+ * <p>Quest completion, player XP, class XP, stage grants, unlock grants, and class-unlock rewards
+ * should converge here for live guild quest claims.</p>
+ */
 public final class GuildQuestRewardService {
     private GuildQuestRewardService() {
     }
@@ -35,6 +41,7 @@ public final class GuildQuestRewardService {
 
             String classRewardTarget = !quest.rewardUnlockClass().isBlank() ? quest.rewardUnlockClass() : data.currentClass();
             int classXpReward = calculateClassXpReward(quest);
+            // Class XP for live gameplay is intentionally routed through the guild quest claim path.
             ClassProgressionService.grantClassXp(player, classRewardTarget, classXpReward, ClassProgressionService.Source.GUILD_QUEST);
 
             if (!quest.rewardUnlockStage().isBlank()) {

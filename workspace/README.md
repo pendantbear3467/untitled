@@ -7,6 +7,13 @@ as authoritative source content for the mod runtime.
 
 Do not store canonical Java/runtime resources here.
 
+Nuance:
+
+- `build/`, `generated/`, and `exports/` may be intentionally versioned snapshots
+  or packaging outputs kept for inspection/comparison.
+- `.studio/autosave/`, `.studio/logs/`, and `.studio/recovery/` are local tool
+  state, not project source.
+
 Canonical locations remain:
 
 - Runtime Java code: `../src/main/java`

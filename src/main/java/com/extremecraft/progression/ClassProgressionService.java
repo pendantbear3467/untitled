@@ -4,6 +4,12 @@ import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.classsystem.ClassIdResolver;
 import net.minecraft.server.level.ServerPlayer;
 
+/**
+ * Canonical live write path for class XP.
+ *
+ * <p>Class XP is intentionally constrained to guild quest reward flow (plus debug/admin tools)
+ * so unrelated gameplay systems do not create side-door class progression drift.</p>
+ */
 public final class ClassProgressionService {
     public enum Source {
         GUILD_QUEST,

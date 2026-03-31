@@ -26,6 +26,13 @@ import net.minecraftforge.items.ItemStackHandler;
 import javax.annotation.Nullable;
 import java.util.Optional;
 
+/**
+ * Active block-entity runtime for the tech machine chain registered through {@code future.registry}.
+ *
+ * <p>This class reads its machine defaults from {@link MachineCatalog} and its live recipes from
+ * the vanilla recipe manager via {@code recipes/machine_processing}. Do not expect edits to
+ * {@code data/extremecraft/machines/*.json} alone to change this runtime path.</p>
+ */
 public class TechMachineBlockEntity extends AbstractMachineBlockEntity implements MenuProvider, MachineStateSyncProvider {
     public static final int INPUT_SLOT = 0;
     public static final int FUEL_SLOT = 1;
@@ -76,6 +83,7 @@ public class TechMachineBlockEntity extends AbstractMachineBlockEntity implement
     }
 
     MachineDefinition getMachineDefinition() {
+        // Canonical tech-machine defaults are code-owned here via MachineCatalog.
         return MachineCatalog.byId(getMachineId()).orElse(new MachineDefinition(
                 getMachineId(),
                 MachineCategory.PROCESSOR,

@@ -22,20 +22,22 @@ Design intent:
 
 Primary components:
 
-- `MachineRegistry`: runtime machine and machine-recipe catalog.
-- `MachineProcessingLogic`: per-tick processing execution for machine block entities.
-- `MachineBlockEntity` + machine menu/screen classes for inventory/UI state.
+- `machine/core/MachineCatalog`: canonical tech machine definition owner.
+- `machine/core/TechMachineBlockEntity`: active multi-machine block entity runtime.
+- `machine/core/MachineTickScheduler`: bounded server tick owner for tech machines.
+- `machine/core/MachineProcessingService` + `machine/core/MachineRecipeService`: live processing and recipe resolution path.
+- `future/registry/*`: live tech machine block/item/block-entity/menu registration chain.
 
 Data flow:
 
-1. Machine definitions/recipes are loaded from datapack resources.
-2. Registries expose immutable snapshots for hot-path reads.
-3. Tick logic resolves recipe, consumes energy, mutates inventories on completion.
+1. `MachineCatalog` and `future/registry/*` define which tech machines exist at runtime.
+2. Vanilla recipe manager loads `data/extremecraft/recipes/machine_processing/**`.
+3. `MachineRecipeService` resolves recipes, `MachineProcessingService` executes them, and `MachineTickScheduler` owns the active server tick loop.
 
 Why it exists:
 
-- Keeps machine balancing/data in JSON.
-- Keeps execution semantics in one deterministic server-side loop.
+- Keeps active machine execution in one deterministic server-side loop.
+- Separates live machine runtime from metadata-only mirrors such as `data/extremecraft/machines`.
 
 ## Ability System
 
@@ -99,7 +101,8 @@ Runtime behavior:
 
 - Reload listeners are registered on Forge event bus.
 - Content is reloaded from datapacks/resource packs without code changes.
-- Systems read from registries, not directly from disk.
+- Gameplay systems read from canonical runtime registries/services, not directly from disk.
+- `platform/data/loader/*` contains metadata, validation, and snapshot mirrors; those loaders are not automatically the live gameplay owner for the similarly named content folder.
 
 ## Canonical Ownership (Alpha Hardening)
 
@@ -108,6 +111,7 @@ The following ownership boundaries are now canonical and should be treated as st
 - Network authority: `com.extremecraft.network.ModNetwork` is the only packet registration owner.
 - Legacy network facade: `com.extremecraft.net.DwNetwork` is compatibility-only and must not register packets.
 - Progression mutation authority: `com.extremecraft.progression.ProgressionMutationService` is the runtime mutation entrypoint for XP/level updates.
+- Full per-domain ownership map: `docs/CANONICAL_OWNERSHIP_MAP.md`
 
 ### Migration Shims
 

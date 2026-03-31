@@ -22,6 +22,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Snapshot sync service for client-visible runtime state.
+ *
+ * <p>This class mirrors live stats, abilities, skill unlocks, and nearby machine state to the
+ * client. It is not the gameplay mutation owner for those systems.</p>
+ */
 public final class RuntimeSyncService {
     private static final Map<UUID, Integer> LAST_STATS_HASH = new ConcurrentHashMap<>();
     private static final Map<UUID, Integer> LAST_ABILITIES_HASH = new ConcurrentHashMap<>();

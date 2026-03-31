@@ -42,6 +42,10 @@ import org.apache.logging.log4j.Logger;
 /**
  * Canonical packet channel and registration owner for ExtremeCraft.
  * Compatibility wrappers (for example {@code DwNetwork}) must delegate here and never re-register packets.
+ *
+ * <p>Snapshot packets such as machine/material/skill-tree sync still register here, but those
+ * packets mirror runtime metadata to clients; they do not become the mutation owner for the
+ * similarly named gameplay systems.</p>
  */
 public final class ModNetwork {
     private static final Logger LOGGER = LogManager.getLogger();
@@ -156,6 +160,8 @@ public final class ModNetwork {
                 .consumerMainThread(RemoveModuleC2SPacket::handle)
                 .add();
 
+        // Metadata/snapshot sync packets. These mirror client-visible catalogs and are not
+        // authoritative mutation channels for machines/materials/skill trees.
         CHANNEL.messageBuilder(SyncMachinesPacket.class, nextId())
                 .encoder(SyncMachinesPacket::encode)
                 .decoder(SyncMachinesPacket::decode)

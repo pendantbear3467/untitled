@@ -86,7 +86,8 @@ import net.minecraftforge.fml.loading.FMLEnvironment;
  *
  * <p>This class wires gameplay subsystems into Forge lifecycle phases and event buses.
  * Keep orchestration logic here and place domain behavior in dedicated system classes
- * so startup ordering remains explicit and reviewable.</p>
+ * so startup ordering remains explicit and reviewable. When ownership is unclear,
+ * prefer the runtime owners documented in {@code docs/CANONICAL_OWNERSHIP_MAP.md}.</p>
  */
 @Mod(ECConstants.MODID)
 public final class ExtremeCraft {
@@ -152,7 +153,7 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new SkillsCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new ResearchCapabilityEvents());
 
-            // Data and gameplay managers process datapacks, progression, and world consistency checks.
+            // These loaders/services own live gameplay data and runtime behavior.
             MinecraftForge.EVENT_BUS.register(new ProgressionEvents());
             MinecraftForge.EVENT_BUS.register(new QuestManager());
             MinecraftForge.EVENT_BUS.register(new StageDataLoader());
@@ -191,8 +192,9 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new ProgressionRegistry());
 
             MobSpawns.bootstrap();
-            // Register datapack reload listeners after gameplay registries are initialized.
-
+            // Register metadata/validation mirrors after live gameplay owners.
+            // These loaders support validation, sync snapshots, and future migrations; they are not
+            // the primary gameplay mutation path for similarly named runtime domains.
             PlatformDataLoaderBootstrap.registerAll();
             MinecraftForge.EVENT_BUS.register(new PlatformDataSyncEvents());
         });

@@ -25,6 +25,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+/**
+ * Canonical loader for live stage-to-unlock mapping.
+ *
+ * <p>This loader owns {@code data/extremecraft/progression/stages}. Stage gating should read this
+ * mapping through {@code ProgressionGate} rather than inventing new hardcoded stage lists.</p>
+ */
 public class StageDataLoader extends SimpleJsonResourceReloadListener {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Logger LOGGER = LogUtils.getLogger();

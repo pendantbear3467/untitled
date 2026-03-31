@@ -16,7 +16,11 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * Loads module definitions from data/extremecraft/modules/*.json.
+ * Legacy generic module loader for {@code data/extremecraft/modules/*.json}.
+ *
+ * <p>This is not the canonical live modular-gear owner. Current installable armor/tool modules
+ * load through {@code com.extremecraft.modules.loader.ModuleDefinitionLoader} from
+ * {@code armor_modules} and {@code tool_modules}.</p>
  */
 public class ModuleLoader {
     private static final Logger LOGGER = Logger.getLogger("ExtremeCraft");

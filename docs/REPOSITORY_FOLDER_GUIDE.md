@@ -14,7 +14,7 @@ auxiliary tooling, documentation/examples, or generated output.
 
 ## Top-Level Folder Map
 
-### `src/` (Core Runtime)
+### `src/` (Core Runtime + Legacy Nested-Project Residue)
 
 Primary runtime source for the mod.
 
@@ -22,6 +22,7 @@ Primary runtime source for the mod.
 - `src/main/resources/assets/extremecraft/**`: textures, models, language files.
 - `src/main/resources/data/extremecraft/**`: built-in datapack definitions.
 - `src/main/resources/META-INF/`: Forge metadata (`mods.toml`) and module descriptors.
+- `src/.gradle/`, `src/build/`, `src/settings.gradle`: older nested-project/build residue and not ownership signals for current runtime work.
 
 What to put here:
 
@@ -84,17 +85,22 @@ Note: launcher wrappers are intentionally located in `tools/scripts`, not here.
 
 Orientation anchor documenting runtime mod concerns and future modularization intent.
 
-### `client/`, `core/`, `gameplay/`, `magic/`, `tech/`, `worldgen/` (Placeholder/Future)
+### `client/`, `core/`, `gameplay/`, `magic/`, `tech/`, `worldgen/` (Placeholder/Future + Modularization Scaffolds)
 
 Top-level domains reserved for possible future modular decomposition.
 
-Current active runtime implementation remains centered under `src/`.
+Current active runtime implementation remains centered under `src/`. Treat these folders as orientation scaffolds and build placeholders unless/until source sets are explicitly rewired.
 
 ### `workspace/` (Tooling Scratch Space)
 
 Local scratch/intermediate workspace for tooling outputs.
 
 Do not treat this as canonical runtime source.
+
+Nuance:
+
+- `workspace/build/`, `workspace/generated/`, and `workspace/exports/` may contain intentionally versioned current-state snapshots and packaging output for inspection.
+- `workspace/.studio/autosave/`, `workspace/.studio/logs/`, and `workspace/.studio/recovery/` are local state, not canonical project content.
 
 ### `tests/` (Tooling Validation)
 
@@ -110,11 +116,16 @@ Local development runtime output for launched client/server sessions.
 
 Contains local state like world data, server settings, logs, crash reports.
 
-### `build/`, `bin/` (Generated/Transient)
+### `build/`, `bin/` (Generated/Transient With A Few Preserved Reports)
 
 Build output trees and compiled artifacts.
 
 Do not hand-edit these folders.
+
+Nuance:
+
+- `build/extremecraft-validation-report.txt` and `build/reports/**` are intentionally preserved high-signal artifacts.
+- The rest of these trees are build output, not gameplay source.
 
 ### `.gradle*`, `.venv/`, `__pycache__/` (Generated/Transient)
 
@@ -124,9 +135,11 @@ Local cache/environment folders.
 
 - `build.gradle`: main build configuration.
 - `settings.gradle`: module includes and build layout.
+- `src/settings.gradle`: legacy nested-project artifact and not the current build root.
 - `pyproject.toml`: Python package metadata for Asset Studio package distribution.
 - `README.md`: main onboarding entrypoint.
 - `ARCHITECTURE.md`: high-level architecture overview.
+- `docs/CANONICAL_OWNERSHIP_MAP.md`: edit-first ownership map for live gameplay changes.
 - `API.md`: public API orientation.
 - `DATAPACK_FORMAT.md`: data contract and schema guidance.
 

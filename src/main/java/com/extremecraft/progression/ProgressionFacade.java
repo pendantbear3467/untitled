@@ -4,6 +4,12 @@ import com.extremecraft.quest.QuestDefinition;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 
+/**
+ * Canonical cross-system facade for progression mutations and progression-owned rewards.
+ *
+ * <p>Gameplay systems should call this facade instead of mutating progression capabilities or
+ * mirrors directly.</p>
+ */
 public final class ProgressionFacade {
     private ProgressionFacade() {
     }

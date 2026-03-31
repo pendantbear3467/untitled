@@ -9,6 +9,13 @@ import net.minecraft.world.level.Level;
 
 import java.util.Optional;
 
+/**
+ * Recipe-manager bridge for the active tech machine runtime.
+ *
+ * <p>This service resolves live machine processing recipes from
+ * {@code data/extremecraft/recipes/machine_processing}. It does not read
+ * {@code data/extremecraft/machines/*.json}.</p>
+ */
 public final class MachineRecipeService {
     private MachineRecipeService() {
     }
