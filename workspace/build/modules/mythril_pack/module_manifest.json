@@ -1,0 +1,49 @@
+{
+  "name": "mythril_pack",
+  "namespace": "mythril_pack",
+  "version": "0.1.0",
+  "compatible_platform": "*",
+  "dependencies": [
+    "extremecraft-core"
+  ],
+  "dependency_load_order": [
+    "extremecraft-core"
+  ],
+  "dependency_graph": {
+    "nodes": [
+      {
+        "key": "addon:extremecraft-core",
+        "kind": "addon",
+        "version": "1.2.0",
+        "constraint": "*"
+      },
+      {
+        "key": "addon:mythril_pack",
+        "kind": "addon",
+        "version": "0.1.0",
+        "constraint": "self"
+      }
+    ],
+    "edges": [
+      {
+        "source": "addon:extremecraft-core",
+        "target": "addon:mythril_pack"
+      }
+    ]
+  },
+  "conflicts": [],
+  "generated_files": [],
+  "generated_java_sources": [
+    "workspace\\build\\modules\\mythril_pack\\src\\main\\java\\com\\extremecraft\\generated\\mythril_pack\\GeneratedItems.java",
+    "workspace\\build\\modules\\mythril_pack\\src\\main\\java\\com\\extremecraft\\generated\\mythril_pack\\GeneratedBlocks.java",
+    "workspace\\build\\modules\\mythril_pack\\src\\main\\java\\com\\extremecraft\\generated\\mythril_pack\\GeneratedMachines.java",
+    "workspace\\build\\modules\\mythril_pack\\src\\main\\java\\com\\extremecraft\\generated\\mythril_pack\\GeneratedRecipes.java",
+    "workspace\\build\\modules\\mythril_pack\\src\\main\\java\\com\\extremecraft\\generated\\mythril_pack\\GeneratedWorldgen.java",
+    "workspace\\build\\modules\\mythril_pack\\src\\main\\java\\com\\extremecraft\\generated\\mythril_pack\\GeneratedRegistries.java"
+  ],
+  "documentation": [
+    "workspace\\build\\modules\\mythril_pack\\docs\\mythril_pack_addon.md",
+    "workspace\\build\\modules\\mythril_pack\\docs\\extremecraft_api.md"
+  ],
+  "datapack_root": "workspace\\build\\modules\\mythril_pack\\src\\main\\resources\\data\\mythril_pack"
+}

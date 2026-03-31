@@ -1,0 +1,111 @@
+
+[machines]
+	#Master switch for machine processing and generation ticks.
+	enableMachines = true
+	#How often machines run (1 = every tick, 2 = every other tick).
+	#Range: 1 ~ 20
+	machineTickInterval = 1
+	#How often cables transfer energy.
+	#Range: 1 ~ 20
+	cableTickInterval = 1
+	#Cooldown between expensive recipe lookups per machine.
+	#Range: 1 ~ 200
+	recipeLookupIntervalTicks = 8
+	#Maximum FE pushed from machines to each neighbor per machine tick.
+	#Range: 0 ~ 200000
+	neighborEnergyPushPerSide = 1200
+	#Enable heuristic fallback processing for ores/dusts when no recipe exists.
+	enableFallbackRecipes = true
+	#Machine IDs to disable, e.g. ["crusher", "extremecraft:quantum_fabricator"].
+	disabledMachineIds = []
+
+[tools]
+	#Enable hammer multi-block mining.
+	enableHammerAoe = true
+	#Hammer AOE radius (0=single block, 1=3x3, 2=5x5).
+	#Range: 0 ~ 2
+	hammerAoeRadius = 1
+	#Maximum hardness hammer AOE can break.
+	#Range: 0.0 ~ 500.0
+	hammerMaxMineableHardness = 50.0
+	#Enable shift-right-click teleport on modular drill.
+	enableDrillTeleport = true
+	#Base drill teleport distance.
+	#Range: 1.0 ~ 32.0
+	drillTeleportBaseDistance = 4.0
+	#Extra drill teleport distance per module level.
+	#Range: 0.0 ~ 16.0
+	drillTeleportDistancePerLevel = 2.0
+	#Base cooldown for drill teleport.
+	#Range: 1 ~ 1200
+	drillTeleportCooldownBaseTicks = 80
+	#Cooldown reduction per teleport module level.
+	#Range: 0 ~ 200
+	drillTeleportCooldownReductionPerLevel = 10
+	#Minimum cooldown for drill teleport.
+	#Range: 0 ~ 1200
+	drillTeleportMinCooldownTicks = 20
+
+[mobs]
+	#Master switch for natural/chunk-generated ExtremeCraft mob spawns.
+	enableNaturalSpawns = true
+	#Mob IDs to disable from natural spawn checks, e.g. ["extremecraft:arcane_wraith"].
+	disabledMobIds = []
+	#Natural spawn density cap per EC mob type around spawn attempts.
+	#Range: 0 ~ 512
+	maxNearbySameMob = 14
+	#Radius for the mob density cap check.
+	#Range: 4.0 ~ 256.0
+	nearbyMobCheckRadius = 48.0
+	#Allow structure-triggered boss arena spawns.
+	enableBossArenaSpawns = true
+	#How often players run boss arena structure checks.
+	#Range: 10 ~ 1200
+	bossArenaCheckIntervalTicks = 40
+	#Ticks between Energy Parasite machine-drain pulses.
+	#Range: 10 ~ 1200
+	energyParasiteDrainIntervalTicks = 40
+	#Energy Parasite machine-drain horizontal radius.
+	#Range: 1 ~ 12
+	energyParasiteDrainRadius = 4
+	#Maximum FE drained per Energy Parasite pulse.
+	#Range: 0 ~ 20000
+	energyParasiteMaxDrainPerPulse = 260
+	#Enable machine-overload hazard checks near players.
+	enableMachineHazard = true
+	#Ticks between machine hazard scans per player.
+	#Range: 20 ~ 2400
+	machineHazardScanIntervalTicks = 100
+	#Horizontal scan radius for machine hazard checks.
+	#Range: 1 ~ 32
+	machineHazardHorizontalRadius = 8
+	#Vertical scan radius for machine hazard checks.
+	#Range: 1 ~ 16
+	machineHazardVerticalRadius = 3
+	#How many charged nearby machines trigger hazard effects.
+	#Range: 1 ~ 64
+	machineHazardRequiredMachines = 4
+	#Damage dealt when machine hazard triggers without protection.
+	#Range: 0.0 ~ 40.0
+	machineHazardDamage = 2.0
+
+[abilities]
+	#Master switch for active ability casting requests.
+	enableAbilities = true
+	#Allow class ability activation requests.
+	enableClassAbilities = true
+	#Global ability cooldown multiplier (1.0 = default).
+	#Range: 0.1 ~ 5.0
+	cooldownScale = 1.0
+	#Global ability mana-cost multiplier (1.0 = default).
+	#Range: 0.1 ~ 5.0
+	manaCostScale = 1.0
+
+[compatibility]
+	#Enable optional Curios integration hooks when Curios is present.
+	enableCuriosHooks = true
+	#Enable optional JEI integration hooks when JEI is present.
+	enableJeiHooks = true
+	#Enable optional GeckoLib integration hooks when GeckoLib is present.
+	enableGeckoLibHooks = true
+

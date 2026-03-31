@@ -1,6 +1,8 @@
 .gradle
 .gradle-user/
 build/
+!build/
+build/*
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
@@ -47,11 +49,27 @@ bin/
 
 #HOTFIX#
 run/
+!run/
+run/*
 logs/
 *.log
 *.log.gz
 crash-reports/
 .env
+
+# Copilot context allowlist: keep runtime/build dirs ignored,
+# but expose high-signal text artifacts for indexing and review.
+!build/extremecraft-validation-report.txt
+!build/reports/
+!build/reports/**
+!run/server.properties
+!run/config/
+run/config/*
+!run/config/*.toml
+!run/defaultconfigs/
+run/defaultconfigs/*
+!run/defaultconfigs/*.toml
+!run/defaultconfigs/*.json
 
 ### Python ###
 __pycache__/

@@ -1,0 +1,168 @@
+ExtremeCraft Dev Validation Report
+Generated: 2026-03-15T09:03:05.2058665
+Total findings: 41
+
+MEDIUM
+src/main/java/com/extremecraft/ability/AbilityExecutor.java:93
+Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
+
+MEDIUM
+src/main/java/com/extremecraft/ability/AbilityExecutor.java:261
+Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
+
+MEDIUM
+src/main/java/com/extremecraft/ability/AbilityExecutor.java:282
+Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
+
+MEDIUM
+src/main/java/com/extremecraft/combat/CombatEngine.java:68
+Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
+
+MEDIUM
+src/main/java/com/extremecraft/combat/dualwield/service/OffhandActionExecutor.java:205
+Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
+
+MEDIUM
+src/main/java/com/extremecraft/command/ECValidationService.java:45
+Static collection 'CRAFTING_CATEGORIES' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/command/ECValidationService.java:46
+Static collection 'COOKING_CATEGORIES' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/dev/validation/ECDataReloadSafety.java:8
+Static collection 'DOMAIN_ENTRY_COUNTS' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/dev/validation/ECTickProfiler.java:8
+Static collection 'SAMPLES' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/endgame/EndgameCoreStructureService.java:26
+Static collection 'CACHE' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/entity/boss/AbstractECBoss.java:137
+Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
+
+MEDIUM
+src/main/java/com/extremecraft/entity/boss/AbstractECBoss.java:194
+Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
+
+MEDIUM
+src/main/java/com/extremecraft/entity/boss/VoidTitanEntity.java:125
+Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
+
+MEDIUM
+src/main/java/com/extremecraft/game/QuestRegistry.java:7
+Static collection 'QUESTS' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/item/tool/ModularDrillItem.java:80
+Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
+
+MEDIUM
+src/main/java/com/extremecraft/machine/core/MachineCatalog.java:11
+Static collection 'DEFINITIONS' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/machine/material/OreMaterialCatalog.java:9
+Static collection 'MATERIALS' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/machines/MachineBlueprints.java:6
+Static collection 'ORE_PROCESSING_LINE' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/machines/MachineBlueprints.java:14
+Static collection 'FARM_AUTOMATION_LINE' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/machines/MachineBlueprints.java:20
+Static collection 'WINDMILL_LINE' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/machines/MachineBlueprints.java:24
+Static collection 'GENERATOR_TIERS' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/machines/MachineBlueprints.java:30
+Static collection 'REACTOR_LINE' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/materials/ModMaterials.java:11
+Static collection 'ORES' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/materials/ModMaterials.java:12
+Static collection 'ADVANCED_ORES' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/materials/ModMaterials.java:13
+Static collection 'ALLOYS' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/modules/runtime/ModuleCatalogClientState.java:9
+Static collection 'armorModules' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/modules/runtime/ModuleCatalogClientState.java:10
+Static collection 'toolModules' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/platform/OptionalCompatHooks.java:19
+Static collection 'COMPAT_BOOTSTRAP' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/platform/data/sync/client/PlatformDataClientState.java:16
+Static collection 'materials' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/platform/data/sync/client/PlatformDataClientState.java:17
+Static collection 'machines' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/platform/data/sync/client/PlatformDataClientState.java:18
+Static collection 'skillTrees' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/platform/data/validator/DataValidationService.java:24
+Static collection 'WARNING_COUNTS' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/platform/module/ExtremeCraftModuleLoader.java:29
+Static collection 'EXTERNAL_LOADERS' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/platform/module/ModuleRegistry.java:11
+Static collection 'MODULES' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/progression/ProgressionGate.java:24
+Static collection 'MACHINE_REQUIREMENTS' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/progression/ProgressionGate.java:25
+Static collection 'RECIPE_REQUIREMENTS' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/progression/classsystem/ClassIdResolver.java:12
+Static collection 'LEGACY_ALIASES' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/progression/stage/ProgressionStage.java:16
+Static collection 'LEGACY_ALIASES' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/progression/tech/TechTreeManager.java:15
+Static collection 'MACHINE_REQUIREMENTS' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/reactor/ReactorMultiblockService.java:18
+Static collection 'CACHE' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/registry/LegacyMappingHandler.java:23
+Static collection 'EXPLICIT_REMAPS' has no obvious cleanup path (possible memory leak).
+
