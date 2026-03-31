@@ -125,10 +125,12 @@ These shims exist to preserve save compatibility and keep older systems operatio
 
 ## Codebase Map
 
+For a top-level folder-by-folder reference, see `docs/REPOSITORY_FOLDER_GUIDE.md`.
+
 - Gameplay systems: `src/main/java/com/extremecraft/**`
 - Datapack/runtime content: `src/main/resources/data/extremecraft/**`
 - Assets (models, lang, textures): `src/main/resources/assets/extremecraft/**`
-- Python/content tooling: `tools/`, `assetstudio.py`, `generate_assets.py`, `main.py`
+- Python/content tooling: `tools/`, `tools/scripts/assetstudio.py`, `tools/scripts/generate_assets.py`, `tools/scripts/main.py`
 
 ## Finishing-Pass Safe Zones
 
@@ -156,4 +158,3 @@ This contract is the canonical baseline for server authority, progression-domain
 - Registry ownership or namespace migration.
 - Progression/combat/machine authority changes.
 - Any save-format or migration behavior that can impact existing worlds.
-

@@ -91,12 +91,14 @@ import net.minecraftforge.fml.loading.FMLEnvironment;
 @Mod(ECConstants.MODID)
 public final class ExtremeCraft {
     public ExtremeCraft() {
+        // Register config specs first so config-backed systems can read validated defaults later.
         Config.register();
         DwConfig.register();
         ECFoundationConfig.register();
 
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
 
+        // Register all deferred registries before lifecycle events so Forge can build object ids deterministically.
         ModBlocks.BLOCKS.register(modBus);
         ModItems.ITEMS.register(modBus);
         ModBlockEntities.BLOCK_ENTITIES.register(modBus);
@@ -112,6 +114,7 @@ public final class ExtremeCraft {
         TechRecipeSerializers.RECIPE_SERIALIZERS.register(modBus);
         ModEntities.ENTITY_TYPES.register(modBus);
 
+        // Wire lifecycle listeners for setup and entity attribute events.
         modBus.addListener(this::commonSetup);
         modBus.addListener(this::onEntityAttributeModification);
         modBus.addListener(this::onEntityAttributeCreation);
@@ -123,9 +126,11 @@ public final class ExtremeCraft {
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
+        // Enqueue startup work to run in Forge's safe setup phase after registries are prepared.
         event.enqueueWork(() -> {
             ModNetwork.init();
 
+            // Bootstrap API provider and module registration so integrations can query stable extension points.
             ExtremeCraftApiProviderImpl apiProvider = new ExtremeCraftApiProviderImpl();
             ExtremeCraftAPI.bootstrap(apiProvider);
 
@@ -137,6 +142,7 @@ public final class ExtremeCraft {
             ExtremeCraftModuleLoader.loadAll(apiProvider);
             OptionalCompatHooks.bootstrap();
 
+            // Capability listeners bind persistent player/runtime state containers.
             MinecraftForge.EVENT_BUS.register(new ProgressCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerStatsCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new PlayerStatsGameplayEvents());
@@ -146,6 +152,7 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new SkillsCapabilityEvents());
             MinecraftForge.EVENT_BUS.register(new ResearchCapabilityEvents());
 
+            // Data and gameplay managers process datapacks, progression, and world consistency checks.
             MinecraftForge.EVENT_BUS.register(new ProgressionEvents());
             MinecraftForge.EVENT_BUS.register(new QuestManager());
             MinecraftForge.EVENT_BUS.register(new StageDataLoader());
@@ -175,6 +182,7 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new EntityExtensionEvents());
             MinecraftForge.EVENT_BUS.register(new ECFoundationRuntimeEvents());
 
+            // Runtime registries are event-driven; register and initialize execution engines explicitly.
             MinecraftForge.EVENT_BUS.register(new AbilityRegistry());
             AbilityEngine.initialize();
             MinecraftForge.EVENT_BUS.register(new SpellRegistry());
@@ -192,6 +200,7 @@ public final class ExtremeCraft {
 
     private static void registerClientLifecycle(IEventBus modBus) {
         try {
+            // Load client wiring reflectively so dedicated servers never hard-link client-only classes.
             Class<?> bridgeClass = Class.forName("com.extremecraft.client.ClientLifecycleBridge");
             bridgeClass.getMethod("register", IEventBus.class).invoke(null, modBus);
         } catch (ReflectiveOperationException ex) {
@@ -204,8 +213,8 @@ public final class ExtremeCraft {
         ECDevCommands.register(event.getDispatcher());
     }
 
-
     private void onEntityAttributeCreation(EntityAttributeCreationEvent event) {
+        // Entity defaults are centralized here to keep balancing data discoverable in one place.
         event.put(ModEntities.TECH_CONSTRUCT.get(), MobAttributes.basic(38.0F, 7.0F, 0.25F, 6.0F).build());
         event.put(ModEntities.ARCANE_WRAITH.get(), MobAttributes.basic(26.0F, 6.0F, 0.30F, 2.0F).build());
         event.put(ModEntities.VOID_STALKER.get(), MobAttributes.basic(34.0F, 8.0F, 0.34F, 4.0F).build());
@@ -222,29 +231,3 @@ public final class ExtremeCraft {
         // Reserved for future entity framework attribute injections.
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

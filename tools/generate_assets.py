@@ -15,6 +15,7 @@ MATERIALS_PATH = REPO_ROOT / "tools" / "materials.json"
 
 
 def launch_skill_tree_editor() -> None:
+    # The editor is optional and launched as a separate process to keep CLI startup lightweight.
     editor_path = Path(__file__).resolve().parent / "extremecraft_skill_tree_editor.py"
     if not editor_path.exists():
         raise RuntimeError(f"Skill tree editor not found: {editor_path}")
@@ -59,6 +60,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.editor:
         launch_skill_tree_editor()
 
+    # Default behavior mirrors legacy tooling: generate material-driven assets when no explicit mode is selected.
     explicit_mode = args.materials or args.ores or args.items or args.machines or args.gui or args.all or args.core
     if not explicit_mode:
         args.materials = True
@@ -88,6 +90,7 @@ def main(argv: list[str] | None = None) -> None:
         workers=args.workers,
     )
 
+    # AssetPipeline is the single execution surface for generator modules.
     pipeline = AssetPipeline(repo_root=REPO_ROOT, materials_path=MATERIALS_PATH, logger=logger)
     result = pipeline.run(options)
     logger.info("Asset generation complete: %d files, %d materials", result.generated_files, result.materials_processed)

@@ -26,7 +26,7 @@ Primary product outcome:
 
 The following existing systems are required extension points and must not be casually replaced:
 
-- Asset Studio shell and CLI entrypoint (`asset_studio.main` and wrappers such as `assetstudio.py`)
+- Asset Studio shell and CLI entrypoint (`asset_studio.main` and wrappers such as `tools/scripts/assetstudio.py`)
 - workspace/project manager (`asset_studio.workspace.workspace_manager`)
 - preview renderer (`asset_studio.gui.preview_renderer` and preview backend)
 - plugin loader and marketplace metadata (`asset_studio.plugins.*`)
@@ -179,8 +179,8 @@ Minimum migration artifacts:
 
 Existing launch paths remain canonical and must continue to work:
 
-- `assetstudio.py`
-- `main.py`
+- `tools/scripts/assetstudio.py`
+- `tools/scripts/main.py`
 - `assetstudio --gui`
 - existing CLI command surfaces, especially `skilltree` commands
 

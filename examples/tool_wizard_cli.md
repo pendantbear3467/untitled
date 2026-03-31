@@ -3,7 +3,7 @@
 Equivalent to the GUI Tool Wizard fields:
 
 ```bash
-python assetstudio.py generate tool mythril_pickaxe \
+python tools/scripts/assetstudio.py generate tool mythril_pickaxe \
   --material mythril \
   --durability 1800 \
   --attack-damage 7 \

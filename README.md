@@ -8,11 +8,14 @@ ExtremeCraft is a large-scale Minecraft Forge mod for 1.20.1 focused on technolo
 - `src/main/resources`: Runtime assets and built-in datapack content (`assets/`, `data/`, `META-INF/`).
 - `api/`: Public Java API module consumed by integrations.
 - `tools/python`: Python platform tooling (Asset Studio, SDK, compiler, plugin pipeline).
+- `tools/scripts`: Python launcher wrappers that keep tooling entrypoints out of the repo root.
 - `tools/`: Build/validation utility scripts used by Gradle checks.
 - `datapacks/`: Contributor-facing external datapack workspace and examples.
 - `docs/`: Reference docs and generated validation/report artifacts.
 - `examples/`: Example addon/template projects.
 - `scripts/`: Optional helper scripts for contributor workflows.
+
+Detailed folder-by-folder documentation: `docs/REPOSITORY_FOLDER_GUIDE.md`
 
 ## What ExtremeCraft Includes
 
@@ -66,7 +69,7 @@ Build distributable artifacts:
 - Core gameplay/runtime code: `src/main/java/com/extremecraft/**`
 - Runtime assets and builtin datapack content: `src/main/resources/assets/extremecraft/**`, `src/main/resources/data/extremecraft/**`
 - Datapack contributor workspace: `datapacks/`
-- Python/tooling/generators: `tools/`, `assetstudio.py`, `generate_assets.py`, `main.py`
+- Python/tooling/generators: `tools/`, `tools/scripts/assetstudio.py`, `tools/scripts/generate_assets.py`, `tools/scripts/main.py`
 - API and integration-facing module: `api/`
 
 ## Safe Contribution Areas

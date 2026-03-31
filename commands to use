@@ -6,13 +6,13 @@ Use this file as the single command catalog for runtime, tooling, and build work
 DISCOVERY / HELP
 ==================================================
 
-python assetstudio.py --help
-python assetstudio.py <command> --help
-python assetstudio.py <command> <subcommand> --help
+python tools/scripts/assetstudio.py --help
+python tools/scripts/assetstudio.py <command> --help
+python tools/scripts/assetstudio.py <command> <subcommand> --help
 
 Example:
-python assetstudio.py skilltree --help
-python assetstudio.py skilltree export --help
+python tools/scripts/assetstudio.py skilltree --help
+python tools/scripts/assetstudio.py skilltree export --help
 
 
 ==================================================
@@ -114,118 +114,118 @@ Options:
 ASSET STUDIO GUI
 ==================================================
 
-python assetstudio.py --gui
-python assetstudio.py --workspace workspace --gui
+python tools/scripts/assetstudio.py --gui
+python tools/scripts/assetstudio.py --workspace workspace --gui
 
 
 ==================================================
 ASSET STUDIO CLI (TOP-LEVEL)
 ==================================================
 
-python assetstudio.py --workspace workspace generate ...
-python assetstudio.py --workspace workspace validate [--strict] [--no-repair]
-python assetstudio.py --workspace workspace project ...
-python assetstudio.py --workspace workspace build <assets|resourcepack|datapack|expansion> [name]
-python assetstudio.py --workspace workspace registry ...
-python assetstudio.py --workspace workspace scan-registry [--source src/main/java] [--output <path>] [--save-history <name>]
-python assetstudio.py --workspace workspace sdk ...
-python assetstudio.py --workspace workspace compile expansion <addon_name>
-python assetstudio.py --workspace workspace repair run
-python assetstudio.py --workspace workspace release ...
-python assetstudio.py --workspace workspace modpack build <modpack_name>
-python assetstudio.py --workspace workspace addon ...
-python assetstudio.py --workspace workspace graph ...
-python assetstudio.py --workspace workspace skilltree ...
-python assetstudio.py --workspace workspace export blockbench <model_id> [--kind block|item]
-python assetstudio.py --workspace workspace export pack <resourcepack|datapack|forge|fabric>
-python assetstudio.py --workspace workspace import blockbench <bbmodel_path>
+python tools/scripts/assetstudio.py --workspace workspace generate ...
+python tools/scripts/assetstudio.py --workspace workspace validate [--strict] [--no-repair]
+python tools/scripts/assetstudio.py --workspace workspace project ...
+python tools/scripts/assetstudio.py --workspace workspace build <assets|resourcepack|datapack|expansion> [name]
+python tools/scripts/assetstudio.py --workspace workspace registry ...
+python tools/scripts/assetstudio.py --workspace workspace scan-registry [--source src/main/java] [--output <path>] [--save-history <name>]
+python tools/scripts/assetstudio.py --workspace workspace sdk ...
+python tools/scripts/assetstudio.py --workspace workspace compile expansion <addon_name>
+python tools/scripts/assetstudio.py --workspace workspace repair run
+python tools/scripts/assetstudio.py --workspace workspace release ...
+python tools/scripts/assetstudio.py --workspace workspace modpack build <modpack_name>
+python tools/scripts/assetstudio.py --workspace workspace addon ...
+python tools/scripts/assetstudio.py --workspace workspace graph ...
+python tools/scripts/assetstudio.py --workspace workspace skilltree ...
+python tools/scripts/assetstudio.py --workspace workspace export blockbench <model_id> [--kind block|item]
+python tools/scripts/assetstudio.py --workspace workspace export pack <resourcepack|datapack|forge|fabric>
+python tools/scripts/assetstudio.py --workspace workspace import blockbench <bbmodel_path>
 
 
 ==================================================
 GENERATE COMMANDS
 ==================================================
 
-python assetstudio.py generate material <material_name>
-python assetstudio.py generate material_set <material> [--tier <int>] [--style <style>]
-python assetstudio.py generate item <item_name> [--material <material>] [--style <style>]
-python assetstudio.py generate tool <tool_name> [--material <m>] [--durability <int>] [--attack-damage <float>] [--mining-speed <float>] [--tier <int>] [--texture-style <style>]
-python assetstudio.py generate ore <material> [--tier <int>] [--style <style>]
-python assetstudio.py generate armor <material> [--tier <int>] [--style <style>]
-python assetstudio.py generate machine <machine_name> [--material <m>] [--style <style>]
-python assetstudio.py generate block <block_name> [--material <m>] [--style <style>]
+python tools/scripts/assetstudio.py generate material <material_name>
+python tools/scripts/assetstudio.py generate material_set <material> [--tier <int>] [--style <style>]
+python tools/scripts/assetstudio.py generate item <item_name> [--material <material>] [--style <style>]
+python tools/scripts/assetstudio.py generate tool <tool_name> [--material <m>] [--durability <int>] [--attack-damage <float>] [--mining-speed <float>] [--tier <int>] [--texture-style <style>]
+python tools/scripts/assetstudio.py generate ore <material> [--tier <int>] [--style <style>]
+python tools/scripts/assetstudio.py generate armor <material> [--tier <int>] [--style <style>]
+python tools/scripts/assetstudio.py generate machine <machine_name> [--material <m>] [--style <style>]
+python tools/scripts/assetstudio.py generate block <block_name> [--material <m>] [--style <style>]
 
 
 ==================================================
 PROJECT COMMANDS
 ==================================================
 
-python assetstudio.py project init [--name <project_name>]
-python assetstudio.py project open [--path <workspace_path>]
-python assetstudio.py project build [--target assets|resourcepack|datapack]
+python tools/scripts/assetstudio.py project init [--name <project_name>]
+python tools/scripts/assetstudio.py project open [--path <workspace_path>]
+python tools/scripts/assetstudio.py project build [--target assets|resourcepack|datapack]
 
 
 ==================================================
 REGISTRY COMMANDS
 ==================================================
 
-python assetstudio.py registry scan [--source src/main/java] [--output <path>] [--save-history <name>]
-python assetstudio.py registry diff <before_snapshot_name> <after_snapshot_name>
-python assetstudio.py registry history list
+python tools/scripts/assetstudio.py registry scan [--source src/main/java] [--output <path>] [--save-history <name>]
+python tools/scripts/assetstudio.py registry diff <before_snapshot_name> <after_snapshot_name>
+python tools/scripts/assetstudio.py registry history list
 
 
 ==================================================
 SDK / ADDON / RELEASE COMMANDS
 ==================================================
 
-python assetstudio.py sdk init-addon <addon_name>
-python assetstudio.py sdk validate <addon_name>
-python assetstudio.py sdk generate <addon_name>
+python tools/scripts/assetstudio.py sdk init-addon <addon_name>
+python tools/scripts/assetstudio.py sdk validate <addon_name>
+python tools/scripts/assetstudio.py sdk generate <addon_name>
 
-python assetstudio.py addon install <source>
-python assetstudio.py addon list
-python assetstudio.py addon build <addon_name>
-python assetstudio.py addon build-all
-python assetstudio.py addon remove <addon_name>
-python assetstudio.py addon publish <addon_name>
+python tools/scripts/assetstudio.py addon install <source>
+python tools/scripts/assetstudio.py addon list
+python tools/scripts/assetstudio.py addon build <addon_name>
+python tools/scripts/assetstudio.py addon build-all
+python tools/scripts/assetstudio.py addon remove <addon_name>
+python tools/scripts/assetstudio.py addon publish <addon_name>
 
-python assetstudio.py release build [--name <release_name>]
-python assetstudio.py release publish [--name <release_name>] [--live]
+python tools/scripts/assetstudio.py release build [--name <release_name>]
+python tools/scripts/assetstudio.py release publish [--name <release_name>] [--live]
 
-python assetstudio.py modpack build <modpack_name>
+python tools/scripts/assetstudio.py modpack build <modpack_name>
 
 
 ==================================================
 GRAPH COMMANDS
 ==================================================
 
-python assetstudio.py graph new <name>
-python assetstudio.py graph list [--json]
-python assetstudio.py graph show <name> [--json]
-python assetstudio.py graph add <name> <node_type> [--param key=value] [--x <float>] [--y <float>]
-python assetstudio.py graph link <name> <src> <dst> [--from-port <id>] [--to-port <id>]
-python assetstudio.py graph validate <name>
-python assetstudio.py graph execute <name>
-python assetstudio.py graph execute-all
-python assetstudio.py graph auto-layout <name> [--algorithm layered|dag|force]
-python assetstudio.py graph export <name> [--format json|yaml|package]
-python assetstudio.py graph template-export <name> <template_name>
-python assetstudio.py graph template-import <name> <template_name>
-python assetstudio.py graph template-list
+python tools/scripts/assetstudio.py graph new <name>
+python tools/scripts/assetstudio.py graph list [--json]
+python tools/scripts/assetstudio.py graph show <name> [--json]
+python tools/scripts/assetstudio.py graph add <name> <node_type> [--param key=value] [--x <float>] [--y <float>]
+python tools/scripts/assetstudio.py graph link <name> <src> <dst> [--from-port <id>] [--to-port <id>]
+python tools/scripts/assetstudio.py graph validate <name>
+python tools/scripts/assetstudio.py graph execute <name>
+python tools/scripts/assetstudio.py graph execute-all
+python tools/scripts/assetstudio.py graph auto-layout <name> [--algorithm layered|dag|force]
+python tools/scripts/assetstudio.py graph export <name> [--format json|yaml|package]
+python tools/scripts/assetstudio.py graph template-export <name> <template_name>
+python tools/scripts/assetstudio.py graph template-import <name> <template_name>
+python tools/scripts/assetstudio.py graph template-list
 
 
 ==================================================
 SKILLTREE / PROGRESSION COMMANDS
 ==================================================
 
-python assetstudio.py skilltree new <name> [--class-id <class_id>]
-python assetstudio.py skilltree list
-python assetstudio.py skilltree validate <name> [--report-out <path>]
-python assetstudio.py skilltree import <path>
-python assetstudio.py skilltree export <name> --out <path> [--format workspace|runtime|studio]
-python assetstudio.py skilltree simulate <name> [--level <int>] [--points <int>] [--class-id <id>] [--unlock <node_id> ...]
-python assetstudio.py skilltree analyze <name> [--out <path>]
-python assetstudio.py skilltree export-project --out <path> [--format studio_project|legacy_project] [--active-tree <name>] [names ...]
-python assetstudio.py skilltree import-project <path>
+python tools/scripts/assetstudio.py skilltree new <name> [--class-id <class_id>]
+python tools/scripts/assetstudio.py skilltree list
+python tools/scripts/assetstudio.py skilltree validate <name> [--report-out <path>]
+python tools/scripts/assetstudio.py skilltree import <path>
+python tools/scripts/assetstudio.py skilltree export <name> --out <path> [--format workspace|runtime|studio]
+python tools/scripts/assetstudio.py skilltree simulate <name> [--level <int>] [--points <int>] [--class-id <id>] [--unlock <node_id> ...]
+python tools/scripts/assetstudio.py skilltree analyze <name> [--out <path>]
+python tools/scripts/assetstudio.py skilltree export-project --out <path> [--format studio_project|legacy_project] [--active-tree <name>] [names ...]
+python tools/scripts/assetstudio.py skilltree import-project <path>
 
 In-game datapack export (recommended):
-python assetstudio.py skilltree export <name> --out src/main/resources/data/extremecraft/skill_trees/<name>.json --format runtime
+python tools/scripts/assetstudio.py skilltree export <name> --out src/main/resources/data/extremecraft/skill_trees/<name>.json --format runtime
