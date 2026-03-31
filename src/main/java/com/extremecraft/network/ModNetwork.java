@@ -63,6 +63,7 @@ public final class ModNetwork {
             LOGGER.warn("[Network] ModNetwork.init() called more than once; skipping duplicate packet registration");
             return;
         }
+        // Packet ids are positional in this channel; reset before first registration pass.
         index = 0;
 
         CHANNEL.messageBuilder(SyncProgressPacket.class, nextId())
@@ -257,19 +258,15 @@ public final class ModNetwork {
                 .consumerMainThread(SyncSkillTreeDataS2C::handle)
                 .add();
 
-        initialized = true;
-    }
+                initialized = true;
+        }
 
-    private static int nextId() {
-        return index++;
-    }
+        private static int nextId() {
+                // Keep id assignment centralized so new packet insertion order is explicit in one location.
+                return index++;
+        }
 
-    public static synchronized boolean isInitialized() {
-        return initialized;
+        public static synchronized boolean isInitialized() {
+                return initialized;
     }
 }
-
-
-
-
-

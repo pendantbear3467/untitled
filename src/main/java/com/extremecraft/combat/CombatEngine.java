@@ -48,12 +48,14 @@ public final class CombatEngine {
             return previewDamage(context);
         }
 
+        // Reentrancy guard prevents infinite loops when damage handlers trigger additional damage.
         if (!enterDamageScope()) {
             LOGGER.warn("[CombatEngine] Rejected damage application due to excessive recursion depth");
             return previewDamage(context);
         }
 
         int targetId = context.target().getId();
+        // Target-scoped guard avoids recursive self-processing on the same entity in one stack.
         if (!enterTargetScope(targetId)) {
             LOGGER.warn("[CombatEngine] Rejected damage application due to recursive target processing");
             exitDamageScope();
@@ -124,6 +126,7 @@ public final class CombatEngine {
         }
 
         LivingEntity target = event.getEntity();
+        // Reuse the context created by applyDamage when available; otherwise adapt vanilla hurt events.
         DamageContext context = PENDING_CONTEXT.get();
         if (context == null || context.target() != target) {
             context = fromLivingHurtEvent(event);

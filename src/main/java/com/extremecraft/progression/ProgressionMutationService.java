@@ -26,6 +26,7 @@ public final class ProgressionMutationService {
         PlayerStatsService.addExperience(player, amount, false);
         PlayerStatsService.syncProgressionMirror(player, false);
 
+        // Push sync after both canonical + mirror mutations so clients never see mixed state.
         LevelService.sync(player);
         PlayerStatsService.sync(player);
         return levelUps;
@@ -46,6 +47,7 @@ public final class ProgressionMutationService {
         PlayerStatsService.setLevel(player, safeLevel, false);
         PlayerStatsService.syncProgressionMirror(player, false);
 
+        // Push sync after both canonical + mirror mutations so clients never see mixed state.
         LevelService.sync(player);
         PlayerStatsService.sync(player);
     }

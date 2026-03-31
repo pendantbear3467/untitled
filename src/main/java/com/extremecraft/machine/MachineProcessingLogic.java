@@ -32,6 +32,7 @@ public final class MachineProcessingLogic {
             return;
         }
 
+        // Resolve the best valid recipe from current inventory snapshot and cached active id.
         MachineRecipe recipe = resolveRecipe(machine, definition);
         if (recipe == null) {
             boolean changed = false;
@@ -67,6 +68,7 @@ public final class MachineProcessingLogic {
             return;
         }
 
+        // Never consume inputs if outputs cannot fit; hold at last tick to retry next cycle.
         if (!canAcceptOutputs(machine, recipe.output())) {
             machine.setProcessingTicks(recipe.processTicks() - 1);
             machine.setChanged();
@@ -83,6 +85,7 @@ public final class MachineProcessingLogic {
     }
 
     private static MachineRecipe resolveRecipe(MachineBlockEntity machine, MachineDefinition definition) {
+        // Snapshot inputs once per lookup to avoid repeated slot scans while testing candidates.
         Map<String, Integer> availableInputs = snapshotInputs(machine);
         if (availableInputs.isEmpty()) {
             machine.resetRecipeLookupCooldown();

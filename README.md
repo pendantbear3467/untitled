@@ -16,6 +16,7 @@ ExtremeCraft is a large-scale Minecraft Forge mod for 1.20.1 focused on technolo
 - `scripts/`: Optional helper scripts for contributor workflows.
 
 Detailed folder-by-folder documentation: `docs/REPOSITORY_FOLDER_GUIDE.md`
+Full documentation map: `docs/DOCUMENTATION_INDEX.md`
 
 ## What ExtremeCraft Includes
 

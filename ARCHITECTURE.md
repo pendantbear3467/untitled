@@ -126,6 +126,7 @@ These shims exist to preserve save compatibility and keep older systems operatio
 ## Codebase Map
 
 For a top-level folder-by-folder reference, see `docs/REPOSITORY_FOLDER_GUIDE.md`.
+For a complete docs/README navigation index, see `docs/DOCUMENTATION_INDEX.md`.
 
 - Gameplay systems: `src/main/java/com/extremecraft/**`
 - Datapack/runtime content: `src/main/resources/data/extremecraft/**`
