@@ -33,6 +33,7 @@ public final class OffhandActionValidator {
             return ValidationResult.DENIED;
         }
 
+        // Action-specific validation keeps each offhand lane independently auditable.
         return switch (packet.action()) {
             case HOLD_ABORT_BREAK -> ValidationResult.allow();
             case ATTACK_ENTITY -> validateAttack(player, packet.entityId());
@@ -141,6 +142,7 @@ public final class OffhandActionValidator {
     private static ValidationResult allowLane(ServerPlayer player, LaneGate gate) {
         long now = player.serverLevel().getGameTime();
         TimingState timing = TIMING_STATE.computeIfAbsent(player.getUUID(), ignored -> new TimingState());
+        // Shared helper for non-attack lanes (item/block/break): same shape, different timing slots.
         return gate.tryAllow(timing, now) ? ValidationResult.allow() : ValidationResult.DENIED;
     }
 

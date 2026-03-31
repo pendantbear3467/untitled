@@ -258,15 +258,15 @@ public final class ModNetwork {
                 .consumerMainThread(SyncSkillTreeDataS2C::handle)
                 .add();
 
-                initialized = true;
-        }
+        initialized = true;
+    }
 
-        private static int nextId() {
-                // Keep id assignment centralized so new packet insertion order is explicit in one location.
-                return index++;
-        }
+    private static int nextId() {
+        // Keep id assignment centralized so new packet insertion order is explicit in one location.
+        return index++;
+    }
 
-        public static synchronized boolean isInitialized() {
-                return initialized;
+    public static synchronized boolean isInitialized() {
+        return initialized;
     }
 }

@@ -34,6 +34,7 @@ public final class SkillTreeService {
             return false;
         }
 
+        // Node ids are globally unique; resolve owning tree before applying unlock rules.
         String normalizedNodeId = nodeId.trim().toLowerCase(Locale.ROOT);
         String resolvedTreeId = SkillTreeManager.treeIdForNode(normalizedNodeId);
         if (resolvedTreeId.isBlank()) {
@@ -70,6 +71,7 @@ public final class SkillTreeService {
             return false;
         }
 
+        // Upgrade requests run through PlayerStatsService so point spend and stat effects remain consistent.
         boolean changed = PlayerStatsService.applyUpgradeRequest(player, "skill:" + normalizedNodeId);
         if (!changed) {
             return false;
@@ -121,12 +123,14 @@ public final class SkillTreeService {
     }
 
     public static void flushDirty(ServerPlayer player) {
+        // Dirty flag avoids sending full tree sync packets every tick.
         PlayerSkillTreeApi.get(player).ifPresent(data -> {
             if (data.consumeDirty()) {
                 sync(player, data);
             }
         });
 
+        // Stats sync is throttled to keep network traffic bounded during busy combat/progression updates.
         PlayerStatsApi.get(player).ifPresent(stats -> {
             if ((player.tickCount % 20) == 0) {
                 PlayerStatsService.sync(player, stats);

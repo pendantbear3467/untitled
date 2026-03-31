@@ -15,6 +15,7 @@ public final class MachineSyncLifecycleEvents {
 
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
+        // Clear static sync index so dev runs/restarts never leak stale machine references.
         MachineSyncIndex.clear();
     }
 }

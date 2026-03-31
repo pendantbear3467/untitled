@@ -54,6 +54,7 @@ public final class OffhandActionExecutor {
         }
 
         try {
+            // Validation and execution are separated: this switch only performs already-accepted actions.
             switch (packet.action()) {
                 case ATTACK_ENTITY -> attackEntity(player, level, packet.entityId(), validation.attackStrengthScale());
                 case USE_ITEM -> useItem(player, level);
@@ -184,6 +185,7 @@ public final class OffhandActionExecutor {
             return false;
         }
 
+        // Living targets use the shared CombatEngine pipeline; non-living entities use direct fallback damage.
         DamageResult result;
         if (livingTarget != null) {
             DamageContext context = DamageContext.builder()

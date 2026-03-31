@@ -42,6 +42,7 @@ public record ActivateAbilityC2SPacket(UUID playerUuid, String abilityId, Vec3 t
 
     public static void handle(ActivateAbilityC2SPacket packet, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context context = ctx.get();
+        // C2S handler must never accept packets from other directions.
         if (context.getDirection() != NetworkDirection.PLAY_TO_SERVER) {
             LOGGER.debug("[Network] Dropped ActivateAbilityC2SPacket from invalid direction {}", context.getDirection());
             context.setPacketHandled(true);
@@ -55,6 +56,7 @@ public record ActivateAbilityC2SPacket(UUID playerUuid, String abilityId, Vec3 t
                 return;
             }
 
+            // Rate-limit high-frequency cast attempts to protect server tick stability.
             if (!ServerPacketLimiter.allow(sender, "ability.cast", 1, 6, 20)) {
                 LOGGER.debug("[Network] Rate-limited ActivateAbilityC2SPacket from {}", sender.getScoreboardName());
                 return;
@@ -88,6 +90,7 @@ public record ActivateAbilityC2SPacket(UUID playerUuid, String abilityId, Vec3 t
                 return;
             }
 
+            // Delegate gameplay behavior to AbilityEngine so validation/side effects stay centralized.
             AbilityCastResult result = AbilityEngine.cast(sender, abilityId, sender.getUUID(), packet.targetPosition);
             if (!result.succeeded()) {
                 sender.displayClientMessage(net.minecraft.network.chat.Component.literal("Ability failed: " + result.status().name().toLowerCase()), true);

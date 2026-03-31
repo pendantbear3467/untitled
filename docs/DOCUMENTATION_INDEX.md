@@ -53,6 +53,8 @@ Central index for repository documentation, folder READMEs, and subsystem guides
 - [src/main/java/com/extremecraft/progression/classsystem/README.md](../src/main/java/com/extremecraft/progression/classsystem/README.md)
 - [src/main/java/com/extremecraft/progression/level/README.md](../src/main/java/com/extremecraft/progression/level/README.md)
 - [src/main/java/com/extremecraft/progression/skilltree/README.md](../src/main/java/com/extremecraft/progression/skilltree/README.md)
+- [src/main/java/com/extremecraft/progression/skilltree/effect/README.md](../src/main/java/com/extremecraft/progression/skilltree/effect/README.md)
+- [src/main/java/com/extremecraft/progression/skilltree/service/README.md](../src/main/java/com/extremecraft/progression/skilltree/service/README.md)
 - [src/main/java/com/extremecraft/progression/stage/README.md](../src/main/java/com/extremecraft/progression/stage/README.md)
 - [src/main/java/com/extremecraft/progression/unlock/README.md](../src/main/java/com/extremecraft/progression/unlock/README.md)
 - [src/main/java/com/extremecraft/quest/README.md](../src/main/java/com/extremecraft/quest/README.md)
@@ -61,6 +63,8 @@ Central index for repository documentation, folder READMEs, and subsystem guides
 - [src/main/java/com/extremecraft/worldgen/README.md](../src/main/java/com/extremecraft/worldgen/README.md)
 - [src/main/java/com/extremecraft/combat/README.md](../src/main/java/com/extremecraft/combat/README.md)
 - [src/main/java/com/extremecraft/combat/dualwield/README.md](../src/main/java/com/extremecraft/combat/dualwield/README.md)
+- [src/main/java/com/extremecraft/combat/dualwield/service/README.md](../src/main/java/com/extremecraft/combat/dualwield/service/README.md)
+- [src/main/java/com/extremecraft/combat/dualwield/validation/README.md](../src/main/java/com/extremecraft/combat/dualwield/validation/README.md)
 - [src/main/java/com/extremecraft/combat/event/README.md](../src/main/java/com/extremecraft/combat/event/README.md)
 - [src/main/java/com/extremecraft/combat/status/README.md](../src/main/java/com/extremecraft/combat/status/README.md)
 
