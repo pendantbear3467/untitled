@@ -1,6 +1,5 @@
 package com.extremecraft.progression;
 
-import com.extremecraft.item.module.ModuleEffectService;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.PlayerStatsPacket;
 import com.extremecraft.network.sync.RuntimeSyncService;
@@ -13,8 +12,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
 
 public final class PlayerStatsService {
-    private static final int MODULE_SCAN_INTERVAL = 10;
-
     private PlayerStatsService() {
     }
 
@@ -97,13 +94,10 @@ public final class PlayerStatsService {
 
     public static void tickResources(ServerPlayer player) {
         PlayerStatsApi.get(player).ifPresent(stats -> {
-            boolean moduleEffectsChanged = false;
-            if ((player.tickCount % MODULE_SCAN_INTERVAL) == 0) {
-                moduleEffectsChanged = ModuleEffectService.applyEquippedModules(player, stats);
-            }
-
+            // Passive module modifiers now come from ModuleRuntimeService. Do not rescan legacy
+            // item.module definitions here.
             stats.regenerateResources();
-            if (moduleEffectsChanged || (player.tickCount % 20) == 0) {
+            if ((player.tickCount % 20) == 0) {
                 sync(player, stats);
             }
         });

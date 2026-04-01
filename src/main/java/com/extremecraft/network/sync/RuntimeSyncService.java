@@ -7,6 +7,7 @@ import com.extremecraft.machine.sync.MachineSyncIndex;
 import com.extremecraft.magic.mana.ManaService;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.AbilitySyncPacket;
+import com.extremecraft.progression.stage.StageManager;
 import com.extremecraft.progression.StatCalculationEngine;
 import com.extremecraft.progression.capability.PlayerStatsApi;
 import net.minecraft.core.BlockPos;
@@ -25,13 +26,14 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Snapshot sync service for client-visible runtime state.
  *
- * <p>This class mirrors live stats, abilities, skill unlocks, and nearby machine state to the
- * client. It is not the gameplay mutation owner for those systems.</p>
+ * <p>This class mirrors live stats, abilities, skill unlocks, stage state, and nearby machine
+ * state to the client. It is not the gameplay mutation owner for those systems.</p>
  */
 public final class RuntimeSyncService {
     private static final Map<UUID, Integer> LAST_STATS_HASH = new ConcurrentHashMap<>();
     private static final Map<UUID, Integer> LAST_ABILITIES_HASH = new ConcurrentHashMap<>();
     private static final Map<UUID, Integer> LAST_SKILLS_HASH = new ConcurrentHashMap<>();
+    private static final Map<UUID, Integer> LAST_STAGE_HASH = new ConcurrentHashMap<>();
     private static final Map<UUID, Integer> LAST_MACHINES_HASH = new ConcurrentHashMap<>();
 
     private RuntimeSyncService() {
@@ -41,6 +43,7 @@ public final class RuntimeSyncService {
         syncStats(player, true);
         syncAbilities(player, true);
         syncSkillUnlocks(player, true);
+        syncStageState(player, true);
         syncMachineStates(player, true);
         ManaService.sync(player);
     }
@@ -57,6 +60,10 @@ public final class RuntimeSyncService {
         syncSkillUnlocks(player, false);
     }
 
+    public static void syncStageState(ServerPlayer player) {
+        syncStageState(player, false);
+    }
+
     public static void syncMachineStates(ServerPlayer player) {
         syncMachineStates(player, false);
     }
@@ -70,6 +77,7 @@ public final class RuntimeSyncService {
         LAST_STATS_HASH.remove(playerId);
         LAST_ABILITIES_HASH.remove(playerId);
         LAST_SKILLS_HASH.remove(playerId);
+        LAST_STAGE_HASH.remove(playerId);
         LAST_MACHINES_HASH.remove(playerId);
     }
 
@@ -113,6 +121,19 @@ public final class RuntimeSyncService {
         }
 
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncSkillUnlocksS2CPacket(payload));
+    }
+
+    private static void syncStageState(ServerPlayer player, boolean force) {
+        CompoundTag payload = new CompoundTag();
+        var stage = StageManager.getPlayerStage(player);
+        payload.putString("stage", stage.name());
+        payload.putInt("rank", stage.ordinal());
+
+        if (!force && !shouldSend(player, payload, LAST_STAGE_HASH)) {
+            return;
+        }
+
+        ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncStageStateS2CPacket(payload));
     }
 
     private static void syncMachineStates(ServerPlayer player, boolean force) {

@@ -41,7 +41,7 @@ generated snapshot elsewhere in the repo.
 | Progression | `progression/ProgressionService`, `ProgressionMutationService`, `ProgressionFacade` | progression service/facade methods | `ProgressionEvents`, `GuildQuestRewardService`, commands, and canonical services | `LevelService`, `PlayerStatsService`, legacy capabilities mirror canonical state; `game/ProgressionSystem` is disconnected |
 | Quests | `quest/QuestManager` + `progression/GuildQuestRewardService` | `data/extremecraft/extremecraft_quests/*.json`, `GuildQuestRewardService` | `QuestManager.all/byId`, `ProgressionEvents.incrementQuest`, `ProgressCommands.claim` | `data/extremecraft/quests/*.json` + `platform/data/loader/QuestDataLoader` are metadata-only |
 | Guild rewards | `GuildQuestRewardService` | same service + live quest JSON rewards | `ProgressCommands.claim` -> `ProgressionFacade.claimGuildQuestReward` -> `GuildQuestRewardService` | Reward mutations now route through canonical progression services instead of direct ad-hoc writes |
-| Stages | `stage/PlayerStageData`, `StageManager`, `StageDataLoader` | `data/extremecraft/progression/stages/*.json`, `ProgressionGate.grantStage` | `StageManager.hasStage`, `MachineBlock.use`, `UnlockRuleLoader.canUnlock` | Stage mapping JSON is live; stage state is capability-backed |
+| Stages | `stage/PlayerStageData`, `StageManager`, `StageDataLoader` | `data/extremecraft/progression/stages/*.json`, `ProgressionGate.grantStage` | `StageManager.hasStage`, `MachineBlock.use`, `UnlockRuleLoader.canUnlock`, `RuntimeSyncService.syncStageState` | Stage mapping JSON is live; stage state is capability-backed and mirrored to clients through `SyncStageStateS2CPacket` |
 | Unlocks | `unlock/UnlockRuleLoader`, `UnlockAccessService`, `ProgressionGate` | `data/extremecraft/progression/unlocks/*.json`, progression grant paths | `MachineBlock.use`, `AbilityEngine`, `ClassAbilityService`, `SpellExecutor`, `UnlockAccessService` | `canUseRecipe` is a real helper but not automatically applied to autonomous machine processing |
 | Skills | `skills/SkillRegistry` + `SkillProgressionService` | `data/extremecraft/skills/*.json`, `SkillProgressionService` | `ProgressionEvents` gameplay hooks, `SkillsApi`, runtime stat calculations | Direct `PlayerSkillsCapability` mutation should be treated as backing-state only |
 | Skill trees | `progression/skilltree/SkillTreeManager`, `SkillTreeService` | `data/extremecraft/skill_trees/*.json`, `SkillTreeService.tryUnlock*` | `UnlockSkillNodeC2S`, `UpgradeStatPacket` compatibility shim, `PlayerStatsService.tryUnlockSkillNode` | `skilltrees/*.json` is legacy folder naming; `SkillTreeRegistry` is a synchronized compatibility mirror |
@@ -49,12 +49,12 @@ generated snapshot elsewhere in the repo.
 | Class abilities | `ClassAbilityLoader` + `ClassAbilityService` | `data/extremecraft/class_abilities/*.json` | `ActivateClassAbilityC2SPacket` -> `ClassAbilityService.tryActivate` | Unlock/class enforcement now happens in `ClassAbilityService`; older client/UI code is not authoritative |
 | Abilities | `AbilityRegistry`, `AbilityEngine`, `AbilityExecutor` | `data/extremecraft/abilities/*.json` and runtime handlers in `ability/**` | `ActivateAbilityC2SPacket` -> `AbilityEngine.cast` | `abilities_platform/*.json` + `AbilityDataLoader` are metadata-only; module ability loader intentionally reuses the same live folder |
 | Spells | `SpellLoader`, `SpellRegistry`, `SpellExecutor` | `data/extremecraft/spells/*.json` | `SpellExecutor.tryCast*` and spell-item/keybind entrypoints | `SpellDefinition.java` is an older parallel model; live spell runtime compiles `Spell` into `AbilityDefinition` at cast time |
-| Modules | `modules/loader/**`, `modules/service/**`, `modules/runtime/**` | `armor_modules/*.json`, `tool_modules/*.json`, shared `abilities/*.json` | `ModuleInstallService`, `ModuleRuntimeService`, module packets/events | `data/extremecraft/modules/*.json` + `item/module/ModuleLoader` are mirror/legacy; `item/module/**` is not the canonical modular-gear path |
+| Modules | `modules/loader/**`, `modules/service/**`, `modules/runtime/**` | `armor_modules/*.json`, `tool_modules/*.json`, shared `abilities/*.json` | `ModuleInstallService`, `ModuleRuntimeService`, module packets/events, `PlayerStatsGameplayEvents.onBreakSpeed` for mining-speed stat application | `data/extremecraft/modules/*.json` + `item/module/ModuleLoader` are mirror/legacy; `item/module/**` is not the canonical modular-gear path |
 | Modular gear install/runtime | `ModuleInstallService` + `ModuleRuntimeService` | install/remove through service, runtime triggers in `ModuleRuntimeEvents` | `InstallModuleC2SPacket`, `RemoveModuleC2SPacket`, `ModuleRuntimeEvents` | Required skill-node checks remain live here; module definitions are read from armor/tool module registries |
 | Materials | `machine/material/OreMaterialCatalog` + `future/registry/TechBlocks/TechItems` | code-owned material catalog and registry chain | ore/item/block registration and any runtime stat/lookups using registered items/blocks | `materials/*.json` + `MaterialDataLoader` are metadata mirrors |
 | World generation | datapack `worldgen/**` + `forge/**` | `data/extremecraft/worldgen/**`, `data/extremecraft/forge/**` | vanilla/Forge worldgen bootstrap at runtime | `world_generation/*.json` + `WorldGenerationDataLoader` are profile metadata only |
 | Network packet ownership | `network/ModNetwork` | `ModNetwork.init()` and packet handlers under `network/packet/**` | server-authoritative handlers in registered packets only | Packet classes not registered in `ModNetwork` are not live network authority even if they still compile |
-| Runtime sync | `network/sync/RuntimeSyncService` | sync requests from canonical services only | sync-only S2C payload generation | Snapshot sync is mirror-only, not mutation authority |
+| Runtime sync | `network/sync/RuntimeSyncService` | sync requests from canonical services only | sync-only S2C payload generation, including dedicated stage reporting | Snapshot sync is mirror-only, not mutation authority |
 | Generated workspace outputs | `workspace/build`, `workspace/generated`, `workspace/exports`, `tools/generated`, `docs/generated` | tooling/generator/export flows | inspection, packaging review, snapshot comparison | intentionally preserved generated/reference outputs; do not edit first for gameplay |
 
 ## Machines
@@ -175,6 +175,10 @@ Edit here to change live stage gates and unlock rules:
   - `src/main/java/com/extremecraft/progression/ProgressionGate.java`
   - `src/main/java/com/extremecraft/progression/unlock/UnlockAccessService.java`
   - `src/main/java/com/extremecraft/progression/stage/StageManager.java`
+  - sync/reporting mirror only:
+    - `src/main/java/com/extremecraft/network/sync/RuntimeSyncService.java`
+    - `src/main/java/com/extremecraft/network/sync/SyncStageStateS2CPacket.java`
+    - `src/main/java/com/extremecraft/network/sync/RuntimeSyncClientState.java`
   - actual live callers:
     - `src/main/java/com/extremecraft/machine/core/MachineBlock.java`
     - `src/main/java/com/extremecraft/ability/AbilityEngine.java`
@@ -306,6 +310,10 @@ Edit here for installable armor/tool modules:
   - `src/main/java/com/extremecraft/modules/service/ModuleInstallService.java`
   - `src/main/java/com/extremecraft/modules/runtime/ModuleRuntimeService.java`
   - `src/main/java/com/extremecraft/modules/runtime/ModuleRuntimeEvents.java`
+  - passive mining/break-speed application:
+    - `src/main/java/com/extremecraft/progression/capability/PlayerStatsGameplayEvents.java`
+  - live tool wrapper example:
+    - `src/main/java/com/extremecraft/item/tool/ModularDrillItem.java`
 
 Shared module ability definitions:
 
@@ -321,6 +329,7 @@ Do not edit first:
 - `src/main/java/com/extremecraft/item/module/**`
   - `LEGACY / DISCONNECTED` generic module path
   - `ModuleLoader` is not the canonical modular-gear loader and is not the edit-first path for live armor/tool modules
+  - `TechItems.modular_drill` no longer depends on this legacy path; it now routes through the canonical modular runtime
 
 ## Materials And World Generation
 

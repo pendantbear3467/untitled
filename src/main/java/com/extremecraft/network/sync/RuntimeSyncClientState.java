@@ -11,6 +11,8 @@ public final class RuntimeSyncClientState {
     private static final Map<Integer, String> ABILITY_SLOTS = new LinkedHashMap<>();
     private static final Map<Integer, Integer> ABILITY_SLOT_MANA_COSTS = new LinkedHashMap<>();
     private static final java.util.Set<String> SKILL_UNLOCKS = new java.util.LinkedHashSet<>();
+    private static String STAGE_ID = "PRIMITIVE";
+    private static int STAGE_RANK = 0;
     private static CompoundTag MACHINE_STATES = new CompoundTag();
 
     private RuntimeSyncClientState() {
@@ -55,6 +57,14 @@ public final class RuntimeSyncClientState {
         }
     }
 
+    public static void applyStageState(CompoundTag tag) {
+        STAGE_ID = tag.getString("stage");
+        if (STAGE_ID == null || STAGE_ID.isBlank()) {
+            STAGE_ID = "PRIMITIVE";
+        }
+        STAGE_RANK = tag.getInt("rank");
+    }
+
     public static void applyMachineStates(CompoundTag tag) {
         MACHINE_STATES = tag.copy();
     }
@@ -77,6 +87,14 @@ public final class RuntimeSyncClientState {
 
     public static java.util.Set<String> skillUnlocks() {
         return java.util.Set.copyOf(SKILL_UNLOCKS);
+    }
+
+    public static String stageId() {
+        return STAGE_ID;
+    }
+
+    public static int stageRank() {
+        return STAGE_RANK;
     }
 
     public static CompoundTag machineStates() {

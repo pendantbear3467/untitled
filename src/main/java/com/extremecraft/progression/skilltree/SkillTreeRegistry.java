@@ -4,6 +4,13 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Compatibility mirror for older client screens that still expect a materialized skill-tree
+ * registry.
+ *
+ * <p>Canonical live skill-tree topology loads into {@code SkillTreeManager}; new mutation or gate
+ * logic should not be added here.</p>
+ */
 public final class SkillTreeRegistry {
     private static final Map<String, SkillTree> TREES = new LinkedHashMap<>();
 

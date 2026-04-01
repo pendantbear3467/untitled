@@ -127,7 +127,9 @@ These shims exist to preserve save compatibility and keep older systems operatio
 - `ProgressionMutationService` updates canonical progression data first, then mirrors legacy level/stats capabilities.
 - Legacy callers may continue using `LevelService.grantXp`/`setLevel`; those methods now route through the canonical mutation facade.
 - `ClassRegistry` still loads `data/extremecraft/classes`, but live class reads should resolve through `ClassAccessResolver`, which now prefers canonical `progression.classsystem.data` definitions.
-- `PlayerStatsGameplayEvents` remains live for resource regen/module-side stat effects, but gameplay XP/quest progression writes are owned by `ProgressionEvents`.
+- `PlayerStatsGameplayEvents` remains live for resource regen and applied mining/break-speed stat effects, but gameplay XP/quest progression writes are owned by `ProgressionEvents`.
+- Stage state is server-authoritative in `StageManager` and mirrored to clients only through `RuntimeSyncService` + `SyncStageStateS2CPacket`.
+- The live `modular_drill` item now routes through the canonical modular runtime; the older `item.module` package remains legacy-only.
 
 ### Contributor Guidance
 

@@ -7,7 +7,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Runtime registry for loaded modules.
+ * Legacy registry for the historical {@code item.module} runtime.
+ *
+ * <p>Canonical live modular gear uses {@code modules.loader.ModuleDefinitionLoader},
+ * {@code ModuleInstallService}, and {@code ModuleRuntimeService}. Do not add new gameplay module
+ * logic here.</p>
  */
 public final class ModuleRegistry {
     private static final Map<String, ModuleDefinition> DEFINITIONS = new LinkedHashMap<>();

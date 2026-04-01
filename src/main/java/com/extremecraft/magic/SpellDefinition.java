@@ -9,6 +9,12 @@ import net.minecraft.util.GsonHelper;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Legacy spell-definition model retained for older tooling/reference code.
+ *
+ * <p>Live spell runtime uses {@link Spell}, {@link SpellLoader}, {@link SpellRegistry}, and
+ * {@link SpellExecutor}. Do not add new gameplay spell behavior to this parallel model.</p>
+ */
 public final class SpellDefinition {
     public enum SpellType {
         PROJECTILE,

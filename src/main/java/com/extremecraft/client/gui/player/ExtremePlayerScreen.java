@@ -20,10 +20,13 @@ import com.extremecraft.network.packet.InstallModuleC2SPacket;
 import com.extremecraft.network.packet.RemoveModuleC2SPacket;
 import com.extremecraft.network.packet.RequestPlayerStatsPacket;
 import com.extremecraft.network.packet.UpgradeStatPacket;
+import com.extremecraft.network.sync.RuntimeSyncClientState;
 import com.extremecraft.progression.PlayerProgressData;
 import com.extremecraft.progression.capability.PlayerStatsApi;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
 import com.extremecraft.progression.capability.ProgressApi;
+import com.extremecraft.progression.classsystem.ClassDefinition;
+import com.extremecraft.progression.classsystem.data.ClassDefinitions;
 import com.extremecraft.progression.skilltree.SkillTreeManager;
 import com.extremecraft.quest.QuestManager;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -39,6 +42,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Locale;
@@ -427,6 +431,7 @@ public class ExtremePlayerScreen extends Screen {
 
         ECGuiPrimitives.drawSectionHeader(graphics, font, Component.literal("Class Progression"), x, y, 120, ECGuiTheme.ACCENT_AMBER);
         graphics.drawString(font, Component.literal("Current Class: " + currentClassId), x, y + 14, ECGuiTheme.TEXT_PRIMARY, false);
+        graphics.drawString(font, Component.literal("Current Stage: " + RuntimeSyncClientState.stageId()), x + 168, y + 14, ECGuiTheme.TEXT_SECONDARY, false);
         ECGuiPrimitives.drawStatusChip(graphics, font, x, y + 24, Component.literal("Class Pts " + classSkillPoints), ECGuiTheme.ACCENT_AMBER);
         ECGuiPrimitives.drawStatusChip(graphics, font, x + 106, y + 24, Component.literal("Skill Pts " + playerSkillPoints), ECGuiTheme.ACCENT_CYAN);
         graphics.drawString(font, Component.literal("Completed Guild Quests: " + completedQuests), x, y + 40, ECGuiTheme.TEXT_SECONDARY, false);
@@ -438,13 +443,26 @@ public class ExtremePlayerScreen extends Screen {
 
         graphics.drawString(font, Component.literal("Available Classes"), x, y + 102, ECGuiTheme.ACCENT_AMBER, false);
         int rowY = y + 114;
-        for (PlayerClass klass : ClassRegistry.all()) {
-            boolean selected = klass.id().equalsIgnoreCase(currentClassId);
-            int color = selected ? ECGuiTheme.ACCENT_AMBER : ECGuiTheme.TEXT_SECONDARY;
-            graphics.drawString(font, Component.literal((selected ? "> " : "  ") + klass.id() + " req lvl " + klass.requiredLevel()), x + 8, rowY, color, false);
-            rowY += 11;
-            if (rowY > y + 168) {
-                break;
+        Collection<ClassDefinition> canonicalClasses = ClassDefinitions.all();
+        if (!canonicalClasses.isEmpty()) {
+            for (ClassDefinition klass : canonicalClasses) {
+                boolean selected = klass.id().equalsIgnoreCase(currentClassId);
+                int color = selected ? ECGuiTheme.ACCENT_AMBER : ECGuiTheme.TEXT_SECONDARY;
+                graphics.drawString(font, Component.literal((selected ? "> " : "  ") + klass.id() + " req lvl " + klass.requiredLevel()), x + 8, rowY, color, false);
+                rowY += 11;
+                if (rowY > y + 168) {
+                    break;
+                }
+            }
+        } else {
+            for (PlayerClass klass : ClassRegistry.all()) {
+                boolean selected = klass.id().equalsIgnoreCase(currentClassId);
+                int color = selected ? ECGuiTheme.ACCENT_AMBER : ECGuiTheme.TEXT_SECONDARY;
+                graphics.drawString(font, Component.literal((selected ? "> " : "  ") + klass.id() + " req lvl " + klass.requiredLevel()), x + 8, rowY, color, false);
+                rowY += 11;
+                if (rowY > y + 168) {
+                    break;
+                }
             }
         }
 

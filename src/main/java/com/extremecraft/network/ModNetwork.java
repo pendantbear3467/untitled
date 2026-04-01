@@ -31,6 +31,7 @@ import com.extremecraft.network.sync.SyncAbilityStateS2CPacket;
 import com.extremecraft.network.sync.SyncMachineStateS2CPacket;
 import com.extremecraft.network.sync.SyncRuntimeStatsS2CPacket;
 import com.extremecraft.network.sync.SyncSkillUnlocksS2CPacket;
+import com.extremecraft.network.sync.SyncStageStateS2CPacket;
 import com.extremecraft.progression.skilltree.SyncSkillTreeDataS2C;
 import com.extremecraft.progression.skilltree.UnlockSkillNodeC2S;
 import net.minecraft.resources.ResourceLocation;
@@ -214,6 +215,12 @@ public final class ModNetwork {
                 .encoder(SyncSkillUnlocksS2CPacket::encode)
                 .decoder(SyncSkillUnlocksS2CPacket::decode)
                 .consumerMainThread(SyncSkillUnlocksS2CPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncStageStateS2CPacket.class, nextId())
+                .encoder(SyncStageStateS2CPacket::encode)
+                .decoder(SyncStageStateS2CPacket::decode)
+                .consumerMainThread(SyncStageStateS2CPacket::handle)
                 .add();
 
         CHANNEL.messageBuilder(SyncMachineStateS2CPacket.class, nextId())

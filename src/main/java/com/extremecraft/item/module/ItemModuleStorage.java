@@ -9,7 +9,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * ItemStack NBT helpers for installed item modules.
+ * Legacy NBT helpers for the historical {@code item.module} runtime.
+ *
+ * <p>New modular items store installs through {@code modules.item.ModuleStackData}. This helper is
+ * retained only for compatibility with the older module model.</p>
  */
 public final class ItemModuleStorage {
     private static final String TAG_ROOT = "ec_modules";

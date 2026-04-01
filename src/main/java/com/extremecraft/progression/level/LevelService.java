@@ -6,6 +6,13 @@ import com.extremecraft.progression.ProgressionMutationService;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
 
+/**
+ * Compatibility facade for the older player-level capability mirror.
+ *
+ * <p>Canonical live XP mutation authority routes through {@code ProgressionMutationService};
+ * callers that still need the level capability should delegate through this class rather than
+ * mutating the legacy mirror directly.</p>
+ */
 public final class LevelService {
     private LevelService() {
     }

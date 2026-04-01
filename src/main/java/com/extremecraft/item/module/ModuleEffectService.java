@@ -9,7 +9,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Applies equipped tool/armor module effects into PlayerStatsCapability.
+ * Legacy effect applier for the older {@code item.module} runtime.
+ *
+ * <p>Active modular gear effects now converge through {@code modules.runtime.ModuleRuntimeService}.
+ * This class remains only for historical compatibility and should not receive new gameplay logic.</p>
  */
 public final class ModuleEffectService {
     private ModuleEffectService() {
