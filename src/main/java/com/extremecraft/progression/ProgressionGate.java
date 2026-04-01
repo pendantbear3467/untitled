@@ -15,10 +15,13 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Canonical gameplay gate for stage-locked machine and recipe access.
+ * Canonical gameplay gate for stage-locked machine/content access.
  *
  * <p>Checks and grants that affect the formal progression ladder should route through this
- * class so stage ownership stays explicit even while legacy systems remain online.</p>
+ * class so stage ownership stays explicit even while legacy systems remain online. Machine use is
+ * enforced at the live block interaction boundary. Recipe-specific gating remains a helper for
+ * player-owned crafting flows and is not automatically applied to autonomous machine processing,
+ * which runs without player context.</p>
  */
 public final class ProgressionGate {
     private static final Map<String, ProgressionStage> MACHINE_REQUIREMENTS = new HashMap<>();
@@ -77,6 +80,7 @@ public final class ProgressionGate {
     }
 
     public static boolean canUseRecipe(Player player, String recipeId) {
+        // This helper is authoritative only for runtime flows that already have player context.
         boolean stageAllowed = requiredRecipeStage(recipeId).map(stage -> StageManager.hasStage(player, stage)).orElse(true);
         if (!stageAllowed) {
             return false;

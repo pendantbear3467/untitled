@@ -31,8 +31,10 @@ import java.util.Map;
  * registration methods and are merged with datapack content.</p>
  *
  * <p>The live multi-machine block path used by {@code future.registry.TechBlocks} now runs
- * through {@code com.extremecraft.machine.core} plus vanilla recipe manager lookups. Keep this
- * registry for compatibility hooks and older generic machine integrations only.</p>
+ * through {@code com.extremecraft.machine.core} plus vanilla recipe manager lookups. Current
+ * block registrations do not instantiate this generic runtime for the active tech-machine chain,
+ * so editing {@code data/extremecraft/machines/*.json} here will not change
+ * {@code machine.core.TechMachineBlockEntity} behavior.</p>
  */
 public final class MachineRegistry {
     private static final Logger LOGGER = LogUtils.getLogger();

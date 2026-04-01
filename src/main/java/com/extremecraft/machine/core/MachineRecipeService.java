@@ -14,7 +14,8 @@ import java.util.Optional;
  *
  * <p>This service resolves live machine processing recipes from
  * {@code data/extremecraft/recipes/machine_processing}. It does not read
- * {@code data/extremecraft/machines/*.json}.</p>
+ * {@code data/extremecraft/machines/*.json}. Per-player stage/unlock checks happen at machine
+ * interaction boundaries; this resolver runs without player context inside the server tick loop.</p>
  */
 public final class MachineRecipeService {
     private MachineRecipeService() {

@@ -30,12 +30,40 @@ public final class ProgressionFacade {
         return ClassProgressionService.grantClassXp(player, classId, amount, source);
     }
 
+    public static boolean addPlayerSkillPoints(ServerPlayer player, int amount) {
+        return ProgressionService.addPlayerSkillPoints(player, amount);
+    }
+
+    public static boolean addClassSkillPoints(ServerPlayer player, int amount) {
+        return ProgressionService.addClassSkillPoints(player, amount);
+    }
+
+    public static boolean unlockClass(ServerPlayer player, String classId) {
+        return ProgressionService.unlockClass(player, classId);
+    }
+
     public static void grantUnlock(ServerPlayer player, String unlockId) {
         ProgressionService.grantUnlock(player, unlockId);
     }
 
     public static void grantUnlocks(ServerPlayer player, java.util.Collection<String> unlockIds) {
         ProgressionService.grantUnlocks(player, unlockIds);
+    }
+
+    public static boolean addQuestProgress(ServerPlayer player, String questId, int amount) {
+        return ProgressionService.addQuestProgress(player, questId, amount);
+    }
+
+    public static boolean markQuestCompleted(ServerPlayer player, String questId) {
+        return ProgressionService.markQuestCompleted(player, questId);
+    }
+
+    public static boolean discoverRegion(ServerPlayer player, String regionKey) {
+        return ProgressionService.discoverRegion(player, regionKey);
+    }
+
+    public static boolean grantStage(ServerPlayer player, String stageId) {
+        return ProgressionGate.grantStage(player, stageId);
     }
 
     public static boolean claimGuildQuestReward(ServerPlayer player, QuestDefinition quest) {

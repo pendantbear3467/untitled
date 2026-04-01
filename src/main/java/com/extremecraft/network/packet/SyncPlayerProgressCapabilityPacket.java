@@ -10,6 +10,12 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
+/**
+ * Legacy S2C mirror for the older player-progress capability.
+ *
+ * <p>This packet is not currently registered by {@code ModNetwork.init()}. Do not treat it as the
+ * canonical live sync path for progression.</p>
+ */
 public record SyncPlayerProgressCapabilityPacket(CompoundTag data) {
     public static void encode(SyncPlayerProgressCapabilityPacket packet, FriendlyByteBuf buf) {
         buf.writeNbt(packet.data);

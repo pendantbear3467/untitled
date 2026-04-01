@@ -11,6 +11,12 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.function.Supplier;
 
+/**
+ * Legacy compatibility packet for older skill/stat upgrade UIs.
+ *
+ * <p>This packet is currently not registered by {@code ModNetwork.init()}. The live progression
+ * upgrade authority is {@code UpgradeStatPacket} plus {@code UnlockSkillNodeC2S}.</p>
+ */
 public record UpgradeSkillPacket(String statId) {
     private static final Logger LOGGER = LogManager.getLogger();
 

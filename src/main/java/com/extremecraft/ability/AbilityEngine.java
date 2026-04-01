@@ -3,6 +3,7 @@ package com.extremecraft.ability;
 import com.extremecraft.classsystem.ClassAbilityBindings;
 import com.extremecraft.magic.mana.ManaApi;
 import com.extremecraft.magic.mana.ManaService;
+import com.extremecraft.progression.unlock.UnlockAccessService;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 import org.apache.logging.log4j.LogManager;
@@ -19,8 +20,8 @@ public final class AbilityEngine {
     /**
      * Runtime executor for abilities from both built-in registrations and datapack definitions.
      * <p>
-     * Ability metadata is sourced through {@link AbilityRegistry}, progression gating is delegated to
-     * class bindings, and mana/cooldowns are synchronized through the progression and mana services.
+     * Ability metadata is sourced through {@link AbilityRegistry}, unlock/class gating is enforced
+     * here, and mana/cooldowns are synchronized through the progression and mana services.
      */
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -247,11 +248,15 @@ public final class AbilityEngine {
     }
 
     private static boolean validateRequirements(ServerPlayer player, String abilityId, Ability ability, AbilityDefinition definition) {
-        if (definition == null) {
+        if (hasDevGrantedAbility(player, abilityId)) {
             return true;
         }
 
-        if (hasDevGrantedAbility(player, abilityId)) {
+        if (!UnlockAccessService.canUseAbility(player, abilityId)) {
+            return false;
+        }
+
+        if (definition == null) {
             return true;
         }
 

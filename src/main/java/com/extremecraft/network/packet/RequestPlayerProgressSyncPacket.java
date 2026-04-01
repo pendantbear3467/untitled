@@ -11,6 +11,13 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.function.Supplier;
 
+/**
+ * Legacy progress-capability sync request packet.
+ *
+ * <p>This packet is not part of the current {@code ModNetwork} registration set. Canonical live
+ * progression sync flows through {@code SyncProgressPacket} and the canonical progression
+ * capability/service path.</p>
+ */
 public class RequestPlayerProgressSyncPacket {
     private static final Logger LOGGER = LogManager.getLogger();
 

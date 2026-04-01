@@ -58,13 +58,12 @@ public class ProgressionEvents {
             int rx = player.blockPosition().getX() >> 8;
             int rz = player.blockPosition().getZ() >> 8;
             String regionKey = player.level().dimension().location() + "|" + rx + "|" + rz;
-            ProgressApi.get(player).ifPresent(data -> {
-                if (data.discoverRegion(regionKey)) {
-                    ProgressionFacade.grantPlayerXp(player, 8);
-                    incrementQuest(player, QuestType.EXPLORATION, 1);
-                    ProgressionFacade.grantSkillXp(player, "engineering", 10, SkillProgressionService.Source.EXPLORATION);
-                }
-            });
+            if (ProgressionService.discoverRegion(player, regionKey, false)) {
+                ProgressionFacade.grantPlayerXp(player, 8);
+                incrementQuest(player, QuestType.EXPLORATION, 1);
+                ProgressionFacade.grantSkillXp(player, "engineering", 10, SkillProgressionService.Source.EXPLORATION);
+                ProgressionService.flushDirty(player);
+            }
         }
     }
 
@@ -110,6 +109,8 @@ public class ProgressionEvents {
     @SubscribeEvent
     public void onBlockBreak(BlockEvent.BreakEvent event) {
         if (event.getPlayer() instanceof ServerPlayer player) {
+            int xp = event.getState().getDestroySpeed(player.level(), event.getPos()) > 5.0F ? 2 : 1;
+            ProgressionFacade.grantPlayerXp(player, xp);
             incrementQuest(player, QuestType.COLLECTION, 1);
             ProgressionFacade.grantSkillXp(player, "mining", 4, SkillProgressionService.Source.MINING);
         }
@@ -122,17 +123,14 @@ public class ProgressionEvents {
 
         for (QuestDefinition quest : QuestManager.all()) {
             if (quest.type() != type) continue;
+            if (ProgressionService.isQuestCompleted(player, quest.id())) continue;
 
-            ProgressApi.get(player).ifPresent(data -> {
-                if (data.isQuestCompleted(quest.id())) return;
-                int current = data.getQuestProgress(quest.id());
-                int next = Math.min(quest.target(), current + amount);
-                int delta = next - current;
-                if (delta > 0) {
-                    data.addQuestProgress(quest.id(), delta);
-                    changed[0] = true;
-                }
-            });
+            int current = ProgressionService.getQuestProgress(player, quest.id());
+            int next = Math.min(quest.target(), current + amount);
+            int delta = next - current;
+            if (delta > 0) {
+                changed[0] |= ProgressionService.addQuestProgress(player, quest.id(), delta, false);
+            }
         }
 
         if (changed[0]) {

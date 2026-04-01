@@ -17,10 +17,10 @@ import java.util.Map;
 
 public final class SkillTreeService {
     /**
-     * Service boundary for skill-tree progression operations.
-     * <p>
-     * Tree topology comes from {@link SkillTreeManager}, unlock requests are applied through
-     * {@link PlayerStatsService}, and client runtime state is synchronized via network sync services.
+     * Canonical service boundary for live skill-tree topology reads and node-unlock mutations.
+     *
+     * <p>Tree topology comes from {@link SkillTreeManager}. Node unlocks must route through this
+     * service so requirement checks and point spend stay aligned with progression state.</p>
      */
     private SkillTreeService() {
     }
@@ -71,8 +71,7 @@ public final class SkillTreeService {
             return false;
         }
 
-        // Upgrade requests run through PlayerStatsService so point spend and stat effects remain consistent.
-        boolean changed = PlayerStatsService.applyUpgradeRequest(player, "skill:" + normalizedNodeId);
+        boolean changed = PlayerStatsService.tryUnlockSkillNode(player, normalizedNodeId);
         if (!changed) {
             return false;
         }
@@ -142,4 +141,3 @@ public final class SkillTreeService {
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncSkillTreeDataS2C(data.serializeNBT()));
     }
 }
-

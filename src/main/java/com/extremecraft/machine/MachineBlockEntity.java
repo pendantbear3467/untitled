@@ -23,6 +23,13 @@ import net.minecraftforge.items.wrapper.CombinedInvWrapper;
 
 import javax.annotation.Nullable;
 
+/**
+ * Legacy generic machine block entity used by the older {@code machine/} compatibility path.
+ *
+ * <p>The active tech-machine blocks registered through {@code future.registry} instantiate
+ * {@code machine.core.TechMachineBlockEntity} instead. Do not expect edits here to affect the
+ * live tech-machine chain unless you are explicitly working on the legacy generic runtime.</p>
+ */
 public class MachineBlockEntity extends BlockEntity implements MachineStateSyncProvider {
     private static final int DATA_VERSION = 1;
 

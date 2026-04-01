@@ -18,6 +18,12 @@ public final class PlayerStatsService {
     private PlayerStatsService() {
     }
 
+    /**
+     * Compatibility entrypoint for older stat/skill upgrade callers.
+     *
+     * <p>Skill-node unlocks delegate into the canonical skill-tree mutation path. Primary-stat
+     * upgrades remain owned here because the backing capability is still live.</p>
+     */
     public static boolean applyUpgradeRequest(ServerPlayer player, String upgradeId) {
         if (upgradeId == null || upgradeId.isBlank()) {
             return false;
@@ -27,7 +33,7 @@ public final class PlayerStatsService {
             boolean changed;
             if (upgradeId.startsWith("skill:")) {
                 String nodeId = upgradeId.substring("skill:".length());
-                changed = unlockSkillNode(player, stats, nodeId);
+                changed = tryUnlockSkillNode(player, nodeId);
             } else {
                 changed = stats.upgradePrimaryStat(upgradeId);
             }
@@ -37,6 +43,25 @@ public final class PlayerStatsService {
             }
             return changed;
         }).orElse(false);
+    }
+
+    /**
+     * Canonical live mutation path for spending progression skill points on a skill-tree node.
+     *
+     * <p>SkillTreeService and legacy upgrade packets both delegate here so point spend, mirrored
+     * unlock state, and runtime sync stay aligned.</p>
+     */
+    public static boolean tryUnlockSkillNode(ServerPlayer player, String nodeId) {
+        if (player == null || nodeId == null || nodeId.isBlank()) {
+            return false;
+        }
+
+        PlayerStatsCapability stats = PlayerStatsApi.get(player).orElse(null);
+        if (stats == null) {
+            return false;
+        }
+
+        return unlockSkillNode(player, stats, nodeId.trim().toLowerCase());
     }
 
     public static boolean addExperience(ServerPlayer player, int amount) {

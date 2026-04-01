@@ -11,6 +11,7 @@ import com.extremecraft.magic.Spell.SpellType;
 import com.extremecraft.magic.mana.ManaService;
 import com.extremecraft.modules.item.ArcaneStaffItem;
 import com.extremecraft.network.sync.RuntimeSyncService;
+import com.extremecraft.progression.unlock.UnlockAccessService;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -34,7 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>Spell definitions live in {@code data/extremecraft/spells}. They are compiled into generic
  * {@code AbilityDefinition} payloads at cast time, so editing {@code abilities/*.json} does not
- * directly change spell behavior.</p>
+ * directly change spell behavior. Unlock-rule enforcement also happens here so spell access is
+ * decided at the canonical server-authoritative cast boundary.</p>
  */
 public final class SpellExecutor {
     public static final String SPELL_TAG = "ec_spell_id";
@@ -55,6 +57,10 @@ public final class SpellExecutor {
 
         Spell spell = SpellRegistry.get(spellId);
         if (spell == null) {
+            return false;
+        }
+
+        if (!UnlockAccessService.canCastSpell(player, spell.id())) {
             return false;
         }
 

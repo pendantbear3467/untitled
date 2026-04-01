@@ -12,6 +12,7 @@ import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.classsystem.ClassDefinition;
 import com.extremecraft.progression.classsystem.data.ClassAbilityDefinitions;
 import com.extremecraft.progression.classsystem.data.ClassDefinitions;
+import com.extremecraft.progression.unlock.UnlockAccessService;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
@@ -26,8 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Server-authoritative class ability activation and cooldown management.
  *
- * <p>For first release this stays a narrow class-specific action path. Generic
- * abilities and spells remain the primary extensible cast/action systems.</p>
+ * <p>For first release this stays a narrow class-specific action path. Generic abilities and
+ * spells remain the primary extensible cast/action systems. Unlock-rule enforcement also converges
+ * here so class-ability access checks are not split across packet handlers and UI code.</p>
  */
 public final class ClassAbilityService {
     private static final Map<UUID, Map<String, Long>> COOLDOWNS = new ConcurrentHashMap<>();
@@ -47,6 +49,11 @@ public final class ClassAbilityService {
 
         ClassAbilityDefinition ability = ClassAbilityDefinitions.get(abilityId);
         if (ability == null) {
+            return false;
+        }
+
+        if (!UnlockAccessService.canUseClassAbility(player, ability.id())) {
+            syncState(player);
             return false;
         }
 

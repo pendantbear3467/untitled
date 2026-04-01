@@ -26,8 +26,9 @@ import java.util.Map;
  * Compatibility-facing class registry for older runtime consumers.
  *
  * <p>This class still reads the live {@code data/extremecraft/classes} folder, but canonical
- * definition ownership lives under {@code progression.classsystem.data}. Prefer that package for
- * new definition-loading behavior and use this registry as an adapter surface.</p>
+ * definition ownership lives under {@code progression.classsystem.data}. Gameplay readers should
+ * resolve class data through {@code ClassAccessResolver}; this registry is an adapter surface for
+ * older callers that have not been converged yet.</p>
  */
 public final class ClassRegistry {
     private static final Logger LOGGER = LogUtils.getLogger();

@@ -57,7 +57,13 @@ Data flow:
 Why it exists:
 
 - Supports both built-in Java abilities and datapack-driven abilities.
-- Keeps gating/security checks in one execution path.
+- Keeps unlock/class gating and security checks in one execution path.
+
+Related live gates:
+
+- `AbilityEngine` enforces generic ability unlock/class access.
+- `ClassAbilityService` enforces class-ability unlock/class access.
+- `SpellExecutor` enforces spell unlock/class access and compiles spell JSON into runtime ability payloads.
 
 ## Packet Security
 
@@ -120,6 +126,8 @@ These shims exist to preserve save compatibility and keep older systems operatio
 - `DwNetwork.CH` remains as a deprecated channel alias to `ModNetwork.CHANNEL`.
 - `ProgressionMutationService` updates canonical progression data first, then mirrors legacy level/stats capabilities.
 - Legacy callers may continue using `LevelService.grantXp`/`setLevel`; those methods now route through the canonical mutation facade.
+- `ClassRegistry` still loads `data/extremecraft/classes`, but live class reads should resolve through `ClassAccessResolver`, which now prefers canonical `progression.classsystem.data` definitions.
+- `PlayerStatsGameplayEvents` remains live for resource regen/module-side stat effects, but gameplay XP/quest progression writes are owned by `ProgressionEvents`.
 
 ### Contributor Guidance
 

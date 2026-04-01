@@ -10,7 +10,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Bridges legacy class runtime consumers to the canonical progression class definitions.
+ * Bridges runtime class consumers to the canonical progression class definitions, with a legacy
+ * fallback for compatibility.
  */
 public final class ClassAccessResolver {
     private ClassAccessResolver() {
@@ -22,30 +23,22 @@ public final class ClassAccessResolver {
             key = "warrior";
         }
 
-        PlayerClass fromLegacyRegistry = ClassRegistry.get(key);
-        if (fromLegacyRegistry != null) {
-            return fromLegacyRegistry;
-        }
-
         ClassDefinition canonical = ClassDefinitions.get(key);
-        if (canonical == null) {
-            return null;
+        if (canonical != null) {
+            return new PlayerClass(
+                    key,
+                    canonical.statScaling() == null ? Map.of() : canonical.statScaling(),
+                    canonical.manaRegenModifier(),
+                    canonical.combatModifiers() == null ? Map.of() : canonical.combatModifiers(),
+                    canonical.passiveBonuses() == null ? Map.of() : canonical.passiveBonuses(),
+                    normalizeIds(canonical.activeAbilities()),
+                    normalizeIds(canonical.spellAccess()),
+                    Math.max(1, canonical.requiredLevel())
+            );
         }
 
-        Map<String, Double> passives = canonical.passiveBonuses() == null ? Map.of() : canonical.passiveBonuses();
-        double manaRegenModifier = passives.getOrDefault("mana_regen_modifier", passives.getOrDefault("mana_regen", 0.0D));
-        List<String> activeAbilities = normalizeIds(canonical.activeAbilities());
-
-        return new PlayerClass(
-                key,
-                Map.of(),
-                manaRegenModifier,
-                Map.of(),
-                passives,
-                activeAbilities,
-                List.of(),
-                1
-        );
+        // Compatibility fallback only: canonical class-definition loading should satisfy live reads.
+        return ClassRegistry.get(key);
     }
 
     public static List<String> abilityAccess(String classId) {

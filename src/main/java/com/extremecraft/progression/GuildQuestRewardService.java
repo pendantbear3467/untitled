@@ -20,23 +20,22 @@ public final class GuildQuestRewardService {
         }
 
         return ProgressApi.get(player).map(data -> {
-            if (data.isQuestCompleted(quest.id())) {
+            if (ProgressionService.isQuestCompleted(player, quest.id())) {
                 return false;
             }
 
-            int progress = data.getQuestProgress(quest.id());
-            if (progress < quest.target()) {
+            if (ProgressionService.getQuestProgress(player, quest.id()) < quest.target()) {
                 return false;
             }
 
-            data.setQuestCompleted(quest.id());
-            data.grantUnlock("quest:" + quest.id());
+            ProgressionService.markQuestCompleted(player, quest.id(), false);
+            ProgressionService.grantUnlock(player, "quest:" + quest.id(), false);
             ProgressionMutationService.grantXp(player, quest.rewardXp());
-            data.addPlayerSkillPoints(quest.rewardPlayerSkillPoints());
-            data.addClassSkillPoints(quest.rewardClassSkillPoints());
+            ProgressionService.addPlayerSkillPoints(player, quest.rewardPlayerSkillPoints(), false);
+            ProgressionService.addClassSkillPoints(player, quest.rewardClassSkillPoints(), false);
 
             if (!quest.rewardUnlockClass().isBlank()) {
-                data.unlockClass(quest.rewardUnlockClass());
+                ProgressionService.unlockClass(player, quest.rewardUnlockClass(), false);
             }
 
             String classRewardTarget = !quest.rewardUnlockClass().isBlank() ? quest.rewardUnlockClass() : data.currentClass();
@@ -45,7 +44,7 @@ public final class GuildQuestRewardService {
             ClassProgressionService.grantClassXp(player, classRewardTarget, classXpReward, ClassProgressionService.Source.GUILD_QUEST);
 
             if (!quest.rewardUnlockStage().isBlank()) {
-                ProgressionGate.grantStage(player, quest.rewardUnlockStage());
+                ProgressionFacade.grantStage(player, quest.rewardUnlockStage());
             }
 
             PlayerStatsService.syncProgressionMirror(player, true);

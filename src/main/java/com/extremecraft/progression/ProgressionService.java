@@ -14,6 +14,13 @@ import net.minecraftforge.network.PacketDistributor;
 
 import java.util.UUID;
 
+/**
+ * Canonical mutation/read boundary for the live progression capability.
+ *
+ * <p>Progression-owned quest state, unlock grants, class unlocks, player level XP, and
+ * progression skill points should converge here instead of mutating {@link PlayerProgressData}
+ * directly from unrelated gameplay code.</p>
+ */
 public final class ProgressionService {
     private static final UUID LEVEL_HEALTH_MOD = UUID.fromString("b6ab1ed2-1f7e-4965-9f53-19d8b237db0b");
     private static final UUID LEVEL_ATTACK_MOD = UUID.fromString("3a2d5b50-6b16-469f-8e0a-df018dd7707c");
@@ -33,30 +40,179 @@ public final class ProgressionService {
         ProgressApi.get(player).ifPresent(data -> data.setLevel(level));
         flushDirty(player);
     }
-    public static void addPlayerSkillPoints(ServerPlayer player, int amount) {
-        ProgressApi.get(player).ifPresent(data -> data.addPlayerSkillPoints(amount));
+
+    public static boolean addPlayerSkillPoints(ServerPlayer player, int amount) {
+        return addPlayerSkillPoints(player, amount, true);
+    }
+
+    public static boolean addPlayerSkillPoints(ServerPlayer player, int amount, boolean flushImmediately) {
+        if (player == null || amount <= 0) {
+            return false;
+        }
+
+        boolean changed = ProgressApi.get(player).map(data -> {
+            int before = data.playerSkillPoints();
+            data.addPlayerSkillPoints(amount);
+            return data.playerSkillPoints() != before;
+        }).orElse(false);
+
+        if (!changed) {
+            return false;
+        }
+
         PlayerStatsService.syncProgressionMirror(player, false);
-        flushDirty(player);
+        if (flushImmediately) {
+            flushDirty(player);
+        }
+        return true;
     }
 
-    public static void addClassSkillPoints(ServerPlayer player, int amount) {
-        ProgressApi.get(player).ifPresent(data -> data.addClassSkillPoints(amount));
-        flushDirty(player);
+    public static boolean addClassSkillPoints(ServerPlayer player, int amount) {
+        return addClassSkillPoints(player, amount, true);
     }
 
-    public static void unlockClass(ServerPlayer player, String classId) {
-        ProgressApi.get(player).ifPresent(data -> data.unlockClass(classId));
-        flushDirty(player);
+    public static boolean addClassSkillPoints(ServerPlayer player, int amount, boolean flushImmediately) {
+        if (player == null || amount <= 0) {
+            return false;
+        }
+
+        boolean changed = ProgressApi.get(player).map(data -> {
+            int before = data.classSkillPoints();
+            data.addClassSkillPoints(amount);
+            return data.classSkillPoints() != before;
+        }).orElse(false);
+
+        if (changed && flushImmediately) {
+            flushDirty(player);
+        }
+        return changed;
     }
 
-    public static void grantUnlock(ServerPlayer player, String unlockId) {
-        ProgressApi.get(player).ifPresent(data -> data.grantUnlock(unlockId));
-        flushDirty(player);
+    public static boolean unlockClass(ServerPlayer player, String classId) {
+        return unlockClass(player, classId, true);
     }
 
-    public static void grantUnlocks(ServerPlayer player, java.util.Collection<String> unlockIds) {
-        ProgressApi.get(player).ifPresent(data -> data.grantUnlocks(unlockIds));
-        flushDirty(player);
+    public static boolean unlockClass(ServerPlayer player, String classId, boolean flushImmediately) {
+        if (player == null || classId == null || classId.isBlank()) {
+            return false;
+        }
+
+        boolean changed = ProgressApi.get(player).map(data -> {
+            int before = data.unlockedClasses().size();
+            data.unlockClass(classId);
+            return data.unlockedClasses().size() != before;
+        }).orElse(false);
+
+        if (changed && flushImmediately) {
+            flushDirty(player);
+        }
+        return changed;
+    }
+
+    public static boolean grantUnlock(ServerPlayer player, String unlockId) {
+        return grantUnlock(player, unlockId, true);
+    }
+
+    public static boolean grantUnlock(ServerPlayer player, String unlockId, boolean flushImmediately) {
+        if (player == null || unlockId == null || unlockId.isBlank()) {
+            return false;
+        }
+
+        boolean changed = ProgressApi.get(player).map(data -> data.grantUnlock(unlockId)).orElse(false);
+        if (changed && flushImmediately) {
+            flushDirty(player);
+        }
+        return changed;
+    }
+
+    public static boolean grantUnlocks(ServerPlayer player, java.util.Collection<String> unlockIds) {
+        return grantUnlocks(player, unlockIds, true);
+    }
+
+    public static boolean grantUnlocks(ServerPlayer player, java.util.Collection<String> unlockIds, boolean flushImmediately) {
+        if (player == null || unlockIds == null || unlockIds.isEmpty()) {
+            return false;
+        }
+
+        boolean changed = ProgressApi.get(player).map(data -> data.grantUnlocks(unlockIds)).orElse(false);
+        if (changed && flushImmediately) {
+            flushDirty(player);
+        }
+        return changed;
+    }
+
+    public static boolean addQuestProgress(ServerPlayer player, String questId, int amount) {
+        return addQuestProgress(player, questId, amount, true);
+    }
+
+    public static boolean addQuestProgress(ServerPlayer player, String questId, int amount, boolean flushImmediately) {
+        if (player == null || questId == null || questId.isBlank() || amount <= 0) {
+            return false;
+        }
+
+        boolean changed = ProgressApi.get(player).map(data -> {
+            int before = data.getQuestProgress(questId);
+            data.addQuestProgress(questId, amount);
+            return data.getQuestProgress(questId) != before;
+        }).orElse(false);
+
+        if (changed && flushImmediately) {
+            flushDirty(player);
+        }
+        return changed;
+    }
+
+    public static boolean markQuestCompleted(ServerPlayer player, String questId) {
+        return markQuestCompleted(player, questId, true);
+    }
+
+    public static boolean markQuestCompleted(ServerPlayer player, String questId, boolean flushImmediately) {
+        if (player == null || questId == null || questId.isBlank()) {
+            return false;
+        }
+
+        boolean changed = ProgressApi.get(player).map(data -> {
+            boolean before = data.isQuestCompleted(questId);
+            data.setQuestCompleted(questId);
+            return !before && data.isQuestCompleted(questId);
+        }).orElse(false);
+
+        if (changed && flushImmediately) {
+            flushDirty(player);
+        }
+        return changed;
+    }
+
+    public static boolean discoverRegion(ServerPlayer player, String regionKey) {
+        return discoverRegion(player, regionKey, true);
+    }
+
+    public static boolean discoverRegion(ServerPlayer player, String regionKey, boolean flushImmediately) {
+        if (player == null || regionKey == null || regionKey.isBlank()) {
+            return false;
+        }
+
+        boolean changed = ProgressApi.get(player).map(data -> data.discoverRegion(regionKey)).orElse(false);
+        if (changed && flushImmediately) {
+            flushDirty(player);
+        }
+        return changed;
+    }
+
+    public static int getQuestProgress(ServerPlayer player, String questId) {
+        if (player == null || questId == null || questId.isBlank()) {
+            return 0;
+        }
+
+        return ProgressApi.get(player).map(data -> data.getQuestProgress(questId)).orElse(0);
+    }
+
+    public static boolean isQuestCompleted(ServerPlayer player, String questId) {
+        if (player == null || questId == null || questId.isBlank()) {
+            return false;
+        }
+
+        return ProgressApi.get(player).map(data -> data.isQuestCompleted(questId)).orElse(false);
     }
 
     public static boolean switchClass(ServerPlayer player, String classId) {
@@ -130,4 +286,3 @@ public final class ProgressionService {
         attr.addTransientModifier(new AttributeModifier(id, name, amount, AttributeModifier.Operation.ADDITION));
     }
 }
-

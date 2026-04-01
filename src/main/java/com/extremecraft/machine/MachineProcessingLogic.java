@@ -15,12 +15,11 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Stateless machine tick processor.
+ * Legacy generic machine tick processor for {@link MachineBlockEntity}.
  *
- * <p>This class owns the server-side machine execution loop: it resolves a valid recipe,
- * checks energy channels, advances progress, and commits inventory mutations atomically at
- * recipe completion. Keeping this logic centralized prevents drift between different machine
- * block entity implementations.</p>
+ * <p>The active tech-machine runtime used by current block registrations lives under
+ * {@code machine.core} and reads {@code recipes/machine_processing}. This class remains for the
+ * older {@code MachineRegistry}/{@code machines/*.json} compatibility path only.</p>
  */
 public final class MachineProcessingLogic {
     private MachineProcessingLogic() {
@@ -214,4 +213,3 @@ public final class MachineProcessingLogic {
         return item;
     }
 }
-

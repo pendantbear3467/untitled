@@ -6,6 +6,13 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
+/**
+ * Legacy gameplay XP hook for the older player-level mirror.
+ *
+ * <p>This class is not registered by the live mod bootstrap. Gameplay XP writes now converge
+ * through {@code progression.ProgressionEvents} plus {@code ProgressionMutationService} so do not
+ * reintroduce this as a parallel runtime owner.</p>
+ */
 public class PlayerLevelGameplayEvents {
     @SubscribeEvent
     public void onMobKill(LivingDeathEvent event) {
