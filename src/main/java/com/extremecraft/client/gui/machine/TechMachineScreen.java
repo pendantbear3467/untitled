@@ -4,7 +4,6 @@ import com.extremecraft.client.gui.theme.ECGuiPrimitives;
 import com.extremecraft.client.gui.theme.ECGuiTheme;
 import com.extremecraft.machine.menu.TechMachineMenu;
 import com.extremecraft.network.sync.RuntimeSyncClientState;
-import com.extremecraft.reactor.ReactorIdentity;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -15,10 +14,18 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Unified machine UI that combines container slots with synced machine telemetry panel.
+ * Base tech-machine screen. Specific machine families should extend this class.
  */
 public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> {
     private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/container/furnace.png");
+
+    protected enum MachineFamily {
+        PROCESSOR,
+        GENERATOR,
+        REACTOR,
+        MAGIC
+    }
+
     private Button scramButton;
     private boolean scramRequested;
 
@@ -32,7 +39,7 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
         scramButton = addRenderableWidget(Button.builder(Component.literal("SCRAM"), b -> scramRequested = true)
                 .bounds(leftPos + imageWidth + 8, topPos + 94, 56, 20)
                 .build());
-        scramButton.visible = isReactorMachine();
+        scramButton.visible = machineFamily() == MachineFamily.REACTOR;
     }
 
     @Override
@@ -43,10 +50,9 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
         graphics.blit(TEXTURE, x, y, 0, 0, imageWidth, imageHeight);
         ECGuiPrimitives.drawPanelChrome(graphics, x, y, imageWidth, imageHeight, menu.containerId);
 
-        // Process zone
         graphics.fill(x + 34, y + 16, x + 142, y + 74, 0x55202935);
-        drawRoleSlot(graphics, x + 44, y + 35, "IN", true);
-        drawRoleSlot(graphics, x + 8, y + 53, "PWR", true);
+        drawRoleSlot(graphics, x + 44, y + 35, inputRoleLabel(), true);
+        drawRoleSlot(graphics, x + 8, y + 53, fuelRoleLabel(), true);
         drawRoleSlot(graphics, x + 116, y + 35, "OUT", false);
 
         int progress = menu.progress();
@@ -63,7 +69,6 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
         }
         graphics.drawString(font, Component.literal("E"), x + 8, y + 8, ECGuiTheme.TEXT_MUTED, false);
 
-        // Side diagnostics panel consumes RuntimeSyncClientState machine payloads for readability.
         int panelX = x + imageWidth + 6;
         int panelY = y;
         int panelW = 126;
@@ -71,7 +76,7 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
         graphics.fill(panelX, panelY, panelX + panelW, panelY + panelH, 0xD0111620);
         graphics.fill(panelX + 1, panelY + 1, panelX + panelW - 1, panelY + panelH - 1, 0xAA1C2533);
 
-        ECGuiPrimitives.drawSectionHeader(graphics, font, Component.literal("Machine"), panelX + 6, panelY + 6, 94, ECGuiTheme.ACCENT_CYAN);
+        ECGuiPrimitives.drawSectionHeader(graphics, font, Component.literal(panelTitle()), panelX + 6, panelY + 6, 94, panelAccentColor());
         graphics.drawString(font, machineTitle(), panelX + 6, panelY + 17, ECGuiTheme.TEXT_SECONDARY, false);
         ECGuiPrimitives.drawStatusChip(graphics, font, panelX + 6, panelY + 28, Component.literal(machineStatusLine()), statusColor());
 
@@ -83,7 +88,7 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
         graphics.drawString(font, Component.literal("Energy: " + rawEnergy + " / " + rawEnergyMax), panelX + 6, panelY + 44, ECGuiTheme.TEXT_SECONDARY, false);
         graphics.drawString(font, Component.literal("Progress: " + rawProgress + " / " + rawProgressMax), panelX + 6, panelY + 55, ECGuiTheme.TEXT_SECONDARY, false);
 
-        if (isReactorMachine()) {
+        if (machineFamily() == MachineFamily.REACTOR) {
             CompoundTag reactor = reactorState();
 
             graphics.drawString(font, Component.literal("Reactor Panel"), panelX + 6, panelY + 71, ECGuiTheme.ACCENT_AMBER, false);
@@ -115,10 +120,18 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
                     graphics.drawString(font, Component.literal("Control rods fully inserted"), panelX + 6, panelY + 148, ECGuiTheme.ACCENT_AMBER, false);
                 }
             }
+        } else if (machineFamily() == MachineFamily.GENERATOR) {
+            graphics.drawString(font, Component.literal("Role: convert fuel to EC"), panelX + 6, panelY + 74, ECGuiTheme.TEXT_PRIMARY, false);
+            graphics.drawString(font, Component.literal("Feed fuel slot to charge"), panelX + 6, panelY + 85, ECGuiTheme.TEXT_PRIMARY, false);
+            graphics.drawString(font, Component.literal("Route EC via cables"), panelX + 6, panelY + 96, ECGuiTheme.TEXT_PRIMARY, false);
+        } else if (machineFamily() == MachineFamily.MAGIC) {
+            graphics.drawString(font, Component.literal("Role: arcane processing"), panelX + 6, panelY + 74, ECGuiTheme.TEXT_PRIMARY, false);
+            graphics.drawString(font, Component.literal("Needs catalyst + aether"), panelX + 6, panelY + 85, ECGuiTheme.TEXT_PRIMARY, false);
+            graphics.drawString(font, Component.literal("Stall check: runes/energy"), panelX + 6, panelY + 96, ECGuiTheme.TEXT_PRIMARY, false);
         } else {
-            graphics.drawString(font, Component.literal("What powers it: fuel/energy"), panelX + 6, panelY + 74, ECGuiTheme.TEXT_PRIMARY, false);
-            graphics.drawString(font, Component.literal("Output: item processing"), panelX + 6, panelY + 85, ECGuiTheme.TEXT_PRIMARY, false);
-            graphics.drawString(font, Component.literal("If stalled: check IO/fuel"), panelX + 6, panelY + 96, ECGuiTheme.TEXT_PRIMARY, false);
+            graphics.drawString(font, Component.literal("Role: item processing"), panelX + 6, panelY + 74, ECGuiTheme.TEXT_PRIMARY, false);
+            graphics.drawString(font, Component.literal("Needs input + power"), panelX + 6, panelY + 85, ECGuiTheme.TEXT_PRIMARY, false);
+            graphics.drawString(font, Component.literal("Stall check: IO/fuel"), panelX + 6, panelY + 96, ECGuiTheme.TEXT_PRIMARY, false);
         }
     }
 
@@ -142,20 +155,14 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
         }
     }
 
-    private boolean isReactorMachine() {
-        return ReactorIdentity.isFirstReleaseReactor(menu.machineId());
-    }
-
-    /**
-     * Human-readable status line derived from menu slot state plus synced reactor telemetry.
-     */
     private String machineStatusLine() {
         ItemStack input = menu.getSlot(0).getItem();
         ItemStack fuel = menu.getSlot(1).getItem();
         ItemStack output = menu.getSlot(2).getItem();
         CompoundTag reactor = reactorState();
+        MachineFamily family = machineFamily();
 
-        if (isReactorMachine()) {
+        if (family == MachineFamily.REACTOR) {
             if (reactor.isEmpty()) {
                 return "Blocked: Telemetry pending";
             }
@@ -172,20 +179,24 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
                 return "Ready: Stable";
             }
         }
+
         if (menu.rawProgress() > 0) {
-            return "Active: Processing";
+            return family == MachineFamily.GENERATOR ? "Active: Generating" : "Active: Processing";
         }
         if (!output.isEmpty() && output.getCount() >= output.getMaxStackSize()) {
             return "Blocked: Output full";
         }
         if (menu.rawEnergy() <= 0) {
-            if (menu.machineId().contains("mana") || menu.machineId().contains("arcane") || menu.machineId().contains("rune")) {
+            if (family == MachineFamily.MAGIC) {
                 return "Blocked: Missing aether";
             }
-            if (fuel.isEmpty()) {
+            if ((family == MachineFamily.GENERATOR || family == MachineFamily.PROCESSOR) && fuel.isEmpty()) {
                 return "Blocked: Missing fuel";
             }
             return "Blocked: Missing energy";
+        }
+        if (family == MachineFamily.GENERATOR && fuel.isEmpty()) {
+            return "Ready: Buffer charged";
         }
         if (input.isEmpty()) {
             return "Blocked: No valid recipe";
@@ -205,6 +216,46 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
             return ECGuiTheme.STATE_ERROR;
         }
         return ECGuiTheme.TEXT_SECONDARY;
+    }
+
+    protected MachineFamily machineFamily() {
+        return MachineFamily.PROCESSOR;
+    }
+
+    private int panelAccentColor() {
+        return switch (machineFamily()) {
+            case GENERATOR -> ECGuiTheme.ACCENT_AMBER;
+            case MAGIC -> ECGuiTheme.ACCENT_CYAN;
+            case REACTOR -> ECGuiTheme.STATE_WARN;
+            default -> ECGuiTheme.ACCENT_CYAN;
+        };
+    }
+
+    private String panelTitle() {
+        return switch (machineFamily()) {
+            case GENERATOR -> "Generator";
+            case MAGIC -> "Arcane Machine";
+            case REACTOR -> "Reactor";
+            default -> "Processor";
+        };
+    }
+
+    private String inputRoleLabel() {
+        return switch (machineFamily()) {
+            case GENERATOR -> "MAT";
+            case MAGIC -> "CAT";
+            case REACTOR -> "CORE";
+            default -> "IN";
+        };
+    }
+
+    private String fuelRoleLabel() {
+        return switch (machineFamily()) {
+            case GENERATOR -> "FUEL";
+            case MAGIC -> "AETH";
+            case REACTOR -> "ROD";
+            default -> "PWR";
+        };
     }
 
     private void drawRoleSlot(GuiGraphics graphics, int x, int y, String role, boolean powered) {
