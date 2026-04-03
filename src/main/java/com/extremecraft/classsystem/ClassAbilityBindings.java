@@ -13,6 +13,9 @@ public final class ClassAbilityBindings {
     private ClassAbilityBindings() {
     }
 
+    /**
+     * Enforces required class id and optional ability access allow-list.
+     */
     public static boolean canUseAbility(ServerPlayer player, String abilityId, String requiredClass) {
         PlayerClass playerClass = current(player);
         if (playerClass == null) {
@@ -27,6 +30,9 @@ public final class ClassAbilityBindings {
         return playerClass.abilityAccess().isEmpty() || playerClass.abilityAccess().contains(normalizedAbilityId);
     }
 
+    /**
+     * Enforces spell access allow-list for current class.
+     */
     public static boolean canUseSpell(ServerPlayer player, String spellId) {
         PlayerClass playerClass = current(player);
         if (playerClass == null) {
@@ -37,6 +43,9 @@ public final class ClassAbilityBindings {
         return playerClass.spellAccess().isEmpty() || playerClass.spellAccess().contains(normalizedSpellId);
     }
 
+    /**
+     * Reads active class id from progression capability and resolves canonical metadata.
+     */
     public static PlayerClass current(ServerPlayer player) {
         String classId = ProgressApi.get(player).map(data -> data.currentClass()).orElse("warrior");
         return ClassAccessResolver.resolve(classId);

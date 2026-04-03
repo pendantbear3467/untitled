@@ -6,6 +6,13 @@ import net.minecraft.util.GsonHelper;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * One atomic effect entry attached to an ability definition.
+ *
+ * <p>An ability can include multiple effects (for example damage + ignite + knockback scalar).
+ * Scalars carry optional type-specific parameters without forcing schema changes for every effect.
+ * </p>
+ */
 public final class AbilityEffect {
     private final String type;
     private final double value;
@@ -47,6 +54,9 @@ public final class AbilityEffect {
         return scalars;
     }
 
+    /**
+     * Parses one effect object and normalizes ids/types for stable runtime switching.
+     */
     public static AbilityEffect fromJson(JsonObject root) {
         String type = GsonHelper.getAsString(root, "type", "none");
         double value = GsonHelper.getAsDouble(root, "value", 0.0D);
@@ -58,6 +68,7 @@ public final class AbilityEffect {
         if (root.has("scalars") && root.get("scalars").isJsonObject()) {
             JsonObject map = root.getAsJsonObject("scalars");
             for (Map.Entry<String, com.google.gson.JsonElement> entry : map.entrySet()) {
+                // Scalars intentionally accept only numeric values to avoid ambiguous coercion.
                 if (entry.getValue().isJsonPrimitive() && entry.getValue().getAsJsonPrimitive().isNumber()) {
                     scalars.put(entry.getKey().trim().toLowerCase(), entry.getValue().getAsDouble());
                 }

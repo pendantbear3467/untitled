@@ -63,6 +63,9 @@ public final class ModNetwork {
     private ModNetwork() {
     }
 
+        /**
+         * Registers all channel packets in deterministic id order.
+         */
     public static synchronized void init() {
         if (initialized) {
             LOGGER.warn("[Network] ModNetwork.init() called more than once; skipping duplicate packet registration");

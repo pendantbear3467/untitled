@@ -5,6 +5,11 @@ import net.minecraft.nbt.CompoundTag;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Client-side cache of server-authored runtime sync payloads.
+ *
+ * <p>Packets update this cache; HUD/screens read from it to avoid per-frame packet parsing.</p>
+ */
 public final class RuntimeSyncClientState {
     private static final Map<String, Double> PLAYER_STATS = new LinkedHashMap<>();
     private static final Map<String, Integer> ABILITY_COOLDOWNS = new LinkedHashMap<>();
@@ -18,6 +23,9 @@ public final class RuntimeSyncClientState {
     private RuntimeSyncClientState() {
     }
 
+    /**
+     * Replaces runtime stat snapshot payload.
+     */
     public static void applyStats(CompoundTag tag) {
         PLAYER_STATS.clear();
         for (String key : tag.getAllKeys()) {
@@ -27,6 +35,9 @@ public final class RuntimeSyncClientState {
         }
     }
 
+    /**
+     * Replaces ability cooldown/slot payload mirrored from server runtime state.
+     */
     public static void applyAbilities(CompoundTag tag) {
         ABILITY_COOLDOWNS.clear();
         CompoundTag cooldowns = tag.getCompound("cooldowns");
@@ -49,6 +60,9 @@ public final class RuntimeSyncClientState {
         }
     }
 
+    /**
+     * Replaces unlocked skill node cache for UI gating.
+     */
     public static void applySkillUnlocks(CompoundTag tag) {
         SKILL_UNLOCKS.clear();
         net.minecraft.nbt.ListTag list = tag.getList("skills", net.minecraft.nbt.Tag.TAG_STRING);
@@ -57,6 +71,9 @@ public final class RuntimeSyncClientState {
         }
     }
 
+    /**
+     * Replaces current progression stage id/rank snapshot.
+     */
     public static void applyStageState(CompoundTag tag) {
         STAGE_ID = tag.getString("stage");
         if (STAGE_ID == null || STAGE_ID.isBlank()) {
@@ -65,6 +82,9 @@ public final class RuntimeSyncClientState {
         STAGE_RANK = tag.getInt("rank");
     }
 
+    /**
+     * Replaces nearby machine telemetry payload used by machine/radiation UI.
+     */
     public static void applyMachineStates(CompoundTag tag) {
         MACHINE_STATES = tag.copy();
     }

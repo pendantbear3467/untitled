@@ -2,6 +2,9 @@ package com.extremecraft.combat;
 
 import net.minecraft.world.damagesource.DamageSource;
 
+/**
+ * Normalized damage taxonomy used for resistance and effect interactions.
+ */
 public enum DamageType {
     PHYSICAL("physical_resistance"),
     MAGIC("magic_resistance"),
@@ -23,6 +26,9 @@ public enum DamageType {
         return resistanceKey;
     }
 
+    /**
+     * Best-effort mapping from vanilla damage tags to ExtremeCraft damage types.
+     */
     public static DamageType infer(DamageSource source) {
         if (source == null) {
             return PHYSICAL;

@@ -87,6 +87,9 @@ public class AbilityBarOverlay {
         }
     }
 
+    /**
+     * Draws compact mana diagnostics fed by server-synced mana capability mirror.
+     */
     private void renderManaHud(GuiGraphics gui, LocalPlayer player, int x, int y) {
         int width = HUD_PANEL_WIDTH;
         int currentMana = ManaApi.get(player).map(m -> (int) Math.floor(m.currentMana())).orElse(0);
@@ -97,6 +100,9 @@ public class AbilityBarOverlay {
         ECGuiPrimitives.drawStatusChip(gui, Minecraft.getInstance().font, x + width - 50, y + 2, Component.literal(currentMana + "/" + maxMana), currentMana > 0 ? ECGuiTheme.TEXT_SECONDARY : ECGuiTheme.STATE_ERROR);
     }
 
+    /**
+     * Draws contamination/radiation state using local services plus synced machine reactor states.
+     */
     private void renderRadiationHud(GuiGraphics gui, LocalPlayer player, int x, int y) {
         int width = HUD_PANEL_WIDTH;
         double ambient = RadiationService.ambientExposure(player);
@@ -149,6 +155,9 @@ public class AbilityBarOverlay {
         }
     }
 
+    /**
+     * Draws one ability slot with icon, cooldown radial mask, and mana cost chip.
+     */
     private void renderSlot(GuiGraphics gui, LocalPlayer player, int slotIndex, int x, int y) {
         String abilityId = RuntimeSyncClientState.abilityInSlot(slotIndex);
         if (abilityId == null || abilityId.isBlank()) {
@@ -235,6 +244,7 @@ public class AbilityBarOverlay {
                     ECConstants.MODID,
                     "textures/gui/abilities/" + id + ".png"
             );
+            // Resolution order: explicit ability icon -> spell icon -> fallback icon -> slot texture.
             if (hasResource(minecraft.getResourceManager(), specificIcon)) {
                 return specificIcon;
             }

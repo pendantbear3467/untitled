@@ -1,9 +1,15 @@
 package com.extremecraft.combat;
 
+/**
+ * Deterministic damage pipeline that applies modifiers in fixed order.
+ */
 public final class DamageCalculator {
     private DamageCalculator() {
     }
 
+    /**
+     * Calculates final damage and intermediate stage values for telemetry/debug UI.
+     */
     public static DamageResult calculate(DamageContext context) {
         if (context == null) {
             return new DamageResult(
@@ -27,22 +33,26 @@ public final class DamageCalculator {
         float baseDamage = Math.max(0.0F, context.damageAmount());
 
         DamageModifiers modifiers = context.modifiers();
+    // Stage 1-3: additive+multiplicative boosts from skill, weapon, and ability layers.
         float afterSkill = (baseDamage + modifiers.skillFlatBonus()) * modifiers.skillMultiplier();
         float afterWeapon = (afterSkill + modifiers.weaponFlatBonus()) * modifiers.weaponMultiplier();
         float afterAbility = (afterWeapon + modifiers.abilityFlatBonus()) * modifiers.abilityMultiplier();
 
+    // Stage 4: critical resolution.
         float criticalChance = clamp(context.criticalChance() + modifiers.criticalChanceBonus(), 0.0F, 1.0F);
         float criticalMultiplier = Math.max(1.0F, context.criticalMultiplier() + modifiers.criticalMultiplierBonus());
         boolean criticalHit = context.attacker() != null && context.attacker().getRandom().nextFloat() <= criticalChance;
 
         float afterCritical = criticalHit ? afterAbility * criticalMultiplier : afterAbility;
 
+    // Stage 5-6: armor then resistance mitigation.
         float armorReduction = clamp(ArmorCalculator.calculateReduction(context.armorValue()) * modifiers.armorMultiplier(), 0.0F, 0.95F);
         float afterArmor = afterCritical * (1.0F - armorReduction);
 
         float resistanceReduction = clamp(context.resistance(context.damageType()) * modifiers.resistanceMultiplier(), 0.0F, 1.0F);
         float afterResistance = afterArmor * (1.0F - resistanceReduction);
 
+    // Stage 7: status multipliers are applied last.
         float statusMultiplier = Math.max(0.0F, modifiers.statusMultiplier());
         float finalDamage = Math.max(0.0F, afterResistance * statusMultiplier);
 

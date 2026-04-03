@@ -39,6 +39,9 @@ public final class RuntimeSyncService {
     private RuntimeSyncService() {
     }
 
+    /**
+     * Forces all runtime sync channels for a player in one pass.
+     */
     public static void syncAll(ServerPlayer player) {
         syncStats(player, true);
         syncAbilities(player, true);
@@ -81,6 +84,9 @@ public final class RuntimeSyncService {
         LAST_MACHINES_HASH.remove(playerId);
     }
 
+    /**
+     * Pushes effective stat snapshot used by HUD/player UI.
+     */
     private static void syncStats(ServerPlayer player, boolean force) {
         StatCalculationEngine.PlayerStatSnapshot snapshot = StatCalculationEngine.calculate(player);
         CompoundTag payload = new CompoundTag();
@@ -95,6 +101,9 @@ public final class RuntimeSyncService {
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncRuntimeStatsS2CPacket(payload));
     }
 
+    /**
+     * Pushes ability cooldown and slot state mirror.
+     */
     private static void syncAbilities(ServerPlayer player, boolean force) {
         CompoundTag payload = AbilityCooldownManager.serializeFor(player);
 
@@ -106,6 +115,9 @@ public final class RuntimeSyncService {
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncAbilityStateS2CPacket(payload));
     }
 
+    /**
+     * Pushes unlocked skill node ids for client-side gating and highlights.
+     */
     private static void syncSkillUnlocks(ServerPlayer player, boolean force) {
         CompoundTag payload = new CompoundTag();
         ListTag skills = new ListTag();
@@ -123,6 +135,9 @@ public final class RuntimeSyncService {
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncSkillUnlocksS2CPacket(payload));
     }
 
+    /**
+     * Pushes progression stage identity/rank for overlays and stage gates.
+     */
     private static void syncStageState(ServerPlayer player, boolean force) {
         CompoundTag payload = new CompoundTag();
         var stage = StageManager.getPlayerStage(player);
@@ -136,6 +151,9 @@ public final class RuntimeSyncService {
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncStageStateS2CPacket(payload));
     }
 
+    /**
+     * Pushes nearby machine telemetry payload for machine and hazard UI.
+     */
     private static void syncMachineStates(ServerPlayer player, boolean force) {
         CompoundTag payload = new CompoundTag();
         CompoundTag machines = new CompoundTag();
@@ -168,6 +186,9 @@ public final class RuntimeSyncService {
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncMachineStateS2CPacket(payload));
     }
 
+    /**
+     * Hash-based dedupe check to avoid resending unchanged snapshots every tick.
+     */
     private static boolean shouldSend(ServerPlayer player, CompoundTag payload, Map<UUID, Integer> hashCache) {
         int nextHash = payload.hashCode();
         UUID playerId = player.getUUID();
@@ -175,6 +196,9 @@ public final class RuntimeSyncService {
         return previousHash == null || previousHash != nextHash;
     }
 
+    /**
+     * Extracts machine sync payload from the best available runtime contract.
+     */
     private static CompoundTag extractMachineState(BlockEntity blockEntity) {
         if (blockEntity instanceof MachineStateSyncProvider provider) {
             return provider.machineSyncTag();

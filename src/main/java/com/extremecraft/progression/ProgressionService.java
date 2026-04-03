@@ -31,6 +31,9 @@ public final class ProgressionService {
 
     private ProgressionService() {}
 
+    /**
+     * Adds player XP via progression capability and flushes dirty flags.
+     */
     public static void addXp(ServerPlayer player, int amount) {
         ProgressApi.get(player).ifPresent(data -> data.addXp(amount));
         flushDirty(player);
@@ -227,6 +230,9 @@ public final class ProgressionService {
         }).orElse(false);
     }
 
+    /**
+     * Applies deferred side effects only when capability marks relevant dirty flags.
+     */
     public static void flushDirty(ServerPlayer player) {
         ProgressApi.get(player).ifPresent(data -> {
             if (data.consumeAttributesDirty()) {
@@ -239,6 +245,9 @@ public final class ProgressionService {
         });
     }
 
+    /**
+     * Recomputes and applies level/class attribute modifiers onto vanilla attributes.
+     */
     public static void applyAttributes(ServerPlayer player) {
         ProgressApi.get(player).ifPresent(data -> {
             int level = data.level();
@@ -271,6 +280,9 @@ public final class ProgressionService {
         });
     }
 
+    /**
+     * Sends full serialized progression snapshot to the owning client.
+     */
     public static void sync(ServerPlayer player) {
         ProgressApi.get(player).ifPresent(data -> ModNetwork.CHANNEL.send(
                 PacketDistributor.PLAYER.with(() -> player),
@@ -278,6 +290,9 @@ public final class ProgressionService {
         ));
     }
 
+    /**
+     * Replaces transient additive modifier by UUID.
+     */
     private static void applyAdd(AttributeInstance attr, UUID id, String name, double amount) {
         if (attr == null) return;
         AttributeModifier existing = attr.getModifier(id);

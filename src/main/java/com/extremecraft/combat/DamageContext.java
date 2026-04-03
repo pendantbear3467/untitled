@@ -6,6 +6,12 @@ import net.minecraft.world.item.ItemStack;
 import java.util.EnumMap;
 import java.util.Map;
 
+/**
+ * Mutable combat input model carried through damage calculation stages.
+ *
+ * <p>The context starts from event/ability data and is enriched with stat modifiers,
+ * resistances, and status effects before final calculation.</p>
+ */
 public final class DamageContext {
     private final LivingEntity attacker;
     private final LivingEntity target;
@@ -125,6 +131,9 @@ public final class DamageContext {
         return new Builder();
     }
 
+    /**
+     * Fluent builder used by event adapters and ability execution paths.
+     */
     public static final class Builder {
         private LivingEntity attacker;
         private LivingEntity target;

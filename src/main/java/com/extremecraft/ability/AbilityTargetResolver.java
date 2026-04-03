@@ -8,13 +8,26 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 
+/**
+ * Resolves concrete runtime targets for an ability cast.
+ *
+ * <p>This resolver translates declarative target types from {@link AbilityDefinition} into a
+ * normalized {@link TargetBundle} consumed by {@link AbilityEngine} and {@link AbilityExecutor}.
+ * </p>
+ */
 public final class AbilityTargetResolver {
+    /**
+     * Result container: selected entities and the positional center used by area/summon effects.
+     */
     public record TargetBundle(List<LivingEntity> entities, Vec3 center) {
     }
 
     private AbilityTargetResolver() {
     }
 
+    /**
+     * Main target resolution entry point with graceful fallbacks for missing definition/context.
+     */
     public static TargetBundle resolve(AbilityContext context) {
         if (context == null || context.player() == null) {
             return new TargetBundle(List.of(), Vec3.ZERO);
@@ -37,6 +50,9 @@ public final class AbilityTargetResolver {
         };
     }
 
+    /**
+     * Performs ray-like entity selection along look direction within configured range.
+     */
     private static TargetBundle resolveEntityTarget(AbilityContext context) {
         Vec3 start = context.player().getEyePosition();
         Vec3 end = start.add(context.player().getLookAngle().scale(context.definition().range()));
@@ -60,6 +76,9 @@ public final class AbilityTargetResolver {
         return new TargetBundle(List.of(), end);
     }
 
+    /**
+     * Collects all living entities inside radius around explicit context position or player.
+     */
     private static TargetBundle resolveAreaTarget(AbilityContext context) {
         double radius = Math.max(1.0D, context.definition().radius());
         Vec3 center = context.position() == null ? context.player().position() : context.position();
@@ -72,6 +91,9 @@ public final class AbilityTargetResolver {
         return new TargetBundle(List.copyOf(entities), center);
     }
 
+    /**
+     * Projectile targeting behaves like entity ray targeting but preserves end point fallback.
+     */
     private static TargetBundle resolveProjectileTarget(AbilityContext context) {
         Vec3 start = context.player().getEyePosition();
         Vec3 end = start.add(context.player().getLookAngle().scale(context.definition().range()));

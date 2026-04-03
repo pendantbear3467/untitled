@@ -1,5 +1,11 @@
 package com.extremecraft.combat;
 
+/**
+ * Aggregated modifier bucket used by combat calculation.
+ *
+ * <p>Fields are intentionally mutable so multiple systems (skills, buffs, equipment, status)
+ * can contribute to one context before final computation.</p>
+ */
 public final class DamageModifiers {
     private float skillFlatBonus = 0.0F;
     private float skillMultiplier = 1.0F;

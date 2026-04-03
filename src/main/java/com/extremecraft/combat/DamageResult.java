@@ -1,5 +1,10 @@
 package com.extremecraft.combat;
 
+/**
+ * Immutable damage breakdown emitted by {@link DamageCalculator}.
+ *
+ * <p>Used for final hurt amount and for observability in debug overlays/events.</p>
+ */
 public record DamageResult(
         DamageType damageType,
         float baseDamage,

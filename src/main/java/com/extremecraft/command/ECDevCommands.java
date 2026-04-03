@@ -61,10 +61,19 @@ import net.minecraftforge.network.PacketDistributor;
 
 import java.util.stream.Collectors;
 
+/**
+ * Development and diagnostics command tree for runtime validation, sync, and test actions.
+ */
 public final class ECDevCommands {
     private ECDevCommands() {
     }
 
+    /**
+     * Registers all ec/* command branches.
+     *
+     * <p>This command tree intentionally touches many subsystems (ability, progression,
+     * datapack registries, sync services) and should remain dev/operator only for mutation paths.</p>
+     */
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("ecvalidate")
                 .requires(src -> src.hasPermission(2))
@@ -353,6 +362,9 @@ public final class ECDevCommands {
         dispatcher.register(root);
     }
 
+    /**
+     * Adds a temporary developer-only ability grant in persistent player data.
+     */
     private static void addDevAbility(ServerPlayer player, String abilityId) {
         var root = player.getPersistentData();
         var dev = root.getCompound("ec_dev");
@@ -370,6 +382,9 @@ public final class ECDevCommands {
         root.put("ec_dev", dev);
     }
 
+    /**
+     * Triggers asynchronous datapack reload through the server pack repository.
+     */
     private static int reloadData(CommandSourceStack source) {
         var server = source.getServer();
         server.reloadResources(server.getPackRepository().getSelectedIds())

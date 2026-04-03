@@ -47,6 +47,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Locale;
 
+/**
+ * Main multi-tab player console for stats, skills, class, magic, dual-wield, and modules.
+ *
+ * <p>Reads live client mirrors from runtime sync packets and sends explicit mutation packets for
+ * upgrades/actions, keeping server authority for progression and gameplay state.</p>
+ */
 public class ExtremePlayerScreen extends Screen {
     private static final ResourceLocation BG_TEXTURE = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/extreme_player_menu.png");
     private static final ResourceLocation MAGIC_SLOT = ResourceLocation.fromNamespaceAndPath(ECConstants.MODID, "textures/gui/magic_slot.png");
@@ -163,6 +169,7 @@ public class ExtremePlayerScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // Frame and tabs are shared; tab body renderers are isolated per domain.
         renderBackground(graphics);
         renderFrame(graphics);
         renderTabs(graphics, mouseX, mouseY);
@@ -221,6 +228,7 @@ public class ExtremePlayerScreen extends Screen {
         }
 
         PlayerStatsCapability stats = statsOpt.get();
+        // Prefer progression-owned level/xp when available; fallback to mirrored stats snapshot.
         int playerLevel = progressOpt.map(PlayerProgressData::level).orElse(stats.level());
         int playerXp = progressOpt.map(PlayerProgressData::xp).orElse(stats.experience());
         int xpToNext = progressOpt.map(data -> PlayerProgressData.xpToNextLevel(data.level())).orElse(stats.experienceToNextLevel());
@@ -301,6 +309,9 @@ public class ExtremePlayerScreen extends Screen {
         skillTreePanel.render(graphics, font, x, y, w, h - 16, activeSkillTree, mouseX, mouseY);
     }
 
+    /**
+     * Renders rune slots plus spellbook data from runtime registries and mana state.
+     */
     private void renderMagicTab(GuiGraphics graphics, int mouseX, int mouseY) {
         int x = leftPos + 16;
         int y = topPos + 62;

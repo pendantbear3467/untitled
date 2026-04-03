@@ -17,6 +17,9 @@ public final class ClassAccessResolver {
     private ClassAccessResolver() {
     }
 
+    /**
+     * Resolves class metadata through canonical progression definitions, then legacy fallback.
+     */
     public static PlayerClass resolve(String classId) {
         String key = normalize(classId);
         if (key.isBlank()) {
@@ -41,11 +44,17 @@ public final class ClassAccessResolver {
         return ClassRegistry.get(key);
     }
 
+    /**
+     * Convenience projection for ability access checks.
+     */
     public static List<String> abilityAccess(String classId) {
         PlayerClass playerClass = resolve(classId);
         return playerClass == null ? List.of() : playerClass.abilityAccess();
     }
 
+    /**
+     * Convenience projection for spell access checks.
+     */
     public static List<String> spellAccess(String classId) {
         PlayerClass playerClass = resolve(classId);
         return playerClass == null ? List.of() : playerClass.spellAccess();

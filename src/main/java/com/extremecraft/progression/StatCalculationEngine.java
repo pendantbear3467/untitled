@@ -10,7 +10,13 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Computes a runtime snapshot of effective player stats after class passives and buffs.
+ */
 public final class StatCalculationEngine {
+    /**
+     * Immutable view sent to client runtime sync and read by UI overlays.
+     */
     public record PlayerStatSnapshot(Map<String, Double> values) {
         public double get(String id) {
             return values.getOrDefault(id, 0.0D);
@@ -20,6 +26,9 @@ public final class StatCalculationEngine {
     private StatCalculationEngine() {
     }
 
+    /**
+     * Builds effective stat values from base capability values + class/buff modifiers.
+     */
     public static PlayerStatSnapshot calculate(ServerPlayer player) {
         PlayerStatsCapability stats = PlayerStatsApi.get(player).orElse(null);
         if (stats == null) {
@@ -43,11 +52,13 @@ public final class StatCalculationEngine {
 
         PlayerClass playerClass = ClassAbilityBindings.current(player);
         if (playerClass != null) {
+            // Class passives add/multiply baseline stats.
             Map<String, Double> passives = ClassPassives.resolve(playerClass);
             passives.forEach(modifiers::add);
             playerClass.statScaling().forEach((stat, scale) -> modifiers.multiply(stat, scale - 1.0D));
         }
 
+        // Buff stacks from progression systems layer on top of class adjustments.
         BuffStackingSystem.activeFor(player).values().forEach(buff -> {
             if (buff.id().startsWith("buff:spell_power")) {
                 modifiers.add("spell_power", buff.stacks() * 0.5D);

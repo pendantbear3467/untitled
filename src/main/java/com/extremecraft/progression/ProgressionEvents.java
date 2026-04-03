@@ -21,6 +21,9 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
  * through {@link GuildQuestRewardService}.</p>
  */
 public class ProgressionEvents {
+    /**
+     * Rehydrates synced progression state when player joins and pushes dependent mirrors.
+     */
     @SubscribeEvent
     public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
@@ -31,6 +34,9 @@ public class ProgressionEvents {
         }
     }
 
+    /**
+     * Copies progression capability data during respawn/dimension transfer clone flows.
+     */
     @SubscribeEvent
     public void onPlayerClone(PlayerEvent.Clone event) {
         if (!(event.getOriginal() instanceof ServerPlayer oldPlayer) || !(event.getEntity() instanceof ServerPlayer newPlayer)) {
@@ -45,6 +51,9 @@ public class ProgressionEvents {
         );
     }
 
+    /**
+     * Per-tick progression flush and exploration-based progression grants.
+     */
     @SubscribeEvent
     public void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide) return;
@@ -57,6 +66,7 @@ public class ProgressionEvents {
         if (((player.tickCount + regionTickOffset) % regionTickInterval) == 0) {
             int rx = player.blockPosition().getX() >> 8;
             int rz = player.blockPosition().getZ() >> 8;
+            // Region key is coarse-grained to prevent per-chunk progression spam.
             String regionKey = player.level().dimension().location() + "|" + rx + "|" + rz;
             if (ProgressionService.discoverRegion(player, regionKey, false)) {
                 ProgressionFacade.grantPlayerXp(player, 8);
@@ -67,6 +77,9 @@ public class ProgressionEvents {
         }
     }
 
+    /**
+     * Kill rewards feed player XP, combat skill XP, and matching quest counters.
+     */
     @SubscribeEvent
     public void onKill(LivingDeathEvent event) {
         if (event.getEntity().level().isClientSide) return;
@@ -82,6 +95,9 @@ public class ProgressionEvents {
         }
     }
 
+    /**
+     * Crafting rewards grant progression XP and skill XP based on crafted item domain.
+     */
     @SubscribeEvent
     public void onCraft(PlayerEvent.ItemCraftedEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
@@ -99,6 +115,9 @@ public class ProgressionEvents {
         }
     }
 
+    /**
+     * Pickup contributes to collection quests.
+     */
     @SubscribeEvent
     public void onPickup(EntityItemPickupEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
@@ -106,6 +125,9 @@ public class ProgressionEvents {
         incrementQuest(player, QuestType.COLLECTION, count);
     }
 
+    /**
+     * Block breaking contributes baseline XP and mining skill progression.
+     */
     @SubscribeEvent
     public void onBlockBreak(BlockEvent.BreakEvent event) {
         if (event.getPlayer() instanceof ServerPlayer player) {
@@ -116,6 +138,9 @@ public class ProgressionEvents {
         }
     }
 
+    /**
+     * Safely increments all matching active quests by capped delta and flushes once.
+     */
     private static void incrementQuest(ServerPlayer player, QuestType type, int amount) {
         if (amount <= 0) return;
 

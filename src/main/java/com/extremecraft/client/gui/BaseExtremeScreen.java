@@ -33,6 +33,9 @@ public abstract class BaseExtremeScreen extends Screen {
         panelTop = (this.height - panelHeight) / 2;
     }
 
+    /**
+     * Shared render pipeline so derived screens only provide content and tooltips.
+     */
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         ECGuiPrimitives.drawScreenBackdrop(guiGraphics, this.width, this.height);

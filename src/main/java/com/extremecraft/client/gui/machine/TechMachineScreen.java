@@ -14,6 +14,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
+/**
+ * Unified machine UI that combines container slots with synced machine telemetry panel.
+ */
 public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> {
     private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/container/furnace.png");
     private Button scramButton;
@@ -60,7 +63,7 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
         }
         graphics.drawString(font, Component.literal("E"), x + 8, y + 8, ECGuiTheme.TEXT_MUTED, false);
 
-        // Side diagnostics panel with explicit machine state readability.
+        // Side diagnostics panel consumes RuntimeSyncClientState machine payloads for readability.
         int panelX = x + imageWidth + 6;
         int panelY = y;
         int panelW = 126;
@@ -143,6 +146,9 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
         return ReactorIdentity.isFirstReleaseReactor(menu.machineId());
     }
 
+    /**
+     * Human-readable status line derived from menu slot state plus synced reactor telemetry.
+     */
     private String machineStatusLine() {
         ItemStack input = menu.getSlot(0).getItem();
         ItemStack fuel = menu.getSlot(1).getItem();

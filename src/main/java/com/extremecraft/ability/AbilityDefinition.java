@@ -9,7 +9,16 @@ import net.minecraft.util.GsonHelper;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data-driven ability metadata loaded from datapack JSON and consumed by runtime cast flow.
+ *
+ * <p>Definitions describe targeting, costs, cooldowns, and effect payloads; execution mechanics
+ * remain in {@link AbilityExecutor}. This split lets balancing/content iterate without code edits.</p>
+ */
 public final class AbilityDefinition {
+    /**
+     * Resolver-facing target semantics used by {@link AbilityTargetResolver}.
+     */
     public enum TargetType {
         SELF,
         ENTITY,
@@ -17,6 +26,9 @@ public final class AbilityDefinition {
         PROJECTILE,
         NONE;
 
+        /**
+         * Supports multiple schema aliases to keep old datapacks compatible.
+         */
         public static TargetType byName(String value) {
             if (value == null || value.isBlank()) {
                 return SELF;
@@ -93,6 +105,14 @@ public final class AbilityDefinition {
         return effects;
     }
 
+    /**
+     * Parses a datapack ability JSON document into normalized runtime metadata.
+     *
+     * <p>Compatibility notes:
+     * cooldown can be expressed as cooldown_ticks or cooldown (seconds)
+     * target can be expressed as target or target_type
+     * legacy damage-only definitions are converted into a synthetic damage effect</p>
+     */
     public static AbilityDefinition fromJson(ResourceLocation key, JsonObject root) {
         String id = GsonHelper.getAsString(root, "id", key.getPath()).trim().toLowerCase();
         int manaCost = Math.max(0, GsonHelper.getAsInt(root, "mana_cost", 0));
@@ -101,6 +121,7 @@ public final class AbilityDefinition {
         if (root.has("cooldown_ticks")) {
             cooldownTicks = Math.max(0, GsonHelper.getAsInt(root, "cooldown_ticks", 0));
         } else {
+            // Older schema stores cooldown in seconds; convert to ticks.
             cooldownTicks = Math.max(0, GsonHelper.getAsInt(root, "cooldown", 0)) * 20;
         }
 
@@ -123,6 +144,7 @@ public final class AbilityDefinition {
         }
 
         if (effects.isEmpty() && root.has("damage")) {
+            // Minimal legacy fallback so old damage-only files still execute.
             effects.add(new AbilityEffect("damage", GsonHelper.getAsDouble(root, "damage", 0.0D), 0, 0, "", java.util.Map.of()));
         }
 

@@ -47,6 +47,9 @@ public final class AbilityEngine {
     private AbilityEngine() {
     }
 
+    /**
+     * One-time registration of built-in Java abilities.
+     */
     public static synchronized void initialize() {
         if (initialized) {
             return;
@@ -59,6 +62,9 @@ public final class AbilityEngine {
         initialized = true;
     }
 
+    /**
+     * Returns current data-driven definitions for diagnostics and API bridging.
+     */
     public static Collection<AbilityDefinition> loadDefinitions() {
         return AbilityRegistry.all();
     }
@@ -75,11 +81,13 @@ public final class AbilityEngine {
 
         UUID playerId = player.getUUID();
         if (requestPlayerUuid != null && !playerId.equals(requestPlayerUuid)) {
+            // Defensive check for network-originated cast requests.
             return AbilityCastResult.failure("", AbilityCastResult.Status.EXECUTION_FAILED, "uuid_mismatch");
         }
 
         long now = player.level().getGameTime();
         if (isCastRateLimited(playerId, now)) {
+            // Global short interval guard to prevent cast-spam and duplicate packet bursts.
             return AbilityCastResult.failure("", AbilityCastResult.Status.EXECUTION_FAILED, "rate_limited");
         }
 
@@ -100,6 +108,7 @@ public final class AbilityEngine {
                 return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.UNKNOWN_ABILITY, "ability_not_registered");
             }
 
+            // Enforces unlock progression, class gates, and required-class metadata.
             if (!validateRequirements(player, abilityId, ability, definition)) {
                 return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.EXECUTION_FAILED, "requirements_failed");
             }
@@ -112,6 +121,7 @@ public final class AbilityEngine {
 
             int manaCost = resolveManaCost(abilityId, definition);
             if (manaCost > 0 && !hasEnoughMana(player, manaCost)) {
+                // Sync mana immediately so client feedback reflects the failed cast.
                 ManaService.sync(player);
                 return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.INSUFFICIENT_MANA, "insufficient_mana");
             }
@@ -140,6 +150,7 @@ public final class AbilityEngine {
             );
 
             if (manaCost > 0 && !ManaService.tryConsume(player, manaCost)) {
+                // Re-check at commit time to avoid race with other mana-consuming actions.
                 return AbilityCastResult.failure(abilityId, AbilityCastResult.Status.INSUFFICIENT_MANA, "insufficient_mana");
             }
 
@@ -169,6 +180,9 @@ public final class AbilityEngine {
         }
     }
 
+    /**
+     * Registers an active channel entry that emits repeated pulses until end tick.
+     */
     public static void beginChannel(AbilityContext context, int channelTicks, int pulseIntervalTicks, double radius, AbilityEffect pulseEffect) {
         if (context == null || context.player() == null || pulseEffect == null) {
             return;
@@ -190,6 +204,9 @@ public final class AbilityEngine {
         ACTIVE_CHANNELS.put(context.player().getUUID(), channel);
     }
 
+    /**
+     * Channel heartbeat invoked by server tick handlers.
+     */
     public static void tickChanneling(ServerPlayer player) {
         ActiveChannel active = ACTIVE_CHANNELS.get(player.getUUID());
         if (active == null) {
@@ -206,6 +223,7 @@ public final class AbilityEngine {
             return;
         }
 
+        // Rehydrate context every pulse so effect logic reads fresh player/world state.
         AbilityDefinition definition = AbilityRegistry.get(active.abilityId);
         AbilityContext pulseContext = AbilityContext.of(player, definition)
                 .withAbilityLevel(active.abilityLevel)
@@ -242,11 +260,17 @@ public final class AbilityEngine {
         CAST_IN_PROGRESS.remove(playerId);
     }
 
+    /**
+     * Returns true when two casts are attempted inside the minimum spacing window.
+     */
     private static boolean isCastRateLimited(UUID playerId, long now) {
         long lastCast = LAST_CAST_TICK.getOrDefault(playerId, Long.MIN_VALUE / 2L);
         return (now - lastCast) < CAST_MIN_INTERVAL_TICKS;
     }
 
+    /**
+     * Enforces all gameplay access checks before mana and execution are attempted.
+     */
     private static boolean validateRequirements(ServerPlayer player, String abilityId, Ability ability, AbilityDefinition definition) {
         if (hasDevGrantedAbility(player, abilityId)) {
             return true;
@@ -267,10 +291,16 @@ public final class AbilityEngine {
         return true;
     }
 
+    /**
+     * Fast pre-check against current mana snapshot.
+     */
     private static boolean hasEnoughMana(ServerPlayer player, int manaCost) {
         return ManaApi.get(player).map(mana -> mana.currentMana() >= manaCost).orElse(false);
     }
 
+    /**
+     * Resolves mana cost from definition first, then built-in fallback map.
+     */
     private static int resolveManaCost(String abilityId, AbilityDefinition definition) {
         if (definition != null && definition.manaCost() > 0) {
             return definition.manaCost();
@@ -278,6 +308,9 @@ public final class AbilityEngine {
         return BUILTIN_MANA_COSTS.getOrDefault(abilityId, 0);
     }
 
+    /**
+     * Applies progression cooldown reduction with safety clamp.
+     */
     private static int resolveCooldown(ServerPlayer player, Ability ability, AbilityDefinition definition) {
         int base = 0;
         if (definition != null && definition.cooldownTicks() > 0) {
@@ -294,6 +327,9 @@ public final class AbilityEngine {
         return Math.max(0, Math.round(base * (1.0F - reduction)));
     }
 
+    /**
+     * Validates whether resolver results satisfy target type constraints.
+     */
     private static boolean isTargetValid(AbilityDefinition.TargetType targetType, AbilityTargetResolver.TargetBundle bundle) {
         if (targetType == null) {
             return true;
@@ -305,6 +341,9 @@ public final class AbilityEngine {
         };
     }
 
+    /**
+     * Development bypass for testing unreleased abilities without progression unlocks.
+     */
     private static boolean hasDevGrantedAbility(ServerPlayer player, String abilityId) {
         if (abilityId == null || abilityId.isBlank()) {
             return false;
@@ -320,6 +359,9 @@ public final class AbilityEngine {
         return false;
     }
 
+    /**
+     * Rejects NaN/Infinity vectors from network inputs.
+     */
     private static boolean isFinite(Vec3 target) {
         return Double.isFinite(target.x) && Double.isFinite(target.y) && Double.isFinite(target.z);
     }

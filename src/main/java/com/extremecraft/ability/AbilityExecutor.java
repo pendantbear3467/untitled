@@ -19,16 +19,28 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Executes effect payloads for data-driven abilities.
+ *
+ * <p>This class is deliberately stateless: all runtime state is supplied through
+ * {@link AbilityContext}, and long-lived cast bookkeeping stays in {@link AbilityEngine}.</p>
+ */
 public final class AbilityExecutor {
     private static final double MAX_TELEPORT_DISTANCE = 64.0D;
 
     private AbilityExecutor() {
     }
 
+    /**
+     * Legacy convenience wrapper that delegates to the full cast pipeline.
+     */
     public static boolean tryActivate(ServerPlayer player, String requestedAbilityId) {
         return AbilityEngine.cast(player, requestedAbilityId).succeeded();
     }
 
+    /**
+     * Executes a definition directly, usually from spell-specific integration paths.
+     */
     public static boolean executeSpellAbility(ServerPlayer player, AbilityDefinition definition) {
         if (player == null || definition == null || player.level().isClientSide()) {
             return false;
@@ -40,6 +52,9 @@ public final class AbilityExecutor {
         return true;
     }
 
+    /**
+     * Executes a definition from a preconstructed context, including resolved target pipeline.
+     */
     public static boolean executeDefinition(AbilityContext context) {
         if (context == null || context.player() == null || context.definition() == null || context.player().level().isClientSide()) {
             return false;
@@ -55,6 +70,9 @@ public final class AbilityExecutor {
         return true;
     }
 
+    /**
+     * Executes one projectile effect (usually arrow-based spell projectile).
+     */
     public static void executeProjectile(AbilityContext context, AbilityEffect effect) {
         if (context == null || effect == null) {
             return;
@@ -62,10 +80,16 @@ public final class AbilityExecutor {
         applyProjectile(context, effect);
     }
 
+    /**
+     * Overload with default projectile profile used by legacy call sites.
+     */
     public static void executeProjectile(AbilityContext context) {
         executeProjectile(context, new AbilityEffect("projectile", 2.0D, 0, 0, "", Map.of()));
     }
 
+    /**
+     * Applies provided effects to all entities inside a simple radius around the caster.
+     */
     public static void executeAreaEffect(AbilityContext context, double radius, List<AbilityEffect> effects) {
         if (context == null || context.player() == null || context.player().level().isClientSide() || effects == null || effects.isEmpty()) {
             return;
@@ -80,6 +104,9 @@ public final class AbilityExecutor {
         applyEffects(context, targets, context.player().position(), effects);
     }
 
+    /**
+     * Performs a short directional movement/teleport burst.
+     */
     public static void executeMovement(AbilityContext context, double distance) {
         if (context == null || context.player() == null || context.player().level().isClientSide()) {
             return;
@@ -95,6 +122,9 @@ public final class AbilityExecutor {
         context.player().swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
     }
 
+    /**
+     * Applies heal values to explicit targets or defaults to the caster.
+     */
     public static void executeHeal(AbilityContext context, List<? extends LivingEntity> targets, AbilityEffect effect) {
         if (context == null || effect == null) {
             return;
@@ -105,6 +135,9 @@ public final class AbilityExecutor {
         applyHeal(castTargets, effect);
     }
 
+    /**
+     * Applies a beneficial or harmful mob-effect payload.
+     */
     public static void executeBuff(AbilityContext context, List<? extends LivingEntity> targets, AbilityEffect effect, boolean harmful) {
         if (context == null || effect == null) {
             return;
@@ -115,6 +148,9 @@ public final class AbilityExecutor {
         applyBuff(castTargets, effect, harmful);
     }
 
+    /**
+     * Starts channeling by converting one effect into periodic pulse configuration.
+     */
     public static void executeChannel(AbilityContext context, AbilityEffect effect) {
         if (context == null || context.player() == null || effect == null) {
             return;
@@ -137,6 +173,9 @@ public final class AbilityExecutor {
         AbilityEngine.beginChannel(context, channelTicks, pulseTicks, radius, pulseEffect);
     }
 
+    /**
+     * Maps channel id values to runtime effect types used by pulse execution.
+     */
     private static String resolveChannelPulseType(AbilityEffect effect) {
         String id = effect.id();
         if ("heal".equals(id) || "ignite".equals(id) || "buff".equals(id) || "debuff".equals(id) || "projectile".equals(id)) {
@@ -145,10 +184,16 @@ public final class AbilityExecutor {
         return "damage";
     }
 
+    /**
+     * Uses the definition's effect list by default.
+     */
     private static void applyEffects(AbilityContext context, List<LivingEntity> targets, Vec3 center) {
         applyEffects(context, targets, center, context.definition() == null ? List.of() : context.definition().effects());
     }
 
+    /**
+     * Central effect dispatcher. Each effect type delegates to a focused helper.
+     */
     private static void applyEffects(AbilityContext context, List<LivingEntity> targets, Vec3 center, List<AbilityEffect> effects) {
         for (AbilityEffect effect : effects) {
             switch (effect.type()) {
@@ -168,6 +213,9 @@ public final class AbilityExecutor {
         }
     }
 
+    /**
+     * Routes ability damage through combat engine so mitigation/crit/status systems stay unified.
+     */
     private static void applyDamage(AbilityContext context, List<LivingEntity> targets, AbilityEffect effect) {
         if (context == null || context.caster() == null || context.caster().level().isClientSide() || targets.isEmpty()) {
             return;
@@ -198,6 +246,9 @@ public final class AbilityExecutor {
         }
     }
 
+    /**
+     * Applies vanilla fire timer effect.
+     */
     private static void applyIgnite(List<LivingEntity> targets, AbilityEffect effect) {
         int seconds = Math.max(1, effect.duration());
         for (LivingEntity target : targets) {
@@ -208,6 +259,9 @@ public final class AbilityExecutor {
         }
     }
 
+    /**
+     * Applies direct heal amount.
+     */
     private static void applyHeal(List<LivingEntity> targets, AbilityEffect effect) {
         float amount = (float) Math.max(0.0D, effect.value());
         for (LivingEntity target : targets) {
@@ -218,6 +272,9 @@ public final class AbilityExecutor {
         }
     }
 
+    /**
+     * Applies mob effects and records stack metadata for progression UI/logic.
+     */
     private static void applyBuff(List<LivingEntity> targets, AbilityEffect effect, boolean harmful) {
         ResourceLocation effectId = ResourceLocation.tryParse(effect.id());
         if (effectId == null) {
@@ -241,6 +298,9 @@ public final class AbilityExecutor {
         }
     }
 
+    /**
+     * Spawns configured mob entities at resolved ability center.
+     */
     private static void applySummon(AbilityContext context, Vec3 center, AbilityEffect effect) {
         if (context == null || context.caster() == null || context.caster().level().isClientSide()) {
             return;
@@ -262,6 +322,9 @@ public final class AbilityExecutor {
         }
     }
 
+    /**
+     * Spawns an arrow projectile using effect scalars for speed and damage tuning.
+     */
     private static void applyProjectile(AbilityContext context, AbilityEffect effect) {
         if (context.caster().level().isClientSide()) {
             return;
@@ -282,6 +345,9 @@ public final class AbilityExecutor {
         context.caster().level().addFreshEntity(arrow);
     }
 
+    /**
+     * Performs short-range look-direction teleport with hard safety cap.
+     */
     private static void applyTeleport(AbilityContext context, AbilityEffect effect) {
         if (context == null || context.caster() == null || context.caster().level().isClientSide()) {
             return;
@@ -298,4 +364,3 @@ public final class AbilityExecutor {
         context.caster().teleportTo(targetX, targetY, targetZ);
     }
 }
-
