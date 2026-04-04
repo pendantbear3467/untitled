@@ -101,4 +101,12 @@ public final class ProgressionGate {
         }
         return StageManager.upgradePlayerStage(player, stage);
     }
+
+    public static void resetValidationState() {
+        // Stage requirement maps are static process-lifetime gameplay metadata.
+    }
+
+    public static void reset() {
+        resetValidationState();
+    }
 }

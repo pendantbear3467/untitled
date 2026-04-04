@@ -6,6 +6,7 @@ import com.extremecraft.combat.DamageType;
 import com.extremecraft.progression.BuffStackingSystem;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -106,6 +107,9 @@ public final class AbilityExecutor {
      */
     public static void executeMovement(AbilityContext context, double distance) {
         if (context == null || context.player() == null || context.player().level().isClientSide()) {
+            return;
+        }
+        if (!(context.player().level() instanceof ServerLevel)) {
             return;
         }
 
@@ -217,6 +221,9 @@ public final class AbilityExecutor {
         if (context == null || context.caster() == null || context.caster().level().isClientSide() || targets.isEmpty()) {
             return;
         }
+        if (!(context.caster().level() instanceof ServerLevel)) {
+            return;
+        }
 
         float damage = (float) Math.max(0.0D, effect.value());
         DamageType damageType = switch ((effect.id() == null ? "" : effect.id()).trim().toLowerCase()) {
@@ -303,6 +310,9 @@ public final class AbilityExecutor {
         if (context == null || context.caster() == null || context.caster().level().isClientSide()) {
             return;
         }
+        if (!(context.caster().level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
 
         ResourceLocation entityId = ResourceLocation.tryParse(effect.id());
         if (entityId == null || !BuiltInRegistries.ENTITY_TYPE.containsKey(entityId)) {
@@ -314,9 +324,9 @@ public final class AbilityExecutor {
             return;
         }
 
-        if (type.create(context.caster().level()) instanceof Mob mob) {
+        if (type.create(serverLevel) instanceof Mob mob) {
             mob.moveTo(center.x, center.y, center.z, context.caster().getYRot(), context.caster().getXRot());
-            context.caster().level().addFreshEntity(mob);
+            serverLevel.addFreshEntity(mob);
         }
     }
 
@@ -324,11 +334,14 @@ public final class AbilityExecutor {
      * Spawns an arrow projectile using effect scalars for speed and damage tuning.
      */
     private static void applyProjectile(AbilityContext context, AbilityEffect effect) {
-        if (context.caster().level().isClientSide()) {
+        if (context == null || context.caster() == null || context.caster().level().isClientSide()) {
+            return;
+        }
+        if (!(context.caster().level() instanceof ServerLevel serverLevel)) {
             return;
         }
 
-        AbstractArrow arrow = (AbstractArrow) EntityType.ARROW.create(context.caster().level());
+        AbstractArrow arrow = (AbstractArrow) EntityType.ARROW.create(serverLevel);
         if (arrow == null) {
             return;
         }
@@ -340,7 +353,7 @@ public final class AbilityExecutor {
         if (effect.value() > 0.0D) {
             arrow.setBaseDamage(effect.value());
         }
-        context.caster().level().addFreshEntity(arrow);
+        serverLevel.addFreshEntity(arrow);
     }
 
     /**
@@ -348,6 +361,9 @@ public final class AbilityExecutor {
      */
     private static void applyTeleport(AbilityContext context, AbilityEffect effect) {
         if (context == null || context.caster() == null || context.caster().level().isClientSide()) {
+            return;
+        }
+        if (!(context.caster().level() instanceof ServerLevel)) {
             return;
         }
 

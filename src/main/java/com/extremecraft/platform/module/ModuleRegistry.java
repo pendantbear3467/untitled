@@ -28,4 +28,12 @@ public final class ModuleRegistry {
     public static synchronized int size() {
         return MODULES.size();
     }
+
+    public static synchronized void resetValidationState() {
+        MODULES.clear();
+    }
+
+    public static synchronized void reset() {
+        resetValidationState();
+    }
 }

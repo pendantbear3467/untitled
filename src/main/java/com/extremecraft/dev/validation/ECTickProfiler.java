@@ -44,6 +44,12 @@ public final class ECTickProfiler {
         }
     }
 
+    public static void resetValidationState() {
+        synchronized (SAMPLES) {
+            SAMPLES.clear();
+        }
+    }
+
     private static final class Sample {
         private final LongAdder totalNanos = new LongAdder();
         private final LongAdder count = new LongAdder();

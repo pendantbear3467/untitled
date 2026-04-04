@@ -31,6 +31,11 @@ public final class ExtremeCraftModuleLoader {
     private ExtremeCraftModuleLoader() {
     }
 
+    public static synchronized void resetValidationState() {
+        ModuleRegistry.resetValidationState();
+        EXTERNAL_LOADERS.clear();
+    }
+
     public static void loadAll(ExtremeCraftApiProvider apiProvider) {
         Map<String, ExtremeCraftModule> discovered = new LinkedHashMap<>();
 

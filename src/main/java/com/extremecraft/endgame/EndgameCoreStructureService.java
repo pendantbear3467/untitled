@@ -88,6 +88,10 @@ public final class EndgameCoreStructureService {
         CACHE.keySet().removeIf(key -> key.dimension.equals(dimension) && key.controllerPos.distSqr(changedPos) <= maxDistance);
     }
 
+    public static void resetValidationState() {
+        CACHE.clear();
+    }
+
     private static ValidationState computeValidation(ServerLevel level, BlockPos controllerPos) {
         EndgameCoreDefinition definition = activeDefinition();
         int totalEnergyBonus = 0;

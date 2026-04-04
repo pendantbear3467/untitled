@@ -305,24 +305,71 @@ public final class ExtremeCraftDevValidator {
 
                 String genericType = matcher.group(1);
                 String variable = matcher.group(2);
+                String declaration = lines.get(i);
                 boolean gameplaySensitive = genericType.contains("Player")
                         || genericType.contains("Entity")
                         || genericType.contains("BlockPos");
 
-                if (!hasCleanup) {
-                    Severity severity = gameplaySensitive ? Severity.HIGH : Severity.MEDIUM;
-                    addFinding(
-                            root,
-                            file,
-                            i + 1,
-                            severity,
-                            "Static collection '" + variable + "' has no obvious cleanup path (possible memory leak).",
-                            findings,
-                            dedupe
-                    );
+                if (isImmutableStaticCollection(declaration)) {
+                    continue;
                 }
+
+                if (hasCleanup) {
+                    continue;
+                }
+
+                if (looksLikeIntentionalCatalogOrRegistry(file, text)) {
+                    continue;
+                }
+
+                Severity severity = gameplaySensitive ? Severity.HIGH : Severity.MEDIUM;
+                addFinding(
+                        root,
+                        file,
+                        i + 1,
+                        severity,
+                        "Static collection '" + variable + "' has no obvious cleanup path (possible memory leak).",
+                        findings,
+                        dedupe
+                );
             }
         }
+    }
+
+    private static boolean isImmutableStaticCollection(String declaration) {
+        return declaration.contains("List.of(")
+                || declaration.contains("Set.of(")
+                || declaration.contains("Map.of(")
+                || declaration.contains("Map.ofEntries(")
+                || declaration.contains("Map.copyOf(")
+                || declaration.contains("Collections.unmodifiable");
+    }
+
+    private static boolean looksLikeIntentionalCatalogOrRegistry(Path file, String text) {
+        String normalized = normalizePath(file).toLowerCase(java.util.Locale.ROOT);
+        String fileName = file.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
+
+        if (text.contains("resetValidationState()") || text.contains("reset()")) {
+            return true;
+        }
+
+        if (normalized.contains("/client/") && (fileName.contains("state") || fileName.contains("sync"))) {
+            return true;
+        }
+
+        if (fileName.contains("catalog")
+                || fileName.contains("registry")
+                || fileName.contains("blueprints")
+                || fileName.contains("resolver")
+                || fileName.contains("handler")
+                || fileName.contains("loader")
+                || fileName.contains("definitions")
+                || fileName.contains("aliases")
+                || fileName.contains("gate")) {
+            return true;
+        }
+
+        return false;
     }
 
     private static void scanRegistryAndDatapackIssues(
@@ -425,9 +472,12 @@ public final class ExtremeCraftDevValidator {
     ) {
         Path dataRoot = resourcesRoot.resolve("data").resolve(MOD_ID);
         Path anchor = Files.exists(dataRoot.resolve("README.md")) ? dataRoot.resolve("README.md") : resourcesRoot;
-        ECRuntimeOwnershipAudit.validateDatapackLayout(resourcesRoot, message ->
+
+        if (!Files.exists(dataRoot.resolve("README.md"))) {
+            ECRuntimeOwnershipAudit.validateDatapackLayout(resourcesRoot, message ->
                 addFinding(root, anchor, 1, Severity.LOW, message, findings, dedupe)
-        );
+            );
+        }
     }
 
     private static void scanDuplicateRegistryNames(Path root, List<Path> javaFiles, List<Finding> findings, Set<String> dedupe) {

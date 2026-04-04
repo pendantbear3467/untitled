@@ -168,6 +168,9 @@ public final class OffhandActionExecutor {
         if (offhand.isEmpty() || !isAttackTargetValid(player, target)) {
             return false;
         }
+        if (player.serverLevel().isClientSide() || target.level().isClientSide()) {
+            return false;
+        }
 
         float charge = Mth.clamp(attackStrengthScale, 0.0F, 1.0F);
         float chargeScale = 0.2F + (charge * charge * 0.8F);
@@ -203,6 +206,15 @@ public final class OffhandActionExecutor {
             context.modifiers().multiplyAbility(chargeScale);
             result = CombatEngine.applyDamage(context);
         } else {
+            if (target.level().isClientSide()) {
+                return false;
+            }
+            if (player.serverLevel().isClientSide()) {
+                return false;
+            }
+            if (!(target.level() instanceof ServerLevel)) {
+                return false;
+            }
             float directDamage = Math.max(0.0F, (combatBase + weaponDamage) * chargeScale);
             boolean hurt = target.hurt(player.damageSources().playerAttack(player), directDamage);
             if (!hurt) {

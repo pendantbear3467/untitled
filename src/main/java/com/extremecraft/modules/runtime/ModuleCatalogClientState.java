@@ -24,4 +24,13 @@ public final class ModuleCatalogClientState {
     public static synchronized List<ModuleEntry> toolModules() {
         return new ArrayList<>(toolModules);
     }
+
+    public static synchronized void resetValidationState() {
+        armorModules = List.of();
+        toolModules = List.of();
+    }
+
+    public static synchronized void reset() {
+        resetValidationState();
+    }
 }

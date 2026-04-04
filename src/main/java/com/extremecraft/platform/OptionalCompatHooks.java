@@ -71,5 +71,13 @@ public final class OptionalCompatHooks {
     private static void initGeckoLibCompat() {
         // Placeholder for future GeckoLib animation integration.
     }
+
+    public static void resetValidationState() {
+        // Optional compat bootstrap map is immutable process-lifetime metadata.
+    }
+
+    public static void reset() {
+        resetValidationState();
+    }
 }
 

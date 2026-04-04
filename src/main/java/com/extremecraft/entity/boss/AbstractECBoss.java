@@ -18,6 +18,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.phys.Vec3;
@@ -57,6 +58,10 @@ public abstract class AbstractECBoss extends AbstractECMonster {
 
     @Override
     protected void customServerAiStep() {
+        if (!(this.level() instanceof ServerLevel)) {
+            return;
+        }
+
         super.customServerAiStep();
         this.bossEvent.setProgress(this.getHealth() / this.getMaxHealth());
 
@@ -123,6 +128,9 @@ public abstract class AbstractECBoss extends AbstractECMonster {
         if (this.level().isClientSide) {
             return;
         }
+        if (!(this.level() instanceof ServerLevel)) {
+            return;
+        }
 
         for (int i = 0; i < count; i++) {
             Monster mob = type.create(this.level());
@@ -141,6 +149,13 @@ public abstract class AbstractECBoss extends AbstractECMonster {
     }
 
     protected void pulseAreaDamage(double radius, float damage, double yKnockback) {
+        if (this.level().isClientSide) {
+            return;
+        }
+        if (!(this.level() instanceof ServerLevel)) {
+            return;
+        }
+
         List<LivingEntity> nearby = this.level().getEntitiesOfClass(LivingEntity.class, this.getBoundingBox().inflate(radius),
                 entity -> entity != this && entity.isAlive());
 
@@ -191,6 +206,12 @@ public abstract class AbstractECBoss extends AbstractECMonster {
 
     @Override
     public boolean hurt(DamageSource source, float amount) {
+        if (this.level().isClientSide) {
+            return false;
+        }
+        if (!(this.level() instanceof ServerLevel)) {
+            return false;
+        }
         return super.hurt(source, amount * incomingDamageMultiplier());
     }
 

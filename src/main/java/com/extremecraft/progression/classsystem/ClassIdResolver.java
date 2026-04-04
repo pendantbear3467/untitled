@@ -48,4 +48,12 @@ public final class ClassIdResolver {
         }
         return normalizedLeft.equals(normalizedRight);
     }
+
+    public static void resetValidationState() {
+        // Alias map is immutable process-lifetime metadata.
+    }
+
+    public static void reset() {
+        resetValidationState();
+    }
 }

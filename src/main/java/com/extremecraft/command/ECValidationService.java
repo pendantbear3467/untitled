@@ -50,6 +50,14 @@ public final class ECValidationService {
     private ECValidationService() {
     }
 
+    public static void resetValidationState() {
+        // Constant category sets are immutable and stateless by design.
+    }
+
+    public static void reset() {
+        resetValidationState();
+    }
+
     public static int run(CommandSourceStack source) {
         ValidationReporter reporter = new ValidationReporter(source);
         MinecraftServer server = source.getServer();

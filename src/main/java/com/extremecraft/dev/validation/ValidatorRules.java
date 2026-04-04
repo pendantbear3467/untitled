@@ -22,7 +22,7 @@ public final class ValidatorRules {
     public static final Pattern NETWORK_GUARD = Pattern.compile("getReceptionSide|enqueueWork|isClientSide|PacketFlow|context\\.");
 
     public static final Pattern STATIC_COLLECTION = Pattern.compile("static\\s+(?:final\\s+)?(?:List|Set|Map|Queue|Deque|Collection)<([^>]+)>\\s+(\\w+)\\s*(?:=|;)");
-    public static final Pattern CLEANUP_HINT = Pattern.compile("\\.clear\\s*\\(|\\.remove\\s*\\(|cleanup\\s*\\(|invalidate\\s*\\(|onPlayerLoggedOut|onLogout|reset\\s*\\(");
+    public static final Pattern CLEANUP_HINT = Pattern.compile("\\.clear\\w*\\s*\\(|\\.remove\\w*\\s*\\(|cleanup\\w*\\s*\\(|invalidate\\w*\\s*\\(|reset\\w*\\s*\\(|onPlayerLoggedOut|onLogout");
 
     public static final Pattern REGISTRY_REGISTER = Pattern.compile("register\\(\"([a-z0-9_./-]+)\"");
     public static final Pattern NAMESPACE_ID = Pattern.compile("extremecraft:([a-z0-9_./-]+)");

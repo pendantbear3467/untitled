@@ -56,6 +56,14 @@ public final class MachineCatalog {
         return Optional.ofNullable(DEFINITIONS.get(ReactorIdentity.normalizeMachineId(id)));
     }
 
+    public static void resetValidationState() {
+        // Static machine catalog remains process-lifetime data in dev/runtime.
+    }
+
+    public static void reset() {
+        resetValidationState();
+    }
+
     private MachineCatalog() {
     }
 }

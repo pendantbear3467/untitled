@@ -46,6 +46,7 @@ public final class ClientLifecycleBridge {
             MenuScreens.register(ModMenuTypes.PULVERIZER_MENU.get(), PulverizerScreen::new);
             MenuScreens.register(TechMenuTypes.TECH_MACHINE.get(), ClientLifecycleBridge::createTechMachineScreen);
             MinecraftForge.EVENT_BUS.register(new DwClientHooks());
+            MinecraftForge.EVENT_BUS.register(new ClientRuntimeCleanupEvents());
             MinecraftForge.EVENT_BUS.register(new InventoryButtonInjector());
             MinecraftForge.EVENT_BUS.register(new InventoryXpOverlay());
             MinecraftForge.EVENT_BUS.register(new AbilityBarOverlay());

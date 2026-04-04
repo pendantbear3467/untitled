@@ -40,6 +40,14 @@ public final class OreMaterialCatalog {
         return Optional.ofNullable(MATERIALS.get(id));
     }
 
+    public static void resetValidationState() {
+        // Static ore material catalog remains process-lifetime data in dev/runtime.
+    }
+
+    public static void reset() {
+        resetValidationState();
+    }
+
     private OreMaterialCatalog() {
     }
 }

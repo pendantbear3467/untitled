@@ -6,6 +6,7 @@ import com.extremecraft.combat.status.StatusEffectManager;
 import com.extremecraft.progression.capability.PlayerStatsApi;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -47,6 +48,9 @@ public final class CombatEngine {
         if (context.target().level().isClientSide) {
             return previewDamage(context);
         }
+        if (!(context.target().level() instanceof ServerLevel)) {
+            return previewDamage(context);
+        }
 
         // Reentrancy guard prevents infinite loops when damage handlers trigger additional damage.
         if (!enterDamageScope()) {
@@ -58,6 +62,12 @@ public final class CombatEngine {
         // Target-scoped guard avoids recursive self-processing on the same entity in one stack.
         if (!enterTargetScope(targetId)) {
             LOGGER.warn("[CombatEngine] Rejected damage application due to recursive target processing");
+            exitDamageScope();
+            return previewDamage(context);
+        }
+
+        if (!(context.target().level() instanceof ServerLevel serverLevel)) {
+            exitTargetScope(targetId);
             exitDamageScope();
             return previewDamage(context);
         }

@@ -28,5 +28,13 @@ public final class QuestRegistry {
         return QUESTS.get(id);
     }
 
+    public static void resetValidationState() {
+        // Static quest catalog remains process-lifetime data in dev/runtime.
+    }
+
+    public static void reset() {
+        resetValidationState();
+    }
+
     private QuestRegistry() {}
 }

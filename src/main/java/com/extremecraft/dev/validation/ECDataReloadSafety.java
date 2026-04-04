@@ -30,4 +30,9 @@ public final class ECDataReloadSafety {
                 .collect(Collectors.joining(", "));
         return "reload_safety: " + domains + " @" + lastUpdateEpochMs;
     }
+
+    public static synchronized void resetValidationState() {
+        DOMAIN_ENTRY_COUNTS.clear();
+        lastUpdateEpochMs = 0L;
+    }
 }

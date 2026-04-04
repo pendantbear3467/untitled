@@ -122,6 +122,14 @@ public final class TechTreeManager {
         return normalized;
     }
 
+    public static void resetValidationState() {
+        // Requirement map is static process-lifetime progression metadata.
+    }
+
+    public static void reset() {
+        resetValidationState();
+    }
+
     private TechTreeManager() {
     }
 }

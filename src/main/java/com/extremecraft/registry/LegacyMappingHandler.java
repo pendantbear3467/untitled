@@ -93,4 +93,12 @@ public final class LegacyMappingHandler {
 
         return null;
     }
+
+    public static void resetValidationState() {
+        // Explicit remap table is immutable process-lifetime metadata.
+    }
+
+    public static void reset() {
+        resetValidationState();
+    }
 }

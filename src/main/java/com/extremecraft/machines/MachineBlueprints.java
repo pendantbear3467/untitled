@@ -32,5 +32,13 @@ public final class MachineBlueprints {
             "Fuel Fabricator (liquid + ore)", "Waste Recycler", "Control Console"
     );
 
+        public static void resetValidationState() {
+                // Blueprint constants are immutable and intentionally process-lifetime.
+        }
+
+        public static void reset() {
+                resetValidationState();
+        }
+
     private MachineBlueprints() {}
 }

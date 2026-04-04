@@ -16,6 +16,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.projectile.WitherSkull;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -91,6 +92,10 @@ public final class VoidTitanEntity extends AbstractECBoss {
     }
 
     private void teleportAttack(LivingEntity target) {
+        if (!(this.level() instanceof ServerLevel)) {
+            return;
+        }
+
         Vec3 backward = target.getLookAngle().normalize().scale(-2.8D);
         double x = target.getX() + backward.x + (this.random.nextDouble() - 0.5D) * 1.6D;
         double z = target.getZ() + backward.z + (this.random.nextDouble() - 0.5D) * 1.6D;
@@ -113,6 +118,9 @@ public final class VoidTitanEntity extends AbstractECBoss {
         if (this.level().isClientSide()) {
             return;
         }
+        if (!(this.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
 
         for (int i = 0; i < count; i++) {
             Vec3 toTarget = target.getEyePosition().subtract(this.getEyePosition())
@@ -120,9 +128,9 @@ public final class VoidTitanEntity extends AbstractECBoss {
                     .normalize()
                     .scale(0.9D);
 
-            WitherSkull skull = new WitherSkull(this.level(), this, toTarget.x, toTarget.y, toTarget.z);
+            WitherSkull skull = new WitherSkull(serverLevel, this, toTarget.x, toTarget.y, toTarget.z);
             skull.setPos(this.getX(), this.getEyeY(), this.getZ());
-            this.level().addFreshEntity(skull);
+            serverLevel.addFreshEntity(skull);
         }
 
         this.pulseParticles(ParticleTypes.SCULK_SOUL, 20, 0.55D, 0.03D);

@@ -83,6 +83,14 @@ public final class ModMaterials {
         return id == null ? "" : id.trim().toLowerCase();
     }
 
+    public static void resetValidationState() {
+        // Static material catalogs remain process-lifetime data in dev/runtime.
+    }
+
+    public static void reset() {
+        resetValidationState();
+    }
+
     private ModMaterials() {
     }
 

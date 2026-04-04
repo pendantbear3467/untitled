@@ -65,6 +65,10 @@ public final class ReactorMultiblockService {
         CACHE.keySet().removeIf(key -> key.dimension.equals(dimension));
     }
 
+    public static void resetValidationState() {
+        CACHE.clear();
+    }
+
     private static ValidationState computeValidation(ServerLevel level, BlockPos controllerPos) {
         Map<String, ReactorPartDefinition> partsByBlockId = partsByBlockId();
         if (partsByBlockId.isEmpty()) {

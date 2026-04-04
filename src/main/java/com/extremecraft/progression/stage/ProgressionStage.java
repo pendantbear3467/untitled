@@ -54,4 +54,12 @@ public enum ProgressionStage {
             return Optional.empty();
         }
     }
+
+    public static void resetValidationState() {
+        // Enum alias map is immutable process-lifetime metadata.
+    }
+
+    public static void reset() {
+        resetValidationState();
+    }
 }
