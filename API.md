@@ -8,7 +8,7 @@ This document covers runtime extension points for integrating new ExtremeCraft c
 
 Location:
 
-- `src/main/java/com/extremecraft/platform/hook/ExtremeCraftHooks.java`
+- `platform/src/main/java/com/extremecraft/platform/hook/ExtremeCraftHooks.java`
 
 Purpose:
 

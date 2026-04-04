@@ -4,7 +4,10 @@ ExtremeCraft is a large-scale Minecraft Forge mod for 1.20.1 focused on technolo
 
 ## Repository Layout
 
-- `src/main/java`: Gameplay/runtime Java code loaded by Forge.
+- `platform/src/main/java`: Forge bootstrap, registry glue, compatibility gates, and other transitional platform wiring.
+- `core/`: Extracted shared contracts and reusable core services.
+- `progression/src/main/java`: Progression authority source root, separated from the remaining gameplay monolith.
+- `src/main/java`: Remaining transitional gameplay/runtime Java code loaded by Forge.
 - `src/main/resources`: Runtime assets and built-in datapack content (`assets/`, `data/`, `META-INF/`).
 - `api/`: Public Java API module consumed by integrations.
 - `tools/python`: Python platform tooling (Asset Studio, SDK, compiler, plugin pipeline).
@@ -17,6 +20,7 @@ ExtremeCraft is a large-scale Minecraft Forge mod for 1.20.1 focused on technolo
 
 Detailed folder-by-folder documentation: `docs/REPOSITORY_FOLDER_GUIDE.md`
 Canonical edit-first ownership map: `docs/CANONICAL_OWNERSHIP_MAP.md`
+Workspace reset audit: `docs/REPO_STRUCTURE_RESET_PLAN.md`
 Full documentation map: `docs/DOCUMENTATION_INDEX.md`
 
 ## What ExtremeCraft Includes
@@ -68,7 +72,10 @@ Build distributable artifacts:
 
 ## Contributor Orientation
 
-- Core gameplay/runtime code: `src/main/java/com/extremecraft/**`
+- Platform/bootstrap wiring: `platform/src/main/java/com/extremecraft/platform/**` and `platform/src/main/java/com/extremecraft/core/**`
+- Shared contracts and reusable core services: `core/src/main/java/com/extremecraft/ecosystem/core/**`
+- Progression authority: `progression/src/main/java/com/extremecraft/progression/**`
+- Remaining transitional gameplay/runtime code: `src/main/java/com/extremecraft/**`
 - Runtime assets and builtin datapack content: `src/main/resources/assets/extremecraft/**`, `src/main/resources/data/extremecraft/**`
 - Edit-first ownership map for live gameplay changes: `docs/CANONICAL_OWNERSHIP_MAP.md`
 - Datapack contributor workspace: `datapacks/`

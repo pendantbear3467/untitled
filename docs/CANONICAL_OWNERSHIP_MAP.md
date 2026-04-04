@@ -1,4 +1,4 @@
-# Canonical Ownership Map
+﻿# Canonical Ownership Map
 
 This document is the repository-level source of truth for "what do I edit if I
 want gameplay to change?" in ExtremeCraft.
@@ -18,20 +18,25 @@ generated snapshot elsewhere in the repo.
 
 ## Build And Runtime Truth
 
-- Current Forge runtime code is compiled from `src/main/java` and `api/src/main/java`.
+- Current Forge runtime code is compiled from `platform/src/main/java`, `core/src/main/java`, `src/main/java`, and `api/src/main/java`.
 - Current Forge runtime resources are loaded from `src/main/resources`.
-- Top-level folders such as `core/`, `gameplay/`, `tech/`, `magic/`, `worldgen/`, and `client/` are currently modularization scaffolds plus build placeholders, not the live gameplay code owner.
+- `platform/` is the live bootstrap and adapter source root.
+- `core/` is the live extracted shared-contracts module.
+- `src/` is still the transitional gameplay/runtime owner for systems not yet safely split.
 - `src/settings.gradle`, `src/.gradle`, and `src/build` are legacy nested-project/build artifacts inside the live source tree. They are not ownership signals.
 
 ## Top-Level Repository Areas
 
-- `src/main/java` and `src/main/resources`: `CANONICAL LIVE RUNTIME OWNER`
+- `platform/src/main/java/com/extremecraft/platform/**`: `CANONICAL LIVE RUNTIME OWNER` for bootstrap glue, data wiring, and compatibility gates
+- `platform/src/main/java/com/extremecraft/core/**`: `CANONICAL LIVE RUNTIME OWNER` for the Forge bootstrap entrypoint and platform-adjacent runtime wiring
+- `core/src/main/java`: `CANONICAL LIVE RUNTIME OWNER` for extracted shared contracts and core services
+- `src/main/java` and `src/main/resources`: `CANONICAL LIVE RUNTIME OWNER` for remaining transitional gameplay/runtime code and data
 - `api/src/main/java`: `CANONICAL LIVE RUNTIME OWNER` for public API contracts, not gameplay mutation logic
 - `tools/**`: `TOOLING SOURCE`
 - `workspace/**`: mixed `TOOLING SOURCE`, `GENERATED REFERENCE SNAPSHOT`, and local scratch state
 - `docs/generated/**`: `GENERATED REFERENCE SNAPSHOT`
 - `build/**`, `run/**`, `src/build/**`, `src/.gradle/**`: `DISTRIBUTABLE / BUILD OUTPUT`
-- `core/`, `gameplay/`, `tech/`, `magic/`, `worldgen/`, `client/`: `LEGACY / DISCONNECTED` as runtime code owners for now
+- `gameplay/`, `tech/`, `magic/`, `worldgen/`, `client/`, `mod/`, and `extremecraft-*` scaffolds: `LEGACY / DISCONNECTED` as runtime code owners for now
 
 ## Verified Runtime Ownership Table
 
@@ -81,7 +86,7 @@ Do not edit first:
 
 - `src/main/resources/data/extremecraft/machines/*.json`
   - `METADATA / VALIDATION MIRROR` for validation, sync snapshots, and future migration work
-- `src/main/java/com/extremecraft/platform/data/loader/MachineDataLoader.java`
+- `platform/src/main/java/com/extremecraft/platform/data/loader/MachineDataLoader.java`
   - metadata mirror loader for `machines/*.json`
 - `src/main/java/com/extremecraft/machine/MachineRegistry.java`
   - `COMPATIBILITY ADAPTER` for the older generic machine catalog
@@ -103,39 +108,39 @@ Classification: `CANONICAL LIVE RUNTIME OWNER`
 Canonical write paths:
 
 - Public mutation boundary:
-  - `src/main/java/com/extremecraft/progression/ProgressionFacade.java`
+  - `progression/src/main/java/com/extremecraft/progression/ProgressionFacade.java`
 - Internal player XP and level owner:
-  - `src/main/java/com/extremecraft/progression/ProgressionMutationService.java`
-  - `src/main/java/com/extremecraft/progression/ProgressionService.java`
+  - `progression/src/main/java/com/extremecraft/progression/ProgressionMutationService.java`
+  - `progression/src/main/java/com/extremecraft/progression/ProgressionService.java`
 - Cross-module read boundary:
   - `src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionReadAccess.java`
 - Skill XP:
-  - `src/main/java/com/extremecraft/progression/ProgressionFacade.java`
-  - `src/main/java/com/extremecraft/progression/SkillProgressionService.java`
+  - `progression/src/main/java/com/extremecraft/progression/ProgressionFacade.java`
+  - `progression/src/main/java/com/extremecraft/progression/SkillProgressionService.java`
   - backing state in `src/main/java/com/extremecraft/skills/**`
 - Class XP:
-  - `src/main/java/com/extremecraft/progression/QuestRewardService.java`
-  - `src/main/java/com/extremecraft/progression/ClassProgressionService.java`
-  - backing state in `src/main/java/com/extremecraft/progression/PlayerProgressData.java`
+  - `progression/src/main/java/com/extremecraft/progression/QuestRewardService.java`
+  - `progression/src/main/java/com/extremecraft/progression/ClassProgressionService.java`
+  - backing state in `progression/src/main/java/com/extremecraft/progression/PlayerProgressData.java`
 
 Progression reward application:
 
-- Live gameplay XP/quest/skill hooks: `src/main/java/com/extremecraft/progression/ProgressionEvents.java`
-- Guild quest claim rewards: `src/main/java/com/extremecraft/progression/QuestRewardService.java`
+- Live gameplay XP/quest/skill hooks: `progression/src/main/java/com/extremecraft/progression/ProgressionEvents.java`
+- Guild quest claim rewards: `progression/src/main/java/com/extremecraft/progression/QuestRewardService.java`
 
 Compatibility mirrors that should not be the first write target:
 
-- `src/main/java/com/extremecraft/progression/level/LevelService.java`
-- `src/main/java/com/extremecraft/progression/GuildQuestRewardService.java`
-- `src/main/java/com/extremecraft/progression/PlayerStatsService.java`
-- `src/main/java/com/extremecraft/progression/capability/PlayerStatsCapability.java`
-- `src/main/java/com/extremecraft/progression/capability/PlayerStatsGameplayEvents.java`
+- `progression/src/main/java/com/extremecraft/progression/level/LevelService.java`
+- `progression/src/main/java/com/extremecraft/progression/GuildQuestRewardService.java`
+- `progression/src/main/java/com/extremecraft/progression/PlayerStatsService.java`
+- `progression/src/main/java/com/extremecraft/progression/capability/PlayerStatsCapability.java`
+- `progression/src/main/java/com/extremecraft/progression/capability/PlayerStatsGameplayEvents.java`
   - still live for resource regen/module stat side effects, but no longer a progression XP owner
 
 Legacy/disconnected:
 
 - `src/main/java/com/extremecraft/game/ProgressionSystem.java`
-- `src/main/java/com/extremecraft/progression/XPManager.java` as an older facade kept for compatibility
+- `progression/src/main/java/com/extremecraft/progression/XPManager.java` as an older facade kept for compatibility
 
 Rule of thumb:
 
@@ -156,14 +161,14 @@ Edit here to change live quest content:
 
 Edit here to change live guild quest rewards:
 
-- Reward application: `src/main/java/com/extremecraft/progression/QuestRewardService.java`
+- Reward application: `progression/src/main/java/com/extremecraft/progression/QuestRewardService.java`
 - `GuildQuestRewardService.java` is retained only as a legacy adapter.
 
 Do not edit first:
 
 - `src/main/resources/data/extremecraft/quests/*.json`
   - `METADATA / VALIDATION MIRROR`
-- `src/main/java/com/extremecraft/platform/data/loader/QuestDataLoader.java`
+  - `platform/src/main/java/com/extremecraft/platform/data/loader/QuestDataLoader.java`
   - mirror loader for structured metadata inspection
 
 ## Stages And Unlock Rules
@@ -174,14 +179,14 @@ Edit here to change live stage gates and unlock rules:
 
 - Stage ladder and stage-to-unlock mapping:
   - `src/main/resources/data/extremecraft/progression/stages/*.json`
-  - loader: `src/main/java/com/extremecraft/progression/StageDataLoader.java`
+  - loader: `progression/src/main/java/com/extremecraft/progression/StageDataLoader.java`
 - Explicit unlock rules:
   - `src/main/resources/data/extremecraft/progression/unlocks/*.json`
-  - loader: `src/main/java/com/extremecraft/progression/unlock/UnlockRuleLoader.java`
+  - loader: `progression/src/main/java/com/extremecraft/progression/unlock/UnlockRuleLoader.java`
 - Runtime enforcement:
-  - `src/main/java/com/extremecraft/progression/ProgressionGate.java`
-  - `src/main/java/com/extremecraft/progression/unlock/UnlockAccessService.java`
-  - `src/main/java/com/extremecraft/progression/stage/StageManager.java`
+  - `progression/src/main/java/com/extremecraft/progression/ProgressionGate.java`
+  - `progression/src/main/java/com/extremecraft/progression/unlock/UnlockAccessService.java`
+  - `progression/src/main/java/com/extremecraft/progression/stage/StageManager.java`
   - sync/reporting mirror only:
     - `src/main/java/com/extremecraft/network/sync/RuntimeSyncService.java`
     - `src/main/java/com/extremecraft/network/sync/SyncStageStateS2CPacket.java`
@@ -189,7 +194,7 @@ Edit here to change live stage gates and unlock rules:
   - actual live callers:
     - `src/main/java/com/extremecraft/machine/core/MachineBlock.java`
     - `src/main/java/com/extremecraft/ability/AbilityEngine.java`
-    - `src/main/java/com/extremecraft/progression/classsystem/ability/ClassAbilityService.java`
+    - `progression/src/main/java/com/extremecraft/progression/classsystem/ability/ClassAbilityService.java`
     - `src/main/java/com/extremecraft/magic/SpellExecutor.java`
 
 Do not edit first:
@@ -212,15 +217,15 @@ Edit here to change live skill-tree topology, costs, and node effects:
 
 - `src/main/resources/data/extremecraft/skill_trees/*.json`
 - loader/service:
-  - `src/main/java/com/extremecraft/progression/skilltree/SkillTreeDataLoader.java`
-  - `src/main/java/com/extremecraft/progression/skilltree/SkillTreeManager.java`
-  - `src/main/java/com/extremecraft/progression/skilltree/SkillTreeService.java`
+  - `progression/src/main/java/com/extremecraft/progression/skilltree/SkillTreeDataLoader.java`
+  - `progression/src/main/java/com/extremecraft/progression/skilltree/SkillTreeManager.java`
+  - `progression/src/main/java/com/extremecraft/progression/skilltree/SkillTreeService.java`
 
 Compatibility mirrors:
 
-- `src/main/java/com/extremecraft/progression/skilltree/SkillTreeRegistry.java`
+- `progression/src/main/java/com/extremecraft/progression/skilltree/SkillTreeRegistry.java`
   - synchronized legacy mirror populated from `SkillTreeManager`
-- `src/main/java/com/extremecraft/platform/data/loader/SkillTreeDataLoader.java`
+  - `platform/src/main/java/com/extremecraft/platform/data/loader/SkillTreeDataLoader.java`
   - metadata/snapshot loader for validation and client summaries
 
 Legacy/disconnected:
@@ -237,11 +242,11 @@ Classification: `CANONICAL LIVE RUNTIME OWNER`
 Edit here:
 
 - `src/main/resources/data/extremecraft/classes/*.json`
-- canonical loader: `src/main/java/com/extremecraft/progression/classsystem/data/ClassDefinitionLoader.java`
+- canonical loader: `progression/src/main/java/com/extremecraft/progression/classsystem/data/ClassDefinitionLoader.java`
 
 Shared runtime readers:
 
-- `src/main/java/com/extremecraft/progression/classsystem/data/ClassDefinitions.java`
+- `progression/src/main/java/com/extremecraft/progression/classsystem/data/ClassDefinitions.java`
 - `src/main/java/com/extremecraft/classsystem/ClassAccessResolver.java`
 
 Interpretation:
@@ -257,8 +262,8 @@ Classification: `CANONICAL LIVE RUNTIME OWNER`
 Edit here:
 
 - `src/main/resources/data/extremecraft/class_abilities/*.json`
-- loader: `src/main/java/com/extremecraft/progression/classsystem/data/ClassAbilityLoader.java`
-- runtime effect execution: `src/main/java/com/extremecraft/progression/classsystem/ability/ClassAbilityService.java`
+- loader: `progression/src/main/java/com/extremecraft/progression/classsystem/data/ClassAbilityLoader.java`
+- runtime effect execution: `progression/src/main/java/com/extremecraft/progression/classsystem/ability/ClassAbilityService.java`
 
 ### Generic Abilities
 
@@ -284,7 +289,7 @@ Execution note:
 Metadata-only mirror:
 
 - `src/main/resources/data/extremecraft/abilities_platform/*.json`
-- loader: `src/main/java/com/extremecraft/platform/data/loader/AbilityDataLoader.java`
+- loader: `platform/src/main/java/com/extremecraft/platform/data/loader/AbilityDataLoader.java`
 
 ### Spells
 
@@ -320,7 +325,7 @@ Edit here for installable armor/tool modules:
   - `src/main/java/com/extremecraft/modules/runtime/ModuleRuntimeService.java`
   - `src/main/java/com/extremecraft/modules/runtime/ModuleRuntimeEvents.java`
   - passive mining/break-speed application:
-    - `src/main/java/com/extremecraft/progression/capability/PlayerStatsGameplayEvents.java`
+    - `progression/src/main/java/com/extremecraft/progression/capability/PlayerStatsGameplayEvents.java`
   - live tool wrapper example:
     - `src/main/java/com/extremecraft/item/tool/ModularDrillItem.java`
 
@@ -338,7 +343,7 @@ Do not edit first:
 
 - `src/main/resources/data/extremecraft/modules/*.json`
   - `METADATA / VALIDATION MIRROR`
-- `src/main/java/com/extremecraft/platform/data/loader/ModuleDataLoader.java`
+- `platform/src/main/java/com/extremecraft/platform/data/loader/ModuleDataLoader.java`
   - metadata mirror loader
 - `src/main/java/com/extremecraft/item/module/**`
   - `LEGACY / DISCONNECTED` generic module path
@@ -357,7 +362,7 @@ Mixed ownership:
   - `src/main/java/com/extremecraft/future/registry/TechItems.java`
 - Metadata mirrors:
   - `src/main/resources/data/extremecraft/materials/*.json`
-  - `src/main/java/com/extremecraft/platform/data/loader/MaterialDataLoader.java`
+  - `platform/src/main/java/com/extremecraft/platform/data/loader/MaterialDataLoader.java`
 - Legacy summary/helpers:
   - `src/main/java/com/extremecraft/materials/ModMaterials.java`
   - `src/main/java/com/extremecraft/worldgen/ModWorldGen.java`
@@ -385,7 +390,7 @@ Validation/summary helpers:
 Metadata-only mirror:
 
 - `src/main/resources/data/extremecraft/world_generation/*.json`
-- `src/main/java/com/extremecraft/platform/data/loader/WorldGenerationDataLoader.java`
+- `platform/src/main/java/com/extremecraft/platform/data/loader/WorldGenerationDataLoader.java`
 
 ## Network Packets And Sync
 
@@ -402,7 +407,7 @@ Gameplay mutation and sync handlers:
 
 Metadata snapshot sync:
 
-- `src/main/java/com/extremecraft/platform/data/sync/**`
+- `platform/src/main/java/com/extremecraft/platform/data/sync/**`
 - packets:
   - `SyncMachinesPacket`
   - `SyncMaterialsPacket`
@@ -463,3 +468,4 @@ These may be useful operationally, but they are not gameplay ownership paths.
 - Modular gear behavior: `modules/**`, `armor_modules/*.json`, `tool_modules/*.json`, shared `abilities/*.json`
 - Ore/material runtime registration: `OreMaterialCatalog.java`, `TechBlocks.java`, `TechItems.java`
 - Ore/material placement: `data/extremecraft/worldgen/**` and `data/extremecraft/forge/**`
+

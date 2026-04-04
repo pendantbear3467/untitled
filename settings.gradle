@@ -16,11 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = 'ExtremeCraft'
 
-include 'core', 'api', 'gameplay', 'tech', 'magic', 'worldgen', 'client', 'tools'
-
-// Phase-2 ecosystem module scaffolds (kept source-empty for low-risk incremental extraction).
-include 'extremecraft-core'
-include 'extremecraft-progression'
-include 'extremecraft-tech-compat'
-include 'extremecraft-magic-compat'
-include 'extremecraft-skills-compat'
+include 'api', 'core'

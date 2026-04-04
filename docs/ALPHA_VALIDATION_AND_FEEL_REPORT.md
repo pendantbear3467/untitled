@@ -1,4 +1,4 @@
-# Alpha Validation And Feel Report
+﻿# Alpha Validation And Feel Report
 
 Date: 2026-03-12
 
@@ -21,7 +21,7 @@ This pass was a post-convergence validation pass. The goal was to check whether 
 - Dual-wield loadout cycling existed server-side and on the network, but there was no live client trigger for it. The feature was present in the repo and effectively inaccessible in play.
 - The default class ability key and ability-slot 3 key were both bound to `R`, so one player-facing combat action path masked the other.
 - The integrated skill-tree panel still computed unlockability from mirrored stats values instead of canonical progression level/skill points. That was a trust issue even if mirrors were usually close.
-- The standalone skill-tree screen still allowed “can unlock” presentation without checking canonical player skill points.
+- The standalone skill-tree screen still allowed â€œcan unlockâ€ presentation without checking canonical player skill points.
 - The dual-wield tab told only part of the truth. It did not show the active loadout, did not expose the live cycle input, and did not clearly explain which offhand actions mapped to which input.
 
 ## 3. What you changed
@@ -35,9 +35,9 @@ This pass was a post-convergence validation pass. The goal was to check whether 
 - Registered a default cycle-loadout key on `V` in [DwKeybinds.java](../src/main/java/com/extremecraft/client/DwKeybinds.java).
 - Updated the unified player screen in [ExtremePlayerScreen.java](../src/main/java/com/extremecraft/client/gui/player/ExtremePlayerScreen.java) so the magic/class/dual-wield tabs now show live key prompts and synced dual-wield loadout state instead of leaving that behavior implicit.
 - Improved the dual-wield tab in [ExtremePlayerScreen.java](../src/main/java/com/extremecraft/client/gui/player/ExtremePlayerScreen.java) to show the active loadout and all three saved loadout snapshots.
-- Updated [SkillTreeScreenPanel.java](../src/main/java/com/extremecraft/client/gui/player/SkillTreeScreenPanel.java), [SkillNodeStateService.java](../src/main/java/com/extremecraft/progression/skilltree/service/SkillNodeStateService.java), and [SkillPrerequisiteEvaluator.java](../src/main/java/com/extremecraft/progression/skilltree/service/SkillPrerequisiteEvaluator.java) so node readiness now respects canonical progression level and canonical player skill points.
+- Updated [SkillTreeScreenPanel.java](../src/main/java/com/extremecraft/client/gui/player/SkillTreeScreenPanel.java), [SkillNodeStateService.java](../progression/src/main/java/com/extremecraft/progression/skilltree/service/SkillNodeStateService.java), and [SkillPrerequisiteEvaluator.java](../progression/src/main/java/com/extremecraft/progression/skilltree/service/SkillPrerequisiteEvaluator.java) so node readiness now respects canonical progression level and canonical player skill points.
 - Improved integrated skill-tree connection readability so unlocked and unlockable lanes are visually distinct instead of using one dull connection color for all states.
-- Updated the standalone skill-tree screen in [SkillTreeScreen.java](../src/main/java/com/extremecraft/progression/skilltree/SkillTreeScreen.java) so “can unlock” now checks canonical player skill points in addition to level and prerequisites.
+- Updated the standalone skill-tree screen in [SkillTreeScreen.java](../progression/src/main/java/com/extremecraft/progression/skilltree/SkillTreeScreen.java) so â€œcan unlockâ€ now checks canonical player skill points in addition to level and prerequisites.
 
 ## 4. What remains a known limitation
 
@@ -63,3 +63,4 @@ This pass was a post-convergence validation pass. The goal was to check whether 
 - If manual play confirms the offhand route is stable, the next focused implementation phase should be combat feedback polish: clearer offhand cooldown/readiness cues, hit confirmation, and dual-wield HUD support.
 - After that, the next best target is a narrow combat-engine normalization pass for any remaining main-hand or vanilla-adjacent damage paths that still return less trustworthy contextual results than ability-driven combat.
 - Do not reopen progression, machine ownership, or contamination architecture in the next phase unless gameplay testing proves a live contradiction there.
+

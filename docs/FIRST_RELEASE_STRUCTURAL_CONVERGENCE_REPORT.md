@@ -1,4 +1,4 @@
-# First-Release Structural Convergence Report
+﻿# First-Release Structural Convergence Report
 
 Date: 2026-03-12
 
@@ -55,13 +55,13 @@ This pass was a convergence pass, not a feature-add pass. The goal was to reduce
 ## 5. What authority paths are now canonical
 
 - Macro progression state, stage state, player XP/level, and canonical player skill points:
-  `src/main/java/com/extremecraft/progression/PlayerProgressData`
+  `progression/src/main/java/com/extremecraft/progression/PlayerProgressData`
 - Progression mutation and synchronization:
-  `src/main/java/com/extremecraft/progression/ProgressionMutationService`
+  `progression/src/main/java/com/extremecraft/progression/ProgressionMutationService`
   and
-  `src/main/java/com/extremecraft/progression/ProgressionService`
+  `progression/src/main/java/com/extremecraft/progression/ProgressionService`
 - Stage gates and machine access:
-  `src/main/java/com/extremecraft/progression/ProgressionGate`
+  `progression/src/main/java/com/extremecraft/progression/ProgressionGate`
   plus
   `src/main/resources/data/extremecraft/progression/*`
 - Mana state and mana spend/regeneration authority:
@@ -71,11 +71,11 @@ This pass was a convergence pass, not a feature-add pass. The goal was to reduce
 - Canonical class ids and class resolution:
   `src/main/resources/data/extremecraft/classes/*.json`
   plus
-  `src/main/java/com/extremecraft/progression/classsystem/ClassIdResolver`
+  `progression/src/main/java/com/extremecraft/progression/classsystem/ClassIdResolver`
   and
   `src/main/java/com/extremecraft/classsystem/ClassAccessResolver`
 - Class abilities as the narrow class-specific action path:
-  `src/main/java/com/extremecraft/progression/classsystem/ability/ClassAbilityService`
+  `progression/src/main/java/com/extremecraft/progression/classsystem/ability/ClassAbilityService`
 - Generic spell and ability systems as the extensible action path:
   existing spell/ability runtime under `magic` and shared ability sync/runtime paths
 - Tech machine runtime:
@@ -137,3 +137,4 @@ This pass was a convergence pass, not a feature-add pass. The goal was to reduce
 - Decide whether the first-release reactor should gain a real server-authoritative SCRAM interaction path or whether the button should be removed until that path exists.
 - Continue the metadata honesty pass only where scaffold folders still appear shipped in UI, docs, or contributor workflows.
 - Keep future-phase nuclear, hybrid, and endgame content behind honest scaffold labels until they are migrated into real runtime owners.
+

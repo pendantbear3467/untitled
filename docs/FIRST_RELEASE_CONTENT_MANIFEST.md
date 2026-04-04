@@ -1,4 +1,4 @@
-# First Release Content Manifest
+﻿# First Release Content Manifest
 
 This manifest separates live first-release content owners from metadata-only scaffolds so contributors do not mistake placeholders for shipped runtime.
 
@@ -18,7 +18,7 @@ This manifest separates live first-release content owners from metadata-only sca
 
 - Tech machine definitions and stage defaults stay code-owned in `src/main/java/com/extremecraft/machine/core`
 - The first-release reactor line stays code-owned under `src/main/java/com/extremecraft/reactor`
-- Canonical progression state and mutation stay code-owned under `src/main/java/com/extremecraft/progression`
+- Canonical progression state and mutation stay code-owned under `progression/src/main/java/com/extremecraft/progression`
 
 ## Metadata-only or scaffold-only paths
 
@@ -43,3 +43,4 @@ This manifest separates live first-release content owners from metadata-only sca
 
 - Do not promote metadata folders into runtime owners without migrating the matching Java service/load path.
 - Keep first-release additions on the live owner paths above; leave future-phase scaffolds clearly marked as non-canonical.
+

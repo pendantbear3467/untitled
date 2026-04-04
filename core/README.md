@@ -1,12 +1,23 @@
 # core
 
-Reserved top-level domain for potential future modularization.
+Shared contracts and extracted core library module.
 
-Current status:
+Owns:
 
-- active mod bootstrap/core runtime code is in `../src/main/java/com/extremecraft/core/**`
-- this folder is a placeholder scaffold, not the primary runtime source
+- shared service contracts and registries
+- progression read contracts consumed by non-progression modules
+- stable compat hook abstractions intended for addon-facing integration
 
-Guidance:
+Depends on:
 
-- keep production runtime edits in `src/` unless an approved module split is in progress
+- `:api`
+
+Exposes:
+
+- `com.extremecraft.ecosystem.core.*` contracts
+
+Must stay internal elsewhere:
+
+- gameplay mutation logic
+- progression writes
+- domain-specific compat implementations

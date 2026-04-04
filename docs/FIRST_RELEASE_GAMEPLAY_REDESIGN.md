@@ -1,4 +1,4 @@
-# First-Release Gameplay Redesign
+﻿# First-Release Gameplay Redesign
 
 Date: 2026-03-12
 
@@ -40,7 +40,7 @@ Date: 2026-03-12
 
 Why:
 
-- It is the correct place to answer “can the player view, craft, equip, use, cast, or activate this content?”
+- It is the correct place to answer â€œcan the player view, craft, equip, use, cast, or activate this content?â€
 - It does not replace stage gating. It composes with it.
 - It gives all player-facing systems one permission vocabulary instead of per-feature checks.
 
@@ -198,14 +198,14 @@ Future advanced:
 
 Implemented now:
 
-- `src/main/java/com/extremecraft/progression/PlayerProgressData.java`
-- `src/main/java/com/extremecraft/progression/ProgressionService.java`
-- `src/main/java/com/extremecraft/progression/ProgressionFacade.java`
-- `src/main/java/com/extremecraft/progression/GuildQuestRewardService.java`
-- `src/main/java/com/extremecraft/progression/ProgressionGate.java`
-- `src/main/java/com/extremecraft/progression/unlock/UnlockRule.java`
-- `src/main/java/com/extremecraft/progression/unlock/UnlockRuleLoader.java`
-- `src/main/java/com/extremecraft/progression/unlock/UnlockAccessService.java`
+- `progression/src/main/java/com/extremecraft/progression/PlayerProgressData.java`
+- `progression/src/main/java/com/extremecraft/progression/ProgressionService.java`
+- `progression/src/main/java/com/extremecraft/progression/ProgressionFacade.java`
+- `progression/src/main/java/com/extremecraft/progression/GuildQuestRewardService.java`
+- `progression/src/main/java/com/extremecraft/progression/ProgressionGate.java`
+- `progression/src/main/java/com/extremecraft/progression/unlock/UnlockRule.java`
+- `progression/src/main/java/com/extremecraft/progression/unlock/UnlockRuleLoader.java`
+- `progression/src/main/java/com/extremecraft/progression/unlock/UnlockAccessService.java`
 - `src/main/java/com/extremecraft/combat/dualwield/PlayerDualWieldData.java`
 - `src/main/java/com/extremecraft/combat/dualwield/DualWieldService.java`
 - `src/main/java/com/extremecraft/combat/dualwield/SelectLoadoutC2S.java`

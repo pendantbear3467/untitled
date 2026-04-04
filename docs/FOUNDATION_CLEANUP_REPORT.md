@@ -1,4 +1,4 @@
-# Foundation Cleanup Report
+﻿# Foundation Cleanup Report
 
 ## Scan Result
 
@@ -12,7 +12,7 @@ Not part of the current Gradle runtime source set:
 ## Ownership Map
 
 - Progression: `LIVE_RUNTIME`
-  - Owner: `src/main/java/com/extremecraft/progression`
+  - Owner: `progression/src/main/java/com/extremecraft/progression`
   - Data owner: `src/main/resources/data/extremecraft/progression`
   - Legacy/adapter: `progression/level`, `PlayerStatsService`, `game/ProgressionSystem`
 
@@ -35,12 +35,12 @@ Not part of the current Gradle runtime source set:
   - Wider gameplay application remains partially wired
 
 - Skill trees: `LIVE_RUNTIME`
-  - Owner: `src/main/java/com/extremecraft/progression/skilltree`, `data/extremecraft/skill_trees`
+  - Owner: `progression/src/main/java/com/extremecraft/progression/skilltree`, `data/extremecraft/skill_trees`
   - Metadata-only mirror: `platform/data/loader/SkillTreeDataLoader`
   - Legacy folder: `data/extremecraft/skilltrees`
 
 - Classes: `LIVE_RUNTIME` with `ADAPTER` overlap
-  - Owner: `src/main/java/com/extremecraft/progression/classsystem`, `src/main/java/com/extremecraft/classsystem`, `data/extremecraft/classes`, `data/extremecraft/class_abilities`
+  - Owner: `progression/src/main/java/com/extremecraft/progression/classsystem`, `src/main/java/com/extremecraft/classsystem`, `data/extremecraft/classes`, `data/extremecraft/class_abilities`
   - Metadata-only mirror: `platform/data/loader/ClassDataLoader`
 
 - Modules: `LIVE_RUNTIME` with `VALIDATION_ONLY` overlap
@@ -123,3 +123,4 @@ Not part of the current Gradle runtime source set:
 
 - `.\gradlew.bat compileJava` succeeded.
 - `.\gradlew.bat classes` succeeded.
+

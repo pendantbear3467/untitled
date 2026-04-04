@@ -1,5 +1,10 @@
 .gradle
+.gradle/
 .gradle-user/
+.gradle-user-*/
+**/.gradle/
+**/build/
+**/bin/
 build/
 !build/
 build/*
@@ -40,9 +45,12 @@ bin/
 .vscode/
 .gradle-user-temp/
 .gradle-user-codex/
+.tmp-studio-smoke/
 .tmp-tests/
 .venv/
 *.egg-info/
+**/__pycache__/
+**/*.egg-info/
 src/.gradle/
 src/build/
 workspace/.studio/autosave/

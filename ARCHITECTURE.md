@@ -1,10 +1,12 @@
 # ARCHITECTURE
 
-This document summarizes the runtime architecture used by the Forge mod in `src/main/java` and `src/main/resources`.
+This document summarizes the runtime architecture used by the Forge mod in `platform/src/main/java`, `core/src/main/java`, `src/main/java`, and `src/main/resources`.
 
 ## Game Engine Systems
 
 Primary bootstrap: `com.extremecraft.core.ExtremeCraft`.
+
+The bootstrap and platform wiring now live in the top-level `platform/` source root, the extracted shared contracts live in `core/`, and the progression authority code now lives in the top-level `progression/` source root. The remaining gameplay systems still live in the transitional `src/` runtime tree.
 
 Core responsibilities:
 
@@ -142,7 +144,10 @@ These shims exist to preserve save compatibility and keep older systems operatio
 For a top-level folder-by-folder reference, see `docs/REPOSITORY_FOLDER_GUIDE.md`.
 For a complete docs/README navigation index, see `docs/DOCUMENTATION_INDEX.md`.
 
-- Gameplay systems: `src/main/java/com/extremecraft/**`
+- Platform/bootstrap wiring: `platform/src/main/java/com/extremecraft/platform/**` and `platform/src/main/java/com/extremecraft/core/**`
+- Shared contracts and reusable core services: `core/src/main/java/com/extremecraft/ecosystem/core/**`
+- Progression authority: `progression/src/main/java/com/extremecraft/progression/**`
+- Gameplay systems still in transition: `src/main/java/com/extremecraft/**`
 - Datapack/runtime content: `src/main/resources/data/extremecraft/**`
 - Assets (models, lang, textures): `src/main/resources/assets/extremecraft/**`
 - Python/content tooling: `tools/`, `tools/scripts/assetstudio.py`, `tools/scripts/generate_assets.py`, `tools/scripts/main.py`
