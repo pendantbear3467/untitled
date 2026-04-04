@@ -1,5 +1,7 @@
 package com.extremecraft.reactor;
 
+import com.extremecraft.ecosystem.core.progression.ProgressionMachineIdBridge;
+
 import java.util.Locale;
 
 /**
@@ -11,6 +13,10 @@ import java.util.Locale;
 public final class ReactorIdentity {
     public static final String CANONICAL_RUNTIME_ID = "fusion_reactor";
     public static final String COMPAT_ALIAS_ID = "fission_reactor";
+
+    static {
+        ProgressionMachineIdBridge.setNormalizer(ReactorIdentity::normalizeMachineId);
+    }
 
     private ReactorIdentity() {
     }

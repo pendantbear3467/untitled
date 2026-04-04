@@ -1,0 +1,5 @@
+ExtremeCraft Dev Validation Report
+Generated: 2026-04-04T06:01:46.7548703
+Total findings: 0
+
+No issues detected by static validator rules.
