@@ -1,6 +1,7 @@
 package com.extremecraft.config;
 
 import com.extremecraft.core.ECConstants;
+import com.extremecraft.ecosystem.core.progression.ProgressionRuntimeFlags;
 import net.minecraft.world.entity.EntityType;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -98,6 +99,7 @@ public final class Config {
         try {
             DISABLED_MACHINE_IDS = parseMachineIds(COMMON.machines.disabledMachineIds.get());
             DISABLED_MOB_IDS = parseResourceIds(COMMON.mobs.disabledMobIds.get());
+            ProgressionRuntimeFlags.setDebugProgressionBypassEnabled(isDebugProgressionBypassEnabled());
         } catch (IllegalStateException ignored) {
             // Config values are not available yet in early mod bootstrap.
             LOGGER.debug("[Config] Deferred cache rebuild because config values are not loaded yet");

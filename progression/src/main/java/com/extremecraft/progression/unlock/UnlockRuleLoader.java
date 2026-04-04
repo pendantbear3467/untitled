@@ -1,6 +1,6 @@
 package com.extremecraft.progression.unlock;
 
-import com.extremecraft.config.Config;
+import com.extremecraft.ecosystem.core.progression.ProgressionRuntimeFlags;
 import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.classsystem.ClassIdResolver;
 import com.extremecraft.progression.stage.ProgressionStage;
@@ -101,7 +101,7 @@ public class UnlockRuleLoader extends SimpleJsonResourceReloadListener {
     }
 
     public static boolean canUnlock(Player player, String unlockId) {
-        if (Config.isDebugProgressionBypassEnabled()) {
+        if (ProgressionRuntimeFlags.isDebugProgressionBypassEnabled()) {
             return true;
         }
 

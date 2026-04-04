@@ -1,6 +1,6 @@
 package com.extremecraft.progression.unlock;
 
-import com.extremecraft.config.Config;
+import com.extremecraft.ecosystem.core.progression.ProgressionRuntimeFlags;
 import net.minecraft.world.entity.player.Player;
 
 /**
@@ -34,14 +34,14 @@ public final class UnlockAccessService {
     }
 
     public static boolean canAccess(Player player, String contentKey) {
-        if (Config.isDebugProgressionBypassEnabled()) {
+        if (ProgressionRuntimeFlags.isDebugProgressionBypassEnabled()) {
             return true;
         }
         return UnlockRuleLoader.canUnlock(player, normalizeContentKey(contentKey));
     }
 
     public static boolean canAccess(Player player, String contentKey, Action action) {
-        if (Config.isDebugProgressionBypassEnabled()) {
+        if (ProgressionRuntimeFlags.isDebugProgressionBypassEnabled()) {
             return true;
         }
 

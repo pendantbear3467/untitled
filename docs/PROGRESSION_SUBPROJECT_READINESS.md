@@ -53,6 +53,13 @@ These imports are expected at this stage and block immediate clean repo extracti
 - Updated progression capability/stage/skilltree event surfaces to consume core constants instead of host-only `com.extremecraft.core.ECConstants`.
 - Kept `platform/src/main/java/com/extremecraft/core/ECConstants.java` as a compatibility adapter to avoid runtime behavior changes.
 
+## Additional Read-Only Seam Completed
+
+- Added `core/src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionRuntimeFlags.java` as a tiny shared progression runtime flag holder.
+- Updated `ProgressionGate`, `UnlockAccessService`, and `UnlockRuleLoader` to read the debug-bypass flag from core instead of host config.
+- Kept `Config` as the host-side publisher of that flag via config reload events, so runtime behavior remains unchanged.
+- Remaining direct host coupling still includes progression reads into host quest, skill, network, machine, and reactor/runtime packages.
+
 ## Required Cleanup Before Repo Split
 
 1. Progression compiles independently as a Gradle subproject.

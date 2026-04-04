@@ -1,7 +1,7 @@
 package com.extremecraft.progression;
 
-import com.extremecraft.config.Config;
 import com.extremecraft.machine.core.MachineCatalog;
+import com.extremecraft.ecosystem.core.progression.ProgressionRuntimeFlags;
 import com.extremecraft.progression.stage.ProgressionStage;
 import com.extremecraft.progression.stage.StageManager;
 import com.extremecraft.progression.unlock.UnlockAccessService;
@@ -67,7 +67,7 @@ public final class ProgressionGate {
     }
 
     public static boolean canUseMachine(Player player, String machineId) {
-        if (Config.isDebugProgressionBypassEnabled()) {
+        if (ProgressionRuntimeFlags.isDebugProgressionBypassEnabled()) {
             return true;
         }
 
@@ -85,7 +85,7 @@ public final class ProgressionGate {
     }
 
     public static boolean canUseRecipe(Player player, String recipeId) {
-        if (Config.isDebugProgressionBypassEnabled()) {
+        if (ProgressionRuntimeFlags.isDebugProgressionBypassEnabled()) {
             return true;
         }
 
