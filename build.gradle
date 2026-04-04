@@ -48,7 +48,8 @@ sourceSets {
         java {
             // Transitional host-owned bootstrap/wiring root; not split into a repo in this pass.
             srcDir 'platform/src/main/java'
-            // Transitional progression root while coupling is reduced for true subproject extraction.
+            // Bridge mode: progression is now an included subproject, but host still compiles
+            // progression sources until direct host-runtime coupling is reduced.
             srcDir 'progression/src/main/java'
             // Keep API interfaces on the same dev runtime output used by Forge mod loading.
             srcDir project(':api').file('src/main/java')

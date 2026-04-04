@@ -5,7 +5,9 @@
 ```mermaid
 graph TD
   API[api] --> CORE[core]
-  HOST[host runtime: platform + progression + src] --> API
+  PROGRESSION[progression] --> API
+  PROGRESSION --> CORE
+  HOST[host runtime: platform + src + progression bridge source root] --> API
   HOST --> CORE
 ```
 
@@ -14,7 +16,7 @@ graph TD
 - Root runtime module currently depends on:
   - `:api`
   - `:core`
-- Root still contains launch glue, migration adapters, progression source root wiring, and not-yet-extracted gameplay ownership.
+- Root still contains launch glue, migration adapters, progression bridge compilation, and not-yet-extracted gameplay ownership.
 
 ## Staged Graph Targets
 
@@ -25,7 +27,7 @@ graph TD
 
 ### Stage 2 (next pass)
 
-- Promote `progression/` to a true included Gradle subproject after coupling reduction.
+- Reduce progression coupling to host-only runtime packages.
 - Keep repo split deferred until progression no longer directly depends on host-only packages.
 
 ### Stage 3 (later optional)

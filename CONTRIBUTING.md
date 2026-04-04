@@ -64,7 +64,7 @@ Additional guardrails:
 ## Current Modularization Status
 
 - `api` and `core` are first-wave extraction-ready modules.
-- `progression` is authority-hardened and prepared for subproject extraction next, but remains host-owned in this pass.
+- `progression` is authority-hardened and now included as a Gradle subproject in bridge mode; repo extraction is still deferred.
 - `platform` and `src` remain host-owned while Forge bootstrap and runtime coupling are reduced.
 
 ## Recommended Validation Pass Before PR

@@ -1,14 +1,25 @@
 # Progression Subproject Readiness
 
-Status: prep report for converting `progression/` into a true included Gradle subproject in the host repo.
+Status: progression is now an included Gradle subproject in bridge mode in the host repo; repo extraction remains deferred.
 
 This report does not claim progression is repo-ready yet.
 
 ## Current Decision
 
-- progression is authority-hardened and stable as a source root
-- progression is subproject-next, repo-later
+- progression is authority-hardened and now included as project `:progression`
+- progression is subproject now, repo later
 - progression should not be split into its own repository in this pass
+
+## Pre-Conversion Blockers (Audited)
+
+Before including `:progression`, the following blockers were confirmed and remain relevant for repo extraction:
+
+1. Direct imports from progression into host-owned runtime packages (`quest`, `network`, `machine`, `reactor`, and other host domains).
+2. Path-sensitive source-policy tests scanning both `src/main/java` and `progression/src/main/java`.
+3. Host bootstrap/wiring in `platform` still orchestrates progression-adjacent lifecycle and events.
+4. Runtime behavior depends on host-coupled classpaths and cannot yet assume isolated progression publication.
+
+These blockers do not prevent included-subproject conversion, but they do block clean external repo extraction.
 
 ## Confirmed Authority Guardrails
 
@@ -29,12 +40,12 @@ The progression source root still imports host-owned runtime packages including 
 
 These imports are expected at this stage and block immediate clean repo extraction.
 
-## Required Cleanup Before True Subproject Include
+## Included-Subproject Conversion Completed (Bridge Mode)
 
-1. Identify and isolate host-only runtime dependencies behind stable contracts.
-2. Move cross-domain reads/writes onto `api`/`core` contracts where practical.
-3. Keep progression mutation policy internal and facade-driven.
-4. Verify no direct bypass of progression mutation authority is reintroduced.
+1. `progression/build.gradle` is active.
+2. `settings.gradle` includes `:progression`.
+3. Root runtime still compiles `progression/src/main/java` to preserve behavior while host coupling remains.
+4. Progression subproject compiles against host output/classpath as a temporary bridge.
 
 ## Required Cleanup Before Repo Split
 

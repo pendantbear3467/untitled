@@ -27,7 +27,7 @@ Full documentation map: `docs/DOCUMENTATION_INDEX.md`
 ## Repo Split Status (Current)
 
 - Create now: `api`, `core`
-- Next (subproject first, repo later): `progression`
+- Included subproject now (bridge mode, repo later): `progression`
 - Keep host-owned in this pass: `platform`, `src`
 - Support/workspace folders (not standalone repos right now): `docs`, `scripts`, `tests`, `examples`, `workspace`, `datapacks`
 

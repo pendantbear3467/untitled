@@ -14,11 +14,18 @@ repositories {
 }
 
 dependencies {
-    api project(':api')
+    implementation project(':api')
     implementation project(':core')
-    compileOnly 'net.minecraftforge:forge:1.20.1-47.4.0'
+    // Bridge-mode classpath while progression still imports host-owned runtime packages.
+    compileOnly rootProject.files(rootProject.sourceSets.main.output)
+    compileOnly rootProject.files(rootProject.sourceSets.main.compileClasspath)
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+tasks.named('compileJava').configure {
+    // Ensure host outputs/classpath are materialized before progression bridge compilation.
+    dependsOn rootProject.tasks.named('compileJava')
 }

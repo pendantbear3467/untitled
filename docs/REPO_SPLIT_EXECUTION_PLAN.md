@@ -61,9 +61,9 @@ This plan is intentionally conservative. It reflects what is clean enough now an
 
 ### Phase 2 (next pass)
 
-- promote `progression/` to true included Gradle subproject inside host
-- reduce direct imports from progression into host-only runtime packages
-- only then evaluate `extremecraft-progression` repo extraction
+- done: `progression/` is now an included Gradle subproject inside host (bridge mode)
+- next: reduce direct imports from progression into host-only runtime packages
+- then evaluate `extremecraft-progression` repo extraction
 
 ### Phase 3 (long-term optional)
 
@@ -94,8 +94,9 @@ This plan is intentionally conservative. It reflects what is clean enough now an
 
 5. Progression preparation pass (no repo split)
 - keep progression authority boundaries unchanged (`ProgressionFacade`, `ProgressionReadAccess`)
+- done: progression is included as `:progression`
 - reduce obvious host-only coupling in small safe slices
-- convert progression to an included Gradle subproject once compile boundaries are satisfiable
+- keep repo extraction deferred until coupling blockers are resolved
 
 ## F. Verification Commands
 
@@ -118,3 +119,10 @@ If any step fails compile/boundary tests, reset to previous rollback point and r
 - platform bootstrap class is still highly coupled across runtime domains
 - src remains canonical owner for many gameplay paths
 - splitting any of those early risks circular dependencies and brittle startup wiring
+
+## I. Progression Subproject Bridge Completed
+
+- `settings.gradle` includes `:progression`
+- `progression/build.gradle` is active and compiles in bridge mode against host outputs/classpath
+- root still compiles `progression/src/main/java` to preserve behavior until host-coupling reduction is complete
+- progression remains host-coupled and is not repo-ready yet

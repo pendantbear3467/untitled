@@ -1,12 +1,12 @@
 # ARCHITECTURE
 
-This document summarizes the runtime architecture used by the Forge mod in `platform/src/main/java`, `core/src/main/java`, `src/main/java`, and `src/main/resources`.
+This document summarizes the runtime architecture used by the Forge mod in `platform/src/main/java`, `progression/src/main/java`, `core/src/main/java`, `src/main/java`, and `src/main/resources`.
 
 ## Game Engine Systems
 
 Primary bootstrap: `com.extremecraft.core.ExtremeCraft`.
 
-The bootstrap and platform wiring now live in the top-level `platform/` source root, the extracted shared contracts live in `core/`, and the progression authority code now lives in the top-level `progression/` source root. The remaining gameplay systems still live in the transitional `src/` runtime tree.
+The bootstrap and platform wiring now live in the top-level `platform/` source root, the extracted shared contracts live in `core/`, and progression is now included as a Gradle subproject in bridge mode while still compiled in the host runtime from `progression/src/main/java`. The remaining gameplay systems still live in the transitional `src/` runtime tree.
 
 Core responsibilities:
 

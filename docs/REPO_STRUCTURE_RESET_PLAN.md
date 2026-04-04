@@ -9,7 +9,7 @@ This document is the current inventory and cleanup plan for the workspace root. 
 - Create repo now:
 	- `api`
 	- `core`
-- Subproject-next, repo-later:
+- Subproject-now, repo-later:
 	- `progression`
 - Host-owned in this pass:
 	- `platform`
@@ -26,7 +26,7 @@ This document is the current inventory and cleanup plan for the workspace root. 
 | --- | --- | --- |
 | `api/` | real module | create separate repo now |
 | `core/` | real module | create separate repo now |
-| `progression/` | candidate future module | convert to included subproject next, repo later |
+| `progression/` | real included module | keep in host, repo later after coupling reduction |
 | `platform/` | host runtime | keep in host |
 | `src/` | host runtime transitional monolith | keep in host |
 | `tools/` | tooling | keep in host for now |
