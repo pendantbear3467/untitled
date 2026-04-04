@@ -38,9 +38,9 @@ generated snapshot elsewhere in the repo.
 | Subsystem | Canonical live runtime owner | Write/edit path that changes gameplay | Live read/enforcement path | Adapter / mirror / legacy notes |
 | --- | --- | --- | --- | --- |
 | Machines | `machine/core/**` + `future/registry/**` | `MachineCatalog`, `TechMachineBlockEntity`, `MachineTickScheduler`, `MachineProcessingService`, `recipes/machine_processing/**` | `MachineBlock.use` gates player access; `TechMachineBlockEntity` + `MachineRecipeService` + `MachineTickScheduler` drive runtime | `machines/*.json` + `MachineRegistry` + `machine/MachineBlockEntity` are compatibility/mirror/legacy, not the active tech-machine owner |
-| Progression | `progression/ProgressionService`, `ProgressionMutationService`, `ProgressionFacade` | progression service/facade methods | `ProgressionEvents`, `GuildQuestRewardService`, commands, and canonical services | `LevelService`, `PlayerStatsService`, legacy capabilities mirror canonical state; `game/ProgressionSystem` is disconnected |
-| Quests | `quest/QuestManager` + `progression/GuildQuestRewardService` | `data/extremecraft/extremecraft_quests/*.json`, `GuildQuestRewardService` | `QuestManager.all/byId`, `ProgressionEvents.incrementQuest`, `ProgressCommands.claim` | `data/extremecraft/quests/*.json` + `platform/data/loader/QuestDataLoader` are metadata-only |
-| Guild rewards | `GuildQuestRewardService` | same service + live quest JSON rewards | `ProgressCommands.claim` -> `ProgressionFacade.claimGuildQuestReward` -> `GuildQuestRewardService` | Reward mutations now route through canonical progression services instead of direct ad-hoc writes |
+| Progression | `progression/ProgressionFacade`, `ProgressionMutationService`, `ProgressionService` | `ProgressionFacade` write methods | `ProgressionEvents`, `QuestRewardService`, commands, `SkillTreeService`, and canonical services | `ProgressionReadAccess` is the read contract; `LevelService`, `XPManager`, `GuildQuestRewardService`, `PlayerStatsService`, and legacy capabilities mirror/delegate canonical state |
+| Quests | `quest/QuestManager` + `progression/QuestRewardService` | `data/extremecraft/extremecraft_quests/*.json`, `QuestRewardService` | `QuestManager.all/byId`, `ProgressionEvents.incrementQuest`, `ProgressCommands.claim` | `data/extremecraft/quests/*.json` + `platform/data/loader/QuestDataLoader` are metadata-only |
+| Guild rewards | `QuestRewardService` | same service + live quest JSON rewards | `ProgressCommands.claim` -> `ProgressionFacade.claimGuildQuestReward` -> `QuestRewardService` | `GuildQuestRewardService` is now a compatibility adapter; reward mutations route through canonical progression services instead of direct ad-hoc writes |
 | Stages | `stage/PlayerStageData`, `StageManager`, `StageDataLoader` | `data/extremecraft/progression/stages/*.json`, `ProgressionGate.grantStage` | `StageManager.hasStage`, `MachineBlock.use`, `UnlockRuleLoader.canUnlock`, `RuntimeSyncService.syncStageState` | Stage mapping JSON is live; stage state is capability-backed and mirrored to clients through `SyncStageStateS2CPacket` |
 | Unlocks | `unlock/UnlockRuleLoader`, `UnlockAccessService`, `ProgressionGate` | `data/extremecraft/progression/unlocks/*.json`, progression grant paths | `MachineBlock.use`, `AbilityEngine`, `ClassAbilityService`, `SpellExecutor`, `UnlockAccessService` | `canUseRecipe` is a real helper but not automatically applied to autonomous machine processing |
 | Skills | `skills/SkillRegistry` + `SkillProgressionService` | `data/extremecraft/skills/*.json`, `SkillProgressionService` | `ProgressionEvents` gameplay hooks, `SkillsApi`, runtime stat calculations | Direct `PlayerSkillsCapability` mutation should be treated as backing-state only |
@@ -102,27 +102,31 @@ Classification: `CANONICAL LIVE RUNTIME OWNER`
 
 Canonical write paths:
 
-- Player XP and level:
+- Public mutation boundary:
   - `src/main/java/com/extremecraft/progression/ProgressionFacade.java`
+- Internal player XP and level owner:
   - `src/main/java/com/extremecraft/progression/ProgressionMutationService.java`
   - `src/main/java/com/extremecraft/progression/ProgressionService.java`
+- Cross-module read boundary:
+  - `src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionReadAccess.java`
 - Skill XP:
   - `src/main/java/com/extremecraft/progression/ProgressionFacade.java`
   - `src/main/java/com/extremecraft/progression/SkillProgressionService.java`
   - backing state in `src/main/java/com/extremecraft/skills/**`
 - Class XP:
-  - `src/main/java/com/extremecraft/progression/GuildQuestRewardService.java`
+  - `src/main/java/com/extremecraft/progression/QuestRewardService.java`
   - `src/main/java/com/extremecraft/progression/ClassProgressionService.java`
   - backing state in `src/main/java/com/extremecraft/progression/PlayerProgressData.java`
 
 Progression reward application:
 
 - Live gameplay XP/quest/skill hooks: `src/main/java/com/extremecraft/progression/ProgressionEvents.java`
-- Guild quest claim rewards: `src/main/java/com/extremecraft/progression/GuildQuestRewardService.java`
+- Guild quest claim rewards: `src/main/java/com/extremecraft/progression/QuestRewardService.java`
 
 Compatibility mirrors that should not be the first write target:
 
 - `src/main/java/com/extremecraft/progression/level/LevelService.java`
+- `src/main/java/com/extremecraft/progression/GuildQuestRewardService.java`
 - `src/main/java/com/extremecraft/progression/PlayerStatsService.java`
 - `src/main/java/com/extremecraft/progression/capability/PlayerStatsCapability.java`
 - `src/main/java/com/extremecraft/progression/capability/PlayerStatsGameplayEvents.java`
@@ -135,9 +139,11 @@ Legacy/disconnected:
 
 Rule of thumb:
 
-- Skill XP is awarded through gameplay-facing progression services and skill state.
+- Use `ProgressionFacade` for all gameplay writes.
+- Use `ProgressionReadAccess` or `ProgressionFacade.readAccess()` for cross-module reads.
+- Skill XP is currently combat-only plus debug override through gameplay-facing progression services and skill state.
 - Class XP is awarded through guild quest claim flow, not through unrelated systems.
-- Do not mutate `PlayerProgressData` directly outside progression services unless you are extending the canonical reward path itself.
+- Do not mutate `PlayerProgressData` directly outside progression services; its mutable collections are no longer an edit surface.
 
 ## Quests
 
@@ -150,7 +156,8 @@ Edit here to change live quest content:
 
 Edit here to change live guild quest rewards:
 
-- Reward application: `src/main/java/com/extremecraft/progression/GuildQuestRewardService.java`
+- Reward application: `src/main/java/com/extremecraft/progression/QuestRewardService.java`
+- `GuildQuestRewardService.java` is retained only as a legacy adapter.
 
 Do not edit first:
 

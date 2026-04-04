@@ -31,10 +31,12 @@ This is the short contributor guide for live Forge runtime ownership. For the lo
   - Supported class abilities compile into the shared `AbilityExecutor` path.
 - Progression:
   - External mutation facade: `progression/ProgressionFacade.java`
-  - Player XP/level owner: `ProgressionMutationService.java`
+  - Cross-module read contract: `ecosystem/core/progression/ProgressionReadAccess.java`
+  - Player XP/level owner: `ProgressionMutationService.java` via `ProgressionFacade`
   - Skill XP owner: `SkillProgressionService.java`
   - Class XP owner: `ClassProgressionService.java`
-  - Guild quest reward owner: `GuildQuestRewardService.java`
+  - Guild quest reward owner: `QuestRewardService.java`
+  - `GuildQuestRewardService.java` is a legacy adapter only.
 - Quests:
   - Live quest definitions: `quest/QuestManager.java`
   - Live data: `data/extremecraft/extremecraft_quests/*.json`
@@ -56,10 +58,11 @@ This is the short contributor guide for live Forge runtime ownership. For the lo
 - Editing `abilities/*.json` changes active abilities, not spells.
 - Editing `spells/*.json` changes spells, not active abilities with the same id.
 - Editing `materials/*.json` or `world_generation/*.json` does not change live registries or placement by itself.
-- Direct capability mutation is not the source-of-truth path; use `ProgressionFacade`, `SkillProgressionService`, `ClassProgressionService`, or `GuildQuestRewardService`.
+- Direct capability mutation is not the source-of-truth path; use `ProgressionFacade` for writes and `ProgressionReadAccess` / `ProgressionFacade.readAccess()` for cross-module reads.
 
 ## Legacy Kept Intentionally
 
 - `machines/**` and `MachineRegistry` remain as legacy compatibility/runtime residue, mainly around the standalone pulverizer path.
 - `classsystem/ClassRegistry` remains as an adapter for old callers.
+- `progression/level/LevelService.java`, `progression/XPManager.java`, and `progression/GuildQuestRewardService.java` remain as deprecated compatibility adapters that now delegate back into the canonical progression path.
 - Trigger-bearing module ability files under `abilities/*.json` still load as a warned fallback until packs move to `module_abilities/*.json`.
