@@ -2,9 +2,10 @@ package com.extremecraft.progression;
 
 import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.classsystem.ability.ClassAbilityService;
-import com.extremecraft.quest.QuestDefinition;
+import com.extremecraft.ecosystem.core.progression.ProgressionQuestDescriptor;
+import com.extremecraft.ecosystem.core.progression.ProgressionQuestType;
+import com.extremecraft.quest.QuestDescriptorView;
 import com.extremecraft.quest.QuestManager;
-import com.extremecraft.quest.QuestType;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.TickEvent;
@@ -70,7 +71,7 @@ public class ProgressionEvents {
             String regionKey = player.level().dimension().location() + "|" + rx + "|" + rz;
             if (ProgressionFacade.discoverRegion(player, regionKey)) {
                 ProgressionFacade.grantPlayerXp(player, 8);
-                incrementQuest(player, QuestType.EXPLORATION, 1);
+                incrementQuest(player, ProgressionQuestType.EXPLORATION, 1);
             }
         }
     }
@@ -87,9 +88,9 @@ public class ProgressionEvents {
         ProgressionFacade.grantPlayerXp(player, xp);
         ProgressionFacade.grantCombatSkillXp(player, event.getEntity());
 
-        incrementQuest(player, QuestType.KILL, 1);
+        incrementQuest(player, ProgressionQuestType.KILL, 1);
         if (event.getEntity().getMaxHealth() >= 100.0F) {
-            incrementQuest(player, QuestType.BOSS, 1);
+            incrementQuest(player, ProgressionQuestType.BOSS, 1);
         }
     }
 
@@ -101,7 +102,7 @@ public class ProgressionEvents {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         int count = Math.max(1, event.getCrafting().getCount());
         ProgressionFacade.grantPlayerXp(player, count * 2);
-        incrementQuest(player, QuestType.CRAFTING, count);
+        incrementQuest(player, ProgressionQuestType.CRAFTING, count);
 
         ItemStack crafted = event.getCrafting();
         String itemId = crafted.getItem().builtInRegistryHolder().key().location().getPath();
@@ -118,7 +119,7 @@ public class ProgressionEvents {
     public void onPickup(EntityItemPickupEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         int count = Math.max(1, event.getItem().getItem().getCount());
-        incrementQuest(player, QuestType.COLLECTION, count);
+        incrementQuest(player, ProgressionQuestType.COLLECTION, count);
     }
 
     /**
@@ -129,27 +130,29 @@ public class ProgressionEvents {
         if (event.getPlayer() instanceof ServerPlayer player) {
             int xp = event.getState().getDestroySpeed(player.level(), event.getPos()) > 5.0F ? 2 : 1;
             ProgressionFacade.grantPlayerXp(player, xp);
-            incrementQuest(player, QuestType.COLLECTION, 1);
+            incrementQuest(player, ProgressionQuestType.COLLECTION, 1);
         }
     }
 
     /**
      * Safely increments all matching active quests by capped delta and flushes once.
      */
-    private static void incrementQuest(ServerPlayer player, QuestType type, int amount) {
+    private static void incrementQuest(ServerPlayer player, ProgressionQuestType type, int amount) {
         if (amount <= 0) return;
 
         final boolean[] changed = {false};
 
-        for (QuestDefinition quest : QuestManager.all()) {
-            if (quest.type() != type) continue;
-            if (ProgressionFacade.readAccess().questCompleted(player, quest.id())) continue;
+        for (var quest : QuestManager.all()) {
+            ProgressionQuestDescriptor descriptor = QuestDescriptorView.from(quest);
+            ProgressionQuestType questType = ProgressionQuestType.fromName(descriptor.typeName()).orElse(null);
+            if (questType != type) continue;
+            if (ProgressionFacade.readAccess().questCompleted(player, descriptor.id())) continue;
 
-            int current = ProgressionFacade.readAccess().questProgress(player, quest.id());
-            int next = Math.min(quest.target(), current + amount);
+            int current = ProgressionFacade.readAccess().questProgress(player, descriptor.id());
+            int next = Math.min(descriptor.target(), current + amount);
             int delta = next - current;
             if (delta > 0) {
-                changed[0] |= ProgressionFacade.addQuestProgress(player, quest.id(), delta);
+                changed[0] |= ProgressionFacade.addQuestProgress(player, descriptor.id(), delta);
             }
         }
 

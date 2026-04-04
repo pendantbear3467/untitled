@@ -60,6 +60,20 @@ These imports are expected at this stage and block immediate clean repo extracti
 - Kept `Config` as the host-side publisher of that flag via config reload events, so runtime behavior remains unchanged.
 - Remaining direct host coupling still includes progression reads into host quest, skill, network, machine, and reactor/runtime packages.
 
+## Additional Read-Only Seam Completed (Quest Type Contract)
+
+- Added `core/src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionQuestType.java` as a shared enum contract.
+- Updated progression gameplay event hooks to use `ProgressionQuestType` instead of importing host `com.extremecraft.quest.QuestType` directly.
+- Preserved behavior by mapping host quest type values by enum name when evaluating quest progress increments.
+- Remaining direct host quest coupling still includes `QuestDefinition` and `QuestManager`, which remain runtime owners in host.
+
+## Additional Read-Only Seam Completed (Quest Descriptor Contract)
+
+- Added `core/src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionQuestDescriptor.java` as a read-only quest descriptor contract.
+- Added host mapper `src/main/java/com/extremecraft/quest/QuestDescriptorView.java` to project host quest definitions into that descriptor.
+- Updated progression event quest increment flow to consume the descriptor instead of directly typing against host `QuestDefinition`.
+- Host quest ownership remains in place through `QuestManager`; this seam only removes one direct model-type dependency from progression.
+
 ## Required Cleanup Before Repo Split
 
 1. Progression compiles independently as a Gradle subproject.

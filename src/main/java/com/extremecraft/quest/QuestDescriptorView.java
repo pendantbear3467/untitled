@@ -1,0 +1,16 @@
+package com.extremecraft.quest;
+
+import com.extremecraft.ecosystem.core.progression.ProgressionQuestDescriptor;
+
+public final class QuestDescriptorView {
+    private QuestDescriptorView() {
+    }
+
+    public static ProgressionQuestDescriptor from(QuestDefinition definition) {
+        return new ProgressionQuestDescriptor(
+                definition.id(),
+                String.valueOf(definition.type()),
+                definition.target()
+        );
+    }
+}
