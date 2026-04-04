@@ -1,5 +1,5 @@
 ExtremeCraft Dev Validation Report
-Generated: 2026-04-03T20:16:59.5660419
+Generated: 2026-04-03T21:02:00.4014532
 Total findings: 51
 
 MEDIUM
@@ -155,7 +155,7 @@ src/main/java/com/extremecraft/progression/tech/TechTreeManager.java:15
 Static collection 'MACHINE_REQUIREMENTS' has no obvious cleanup path (possible memory leak).
 
 MEDIUM
-src/main/java/com/extremecraft/reactor/ReactorMultiblockService.java:30
+src/main/java/com/extremecraft/reactor/ReactorMultiblockService.java:29
 Static collection 'CACHE' has no obvious cleanup path (possible memory leak).
 
 MEDIUM

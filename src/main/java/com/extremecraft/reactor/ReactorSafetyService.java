@@ -14,6 +14,8 @@ public final class ReactorSafetyService {
         boolean changed = false;
         if (!state.scrammed() && state.heat() >= ECFoundationConfig.reactorScramHeatThreshold()) {
             state.setScrammed(true);
+            state.setActive(false);
+            state.setWarning("Heat SCRAM");
             changed = true;
         }
 
@@ -27,6 +29,8 @@ public final class ReactorSafetyService {
     public static void triggerMeltdown(ServerLevel level, BlockPos pos, com.extremecraft.machine.core.TechMachineBlockEntity machine, ReactorControlService.ReactorState state) {
         state.setMeltedDown(true);
         state.setScrammed(true);
+        state.setActive(false);
+        state.setWarning("Containment failure");
         state.setFuelTicksRemaining(0);
         state.setReactivity(0.0D);
         machine.getEnergyStorageExt().extractEnergy(machine.getEnergyStorageExt().getEnergyStored(), false);

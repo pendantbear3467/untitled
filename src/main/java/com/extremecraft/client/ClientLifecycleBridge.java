@@ -21,11 +21,15 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Client-only lifecycle wiring isolated from common bootstrap.
  */
 public final class ClientLifecycleBridge {
+    private static final Logger LOGGER = LogManager.getLogger();
+
     private ClientLifecycleBridge() {
     }
 
@@ -56,7 +60,10 @@ public final class ClientLifecycleBridge {
 
         MachineCategory category = MachineCatalog.byId(machineId)
                 .map(definition -> definition.category())
-                .orElse(MachineCategory.PROCESSOR);
+                .orElseGet(() -> {
+                    LOGGER.warn("[ClientUI] Unknown machine id '{}' defaulted to PROCESSOR screen. Add it to MachineCatalog to keep UI family routing aligned with backend behavior.", machineId);
+                    return MachineCategory.PROCESSOR;
+                });
 
         return switch (category) {
             case GENERATOR -> new GeneratorMachineScreen(menu, inventory, title);

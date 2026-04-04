@@ -2,20 +2,26 @@ package com.extremecraft.reactor;
 
 import com.extremecraft.config.ECFoundationConfig;
 import com.extremecraft.dev.validation.ECTickProfiler;
+import com.extremecraft.machine.core.TechMachineBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Consumer;
 
 public final class ReactorControlService {
     private static final String DATA_NAME = "extremecraft_reactor_control";
+    private static final Logger LOGGER = LogManager.getLogger();
 
     private ReactorControlService() {
     }
@@ -67,6 +73,11 @@ public final class ReactorControlService {
         long start = System.nanoTime();
         ReactorControlData data = data(serverLevel);
         ReactorState state = data.state(pos);
+        boolean previousAssembled = state.assembled();
+        boolean previousActive = state.active();
+        boolean previousScrammed = state.scrammed();
+        String previousValidationReason = state.validationReason();
+        String previousWarning = state.warning();
         ReactorMultiblockService.ValidationState structure = ReactorMultiblockService.validate(serverLevel, pos);
         boolean changed = false;
 
@@ -82,6 +93,10 @@ public final class ReactorControlService {
         if (!structure.valid()) {
             if (!state.scrammed()) {
                 state.setScrammed(true);
+                changed = true;
+            }
+            if (state.manualInsertionPercent() < 100) {
+                state.setManualInsertionPercent(100);
                 changed = true;
             }
             if (state.active()) {
@@ -150,6 +165,16 @@ public final class ReactorControlService {
             }
         }
 
+        if (previousAssembled != state.assembled() || !previousValidationReason.equals(state.validationReason())) {
+            LOGGER.info("[Reactor] Structure state changed at {}: assembled={}, reason={}", pos, state.assembled(), state.validationReason());
+        }
+        if (previousActive != state.active() || previousScrammed != state.scrammed()) {
+            LOGGER.info("[Reactor] Operational state changed at {}: active={}, scrammed={}", pos, state.active(), state.scrammed());
+        }
+        if (!previousWarning.equals(state.warning())) {
+            LOGGER.debug("[Reactor] Warning changed at {}: {}", pos, state.warning());
+        }
+
         if (changed) {
             data.setDirty();
         }
@@ -162,11 +187,24 @@ public final class ReactorControlService {
     public static boolean setActive(ServerLevel level, BlockPos pos, boolean active) {
         return mutateState(level, pos, state -> {
             if (state.meltedDown()) {
+                state.setWarning("Meltdown lockout");
                 return;
             }
+
+            ReactorMultiblockService.ValidationState structure = ReactorMultiblockService.validate(level, pos);
+            state.setAssembled(structure.valid());
+            state.setValidationReason(structure.reason());
+
             if (active) {
+                if (!structure.valid()) {
+                    state.setActive(false);
+                    state.setWarning("Cannot start: " + structure.reason());
+                    return;
+                }
                 state.setActive(true);
-                state.setScrammed(false);
+                if (state.manualInsertionPercent() < 100) {
+                    state.setScrammed(false);
+                }
                 state.setWarning("Booting");
             } else {
                 state.setActive(false);
@@ -178,11 +216,17 @@ public final class ReactorControlService {
     public static boolean setManualInsertion(ServerLevel level, BlockPos pos, int percent) {
         int clamped = Math.max(0, Math.min(100, percent));
         return mutateState(level, pos, state -> {
+            if (state.meltedDown()) {
+                state.setWarning("Meltdown lockout");
+                return;
+            }
             state.setManualInsertionPercent(clamped);
             if (clamped >= 100 && !state.scrammed()) {
                 state.setScrammed(true);
+                state.setWarning("SCRAM engaged");
             } else if (clamped < 100 && state.active() && state.scrammed() && state.heat() < (ECFoundationConfig.reactorScramHeatThreshold() * 0.35D)) {
                 state.setScrammed(false);
+                state.setWarning("Nominal");
             }
         });
     }
@@ -194,6 +238,20 @@ public final class ReactorControlService {
             state.setManualInsertionPercent(100);
             state.setWarning("SCRAM engaged");
         });
+    }
+
+    public static boolean removeControllerState(ServerLevel level, BlockPos pos) {
+        if (level == null || pos == null) {
+            return false;
+        }
+
+        ReactorControlData data = data(level);
+        if (data.states.remove(pos.asLong()) != null) {
+            data.setDirty();
+            LOGGER.info("[Reactor] Cleared persisted control state for removed controller at {}", pos);
+            return true;
+        }
+        return false;
     }
 
     private static boolean mutateState(ServerLevel level, BlockPos pos, Consumer<ReactorState> mutation) {
@@ -215,17 +273,34 @@ public final class ReactorControlService {
     public static double sampleAmbientRadiation(ServerLevel level, BlockPos pos, int radius) {
         ReactorControlData data = data(level);
         double radiation = 0.0D;
+        boolean removedStale = false;
         int radiusSq = radius * radius;
-        for (Map.Entry<Long, ReactorState> entry : data.states.entrySet()) {
+        Iterator<Map.Entry<Long, ReactorState>> iterator = data.states.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<Long, ReactorState> entry = iterator.next();
             BlockPos controllerPos = BlockPos.of(entry.getKey());
             if (controllerPos.distSqr(pos) > radiusSq) {
                 continue;
+            }
+
+            // Keep persisted state when the chunk is unloaded; clean stale controllers only once loaded.
+            if (level.hasChunkAt(controllerPos)) {
+                BlockEntity blockEntity = level.getBlockEntity(controllerPos);
+                if (!(blockEntity instanceof TechMachineBlockEntity machine)
+                        || !isReactorController(machine.getMachineId())) {
+                    iterator.remove();
+                    removedStale = true;
+                    continue;
+                }
             }
 
             ReactorState state = entry.getValue();
             radiation += state.meltedDown() ? 12.0D : 0.0D;
             radiation += state.radiation() * 0.35D;
             radiation += state.heat() / 500.0D;
+        }
+        if (removedStale) {
+            data.setDirty();
         }
         return radiation;
     }

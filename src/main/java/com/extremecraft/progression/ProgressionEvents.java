@@ -154,7 +154,7 @@ public class ProgressionEvents {
             int next = Math.min(quest.target(), current + amount);
             int delta = next - current;
             if (delta > 0) {
-                changed[0] |= ProgressionService.addQuestProgress(player, quest.id(), delta, false);
+                changed[0] |= ProgressionFacade.addQuestProgress(player, quest.id(), delta);
             }
         }
 

@@ -17,7 +17,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -55,6 +54,15 @@ public final class ReactorMultiblockService {
         int maxDist = range * range;
         String dimension = level.dimension().location().toString();
         CACHE.keySet().removeIf(key -> key.dimension.equals(dimension) && key.controllerPos.distSqr(changedPos) <= maxDist);
+    }
+
+    public static void clearDimensionCache(Level level) {
+        if (level == null) {
+            return;
+        }
+
+        String dimension = level.dimension().location().toString();
+        CACHE.keySet().removeIf(key -> key.dimension.equals(dimension));
     }
 
     private static ValidationState computeValidation(ServerLevel level, BlockPos controllerPos) {

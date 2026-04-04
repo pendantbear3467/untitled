@@ -63,6 +63,10 @@ public final class ECRuntimeOwnershipAudit {
         warnLegacyDirectory(dataRoot.resolve("machine"), warningSink,
                 "Legacy datapack directory detected: data/extremecraft/machine. Canonical machine metadata mirror path is data/extremecraft/machines.");
 
+        if (countJsonFiles(dataRoot.resolve("module_abilities")) <= 0 && countJsonFiles(dataRoot.resolve("abilities")) > 0) {
+            warningSink.accept("data/extremecraft/module_abilities is empty while abilities/ is populated. Canonical module-trigger ability ownership is module_abilities; abilities/ trigger payloads are compatibility fallback only.");
+        }
+
         if (countJsonFiles(dataRoot.resolve("classes")) > 0) {
             warningSink.accept("data/extremecraft/classes is the CANONICAL gameplay class source, but compatibility adapters still mirror it into ClassRegistry/ClassDataLoader. Gameplay ownership is progression.classsystem.data.ClassDefinitionLoader.");
         }
@@ -79,12 +83,13 @@ public final class ECRuntimeOwnershipAudit {
     private static List<String> startupLines() {
         return List.of(
                 "Machines: MachineCatalog + TechMachineBlockEntity + recipes/machine_processing",
-                "Abilities: AbilityRegistry/AbilityEngine trigger active casts; AbilityExecutor.executeDefinition is the compiled-definition execution path",
+                "Abilities: AbilityRegistry/AbilityEngine trigger active casts; AbilityExecutor.executeDefinition(...) is the active compiled-definition execution path",
                 "Module triggers: ModuleRuntimeService + data/extremecraft/module_abilities (abilities/ trigger payloads are legacy fallback only)",
                 "Spells: SpellRegistry + SpellExecutor + data/extremecraft/spells",
                 "Classes: ClassDefinitionLoader/ClassDefinitions + data/extremecraft/classes; ClassRegistry is compatibility-only",
                 "Progression: ProgressionFacade for external callers, SkillProgressionService for gameplay skill XP, ClassProgressionService for guild-quest class XP",
                 "Quests: QuestManager + data/extremecraft/extremecraft_quests; quests/ is metadata-only",
+                "Legacy warning: game/ProgressionSystem is historical reference-only; live progression writes must stay in com.extremecraft.progression",
                 "Materials/worldgen metadata: materials/ and world_generation/ are not live registry or placement owners"
         );
     }

@@ -71,11 +71,27 @@ public record ReactorControlC2SPacket(BlockPos pos, byte action, int value) {
                 return;
             }
 
-            switch (packet.action) {
-                case ACTION_SET_ACTIVE -> ReactorControlService.setActive(serverLevel, targetPos, packet.value > 0);
+            if (packet.action != ACTION_SET_ACTIVE
+                    && packet.action != ACTION_SCRAM
+                    && packet.action != ACTION_SET_INSERTION) {
+                LOGGER.debug("[Network] Ignored unknown reactor action {} from {}", packet.action, sender.getScoreboardName());
+                return;
+            }
+
+            boolean changed = switch (packet.action) {
+                case ACTION_SET_ACTIVE -> {
+                    if (packet.value != 0 && packet.value != 1) {
+                        yield false;
+                    }
+                    yield ReactorControlService.setActive(serverLevel, targetPos, packet.value > 0);
+                }
                 case ACTION_SCRAM -> ReactorControlService.scram(serverLevel, targetPos);
                 case ACTION_SET_INSERTION -> ReactorControlService.setManualInsertion(serverLevel, targetPos, packet.value);
-                default -> LOGGER.debug("[Network] Ignored unknown reactor action {} from {}", packet.action, sender.getScoreboardName());
+                default -> false;
+            };
+
+            if (changed) {
+                machine.setChanged();
             }
         });
         context.setPacketHandled(true);
