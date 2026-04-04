@@ -1,0 +1,15 @@
+plugins {
+    id 'java-library'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+dependencies {
+    api project(':api')
+    implementation project(':extremecraft-core')
+    implementation project(':extremecraft-progression')
+}

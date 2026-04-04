@@ -1,54 +1,49 @@
 package com.extremecraft.platform.service;
 
-import com.extremecraft.modules.runtime.ModuleRuntimeService;
+import com.extremecraft.ecosystem.core.service.CoreServices;
 
+@Deprecated(forRemoval = false, since = "1.2.0")
 public final class ExtremeCraftServices {
-    private static SkillService skillService = player -> { };
-    private static MachineService machineService = player -> { };
-    private static ResearchService researchService = player -> { };
-    private static ModuleService moduleService = ModuleRuntimeService::refreshPassiveModifiers;
-    private static EnergyNetworkService energyNetworkService = player -> { };
-
     private ExtremeCraftServices() {
     }
 
     public static SkillService skillService() {
-        return skillService;
+        return CoreServices.skillService()::refresh;
     }
 
     public static MachineService machineService() {
-        return machineService;
+        return CoreServices.machineService()::refresh;
     }
 
     public static ResearchService researchService() {
-        return researchService;
+        return CoreServices.researchService()::refresh;
     }
 
     public static ModuleService moduleService() {
-        return moduleService;
+        return CoreServices.moduleService()::refresh;
     }
 
     public static EnergyNetworkService energyNetworkService() {
-        return energyNetworkService;
+        return CoreServices.energyNetworkService()::refresh;
     }
 
     public static void setSkillService(SkillService service) {
-        skillService = service;
+        CoreServices.setSkillService(service == null ? null : service::refresh);
     }
 
     public static void setMachineService(MachineService service) {
-        machineService = service;
+        CoreServices.setMachineService(service == null ? null : service::onMachineTick);
     }
 
     public static void setResearchService(ResearchService service) {
-        researchService = service;
+        CoreServices.setResearchService(service == null ? null : service::refresh);
     }
 
     public static void setModuleService(ModuleService service) {
-        moduleService = service;
+        CoreServices.setModuleService(service == null ? null : service::refresh);
     }
 
     public static void setEnergyNetworkService(EnergyNetworkService service) {
-        energyNetworkService = service;
+        CoreServices.setEnergyNetworkService(service == null ? null : service::sync);
     }
 }
