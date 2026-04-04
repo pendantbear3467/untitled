@@ -38,6 +38,7 @@ repositories {
 
 dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.4.0'
+    // Host runtime consumes the extracted API as a real project dependency.
     implementation project(':api')
     implementation project(':core')
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
@@ -46,13 +47,12 @@ dependencies {
 sourceSets {
     main {
         java {
+            // Default src/main/java remains the main host runtime tree.
             // Transitional host-owned bootstrap/wiring root; not split into a repo in this pass.
             srcDir 'platform/src/main/java'
             // Bridge mode: progression is now an included subproject, but host still compiles
             // progression sources until direct host-runtime coupling is reduced.
             srcDir 'progression/src/main/java'
-            // Keep API interfaces on the same dev runtime output used by Forge mod loading.
-            srcDir project(':api').file('src/main/java')
         }
         resources {
             srcDir 'platform/src/main/resources'
@@ -171,4 +171,3 @@ tasks.named('check').configure {
 tasks.named('build').configure {
     dependsOn tasks.named('validateExtremeCraft')
 }
-

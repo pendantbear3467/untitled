@@ -1,6 +1,6 @@
 package com.extremecraft.progression;
 
-import com.extremecraft.quest.QuestDefinition;
+import com.extremecraft.ecosystem.core.progression.ProgressionQuestDescriptor;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -43,7 +43,7 @@ interface InternalProgressionWriteAccess {
 
     boolean grantStage(ServerPlayer player, String stageId);
 
-    boolean claimGuildQuestReward(ServerPlayer player, QuestDefinition quest);
+    boolean claimGuildQuestReward(ServerPlayer player, ProgressionQuestDescriptor quest);
 
     boolean unlockSkillNodeById(ServerPlayer player, String nodeId);
 

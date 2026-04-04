@@ -10,11 +10,15 @@ Owns:
 
 Depends on:
 
-- `:api`
+- no project or Forge dependencies at the moment
 
 Exposes:
 
 - `com.extremecraft.ecosystem.core.*` contracts
+
+Status:
+
+- ready to create as a separate repo now
 
 Must stay internal elsewhere:
 

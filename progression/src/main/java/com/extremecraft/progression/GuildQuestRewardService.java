@@ -1,6 +1,6 @@
 package com.extremecraft.progression;
 
-import com.extremecraft.quest.QuestDefinition;
+import com.extremecraft.ecosystem.core.progression.ProgressionQuestDescriptor;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
@@ -11,11 +11,11 @@ public final class GuildQuestRewardService {
     private GuildQuestRewardService() {
     }
 
-    public static boolean claimQuestReward(ServerPlayer player, QuestDefinition quest) {
+    public static boolean claimQuestReward(ServerPlayer player, ProgressionQuestDescriptor quest) {
         return QuestRewardService.claimQuestReward(player, quest);
     }
 
-    public static int calculateClassXpReward(QuestDefinition quest) {
+    public static int calculateClassXpReward(ProgressionQuestDescriptor quest) {
         return QuestRewardService.calculateClassXpReward(quest);
     }
 }

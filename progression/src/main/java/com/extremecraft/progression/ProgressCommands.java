@@ -1,8 +1,8 @@
 package com.extremecraft.progression;
 
+import com.extremecraft.ecosystem.core.progression.ProgressionQuestCatalogBridge;
+import com.extremecraft.ecosystem.core.progression.ProgressionQuestDescriptor;
 import com.extremecraft.progression.capability.ProgressApi;
-import com.extremecraft.quest.QuestDefinition;
-import com.extremecraft.quest.QuestManager;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -58,7 +58,7 @@ public final class ProgressCommands {
                                 .then(Commands.literal("list").executes(ctx -> {
                                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                                     return ProgressApi.get(player).map(data -> {
-                                        for (QuestDefinition quest : QuestManager.all()) {
+                                        for (ProgressionQuestDescriptor quest : ProgressionQuestCatalogBridge.allQuestDescriptors()) {
                                             int progress = data.getQuestProgress(quest.id());
                                             boolean done = data.isQuestCompleted(quest.id());
                                             String status = done ? "CLAIMED" : (progress >= quest.target() ? "READY" : "IN_PROGRESS");
@@ -71,7 +71,7 @@ public final class ProgressCommands {
                                         .then(Commands.argument("id", StringArgumentType.word()).executes(ctx -> {
                                             ServerPlayer player = ctx.getSource().getPlayerOrException();
                                             String id = StringArgumentType.getString(ctx, "id");
-                                            QuestDefinition quest = QuestManager.byId(id);
+                                            ProgressionQuestDescriptor quest = ProgressionQuestCatalogBridge.questDescriptor(id).orElse(null);
                                             if (quest == null) {
                                                 ctx.getSource().sendFailure(Component.literal("Unknown quest: " + id));
                                                 return 0;

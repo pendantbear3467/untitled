@@ -1,7 +1,7 @@
 package com.extremecraft.progression;
 
+import com.extremecraft.ecosystem.core.progression.ProgressionQuestDescriptor;
 import com.extremecraft.progression.capability.ProgressApi;
-import com.extremecraft.quest.QuestDefinition;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
@@ -11,7 +11,7 @@ final class QuestRewardService {
     private QuestRewardService() {
     }
 
-    static boolean claimQuestReward(ServerPlayer player, QuestDefinition quest) {
+    static boolean claimQuestReward(ServerPlayer player, ProgressionQuestDescriptor quest) {
         ProgressionMutationAuthority.warnIfBypassed("claimQuestReward");
         if (player == null || quest == null) {
             return false;
@@ -51,7 +51,7 @@ final class QuestRewardService {
         }).orElse(false);
     }
 
-    static int calculateClassXpReward(QuestDefinition quest) {
+    static int calculateClassXpReward(ProgressionQuestDescriptor quest) {
         if (quest == null) {
             return 0;
         }

@@ -9,8 +9,14 @@ public final class QuestDescriptorView {
     public static ProgressionQuestDescriptor from(QuestDefinition definition) {
         return new ProgressionQuestDescriptor(
                 definition.id(),
+                definition.title(),
                 String.valueOf(definition.type()),
-                definition.target()
+                definition.target(),
+                definition.rewardXp(),
+                definition.rewardPlayerSkillPoints(),
+                definition.rewardClassSkillPoints(),
+                definition.rewardUnlockClass(),
+                definition.rewardUnlockStage()
         );
     }
 }

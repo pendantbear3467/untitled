@@ -13,4 +13,8 @@ Depends on:
 - `:api`
 - `:core`
 
-This is a top-level source root, not a separate Gradle module yet. The root build includes it so progression authority can sit outside the remaining gameplay monolith without forcing a risky module cycle.
+This is an included Gradle subproject in bridge mode.
+
+- The root host build still compiles `progression/src/main/java` directly while host-runtime imports remain.
+- The `:progression` project exists to tighten ownership, document coupling, and keep the eventual repo split honest.
+- Repo extraction is still deferred until direct host-runtime imports and the host classpath bridge are removed.

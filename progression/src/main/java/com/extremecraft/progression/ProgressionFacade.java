@@ -1,9 +1,9 @@
 package com.extremecraft.progression;
 
 import com.extremecraft.ecosystem.core.progression.ProgressionReadAccess;
+import com.extremecraft.ecosystem.core.progression.ProgressionQuestDescriptor;
 import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.skilltree.SkillTreeService;
-import com.extremecraft.quest.QuestDefinition;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -86,7 +86,7 @@ public final class ProgressionFacade {
         return ProgressionMutationAuthority.runBoolean("grantStage", () -> WRITE_ACCESS.grantStage(player, stageId));
     }
 
-    public static boolean claimGuildQuestReward(ServerPlayer player, QuestDefinition quest) {
+    public static boolean claimGuildQuestReward(ServerPlayer player, ProgressionQuestDescriptor quest) {
         return ProgressionMutationAuthority.runBoolean("claimGuildQuestReward", () -> WRITE_ACCESS.claimGuildQuestReward(player, quest));
     }
 
@@ -261,7 +261,7 @@ public final class ProgressionFacade {
         }
 
         @Override
-        public boolean claimGuildQuestReward(ServerPlayer player, QuestDefinition quest) {
+        public boolean claimGuildQuestReward(ServerPlayer player, ProgressionQuestDescriptor quest) {
             return QuestRewardService.claimQuestReward(player, quest);
         }
 
