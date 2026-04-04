@@ -1,54 +1,59 @@
 # Ecosystem Module Dependency Graph
 
-## Current Intended Graph
+## Actual Graph Today
 
 ```mermaid
 graph TD
-  API[api] --> CORE[core]
-  PROGRESSION[progression] --> API
-  PROGRESSION --> CORE
-  HOST[host runtime: platform + src + progression bridge source root] --> API
+  API["api (real module)"]
+  CORE["core (real module)"]
+  HOST["host runtime (src + platform + progression bridge sources)"]
+  PROGRESSION["progression project (bridge mode only)"]
+
+  HOST --> API
   HOST --> CORE
+  PROGRESSION --> API
+  PROGRESSION --> CORE
+  PROGRESSION -. compileOnly bridge .-> HOST
 ```
 
-## Root Runtime Module
+Notes:
 
-- Root runtime module currently depends on:
-  - `:api`
-  - `:core`
-- Root still contains launch glue, migration adapters, progression bridge compilation, and not-yet-extracted gameplay ownership.
+- Host runtime consumes `:api` and `:core` as real project dependencies.
+- Host runtime still compiles `progression/src/main/java` directly.
+- `:progression` exists as an included project, but its dependency on host
+  output/classpath means it is not a clean module boundary yet.
 
-## Staged Graph Targets
+## Repo Decision Snapshot
 
-### Stage 1 (now)
+- Create now: `api`, `core`
+- Subproject now, repo later: `progression`
+- Stay host-owned now: `platform`, `src`
+- Not real modules yet: tech, magic, machine, world, similar domain splits
 
-- Keep `api` and `core` as real modules and first-wave repo candidates.
-- Keep `platform`, `progression`, and `src` host-owned.
+## Target Graph After Progression Cleanup
 
-### Stage 2 (next pass)
+```mermaid
+graph TD
+  API["api"]
+  CORE["core"]
+  PROGRESSION["progression"]
+  HOST["host runtime (platform + src)"]
 
-- Reduce progression coupling to host-only runtime packages.
-- Keep repo split deferred until progression no longer directly depends on host-only packages.
+  HOST --> API
+  HOST --> CORE
+  HOST --> PROGRESSION
+  PROGRESSION --> API
+  PROGRESSION --> CORE
+```
 
-### Stage 3 (later optional)
+## Forbidden Directions
 
-- Evaluate tools/domain repo splits only after ownership and dependency constraints are enforced by code and build boundaries.
+1. `core` -> host gameplay/runtime packages
+2. `api` -> host gameplay/runtime packages
+3. future compat/domain modules -> each other by default
+4. circular dependencies between any extracted modules
 
-## Forbidden Dependency Directions
+## Current Temporary Exception
 
-1. `core` -> any compat module (`tech/magic/skills`): forbidden.
-2. `core` -> a progression authority module: forbidden.
-3. Compat module -> compat module: forbidden by default.
-4. Any module -> root runtime module: forbidden.
-5. Circular dependencies between any ecosystem modules: forbidden.
-
-## Allowed Optional Runtime Relationships
-
-- Progression remains authoritative while the monolith runtime owns the active gameplay systems.
-- `platform/` is the adapter/home for bootstrap and compatibility glue.
-
-## Publication-Oriented Relationship Model
-
-- `core`: base required dependency.
-- `platform`: host-owned runtime bootstrap and glue over core + host gameplay.
-- future compat modules: optional addons depending on core + runtime contracts.
+- `progression` -> host runtime compile classpath is temporarily allowed only in
+  bridge mode and only until host-runtime imports are removed.

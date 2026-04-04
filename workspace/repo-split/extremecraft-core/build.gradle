@@ -1,0 +1,35 @@
+﻿plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group = 'com.extremecraft'
+version = '1.2.0'
+
+base {
+    archivesName = 'extremecraft-core'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}

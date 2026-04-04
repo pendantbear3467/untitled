@@ -1,5 +1,6 @@
 plugins {
     id 'java-library'
+    id 'maven-publish'
 }
 
 java {
@@ -10,4 +11,19 @@ java {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+// Local Maven publication for reuse in parent project or external consumers.
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId = 'com.extremecraft'
+            artifactId = 'extremecraft-api'
+            version = rootProject.version
+        }
+    }
+    repositories {
+        mavenLocal()
+    }
 }

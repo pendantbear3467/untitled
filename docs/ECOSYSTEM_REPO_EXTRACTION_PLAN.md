@@ -1,92 +1,56 @@
 # Ecosystem Repo Extraction Plan
 
-## Objective
+## Current Answer
 
-Transition from one repository with internal module separation to independently extractable repositories:
+Create now:
 
-1. `extremecraft-core`
-2. `extremecraft-progression`
-3. `extremecraft-tech-compat`
-4. `extremecraft-magic-compat`
-5. `extremecraft-skills-compat`
+1. `extremecraft-api`
+2. `extremecraft-core`
 
-## Recommended Split Order
+Do not create yet:
 
-1. `extremecraft-core`
-- Rationale: lowest gameplay authority risk; shared contracts can be stabilized first.
+1. `extremecraft-progression`
+2. tech/magic/machine/world/domain repos
 
-2. `extremecraft-progression`
-- Rationale: must lock progression authority boundaries before compat extraction.
+## Why `api` And `core` Are Ready Now
 
-3. `extremecraft-tech-compat`
-- Rationale: highest likely dependency complexity; extract after core/progression contracts stabilize.
+- `api` is a real extracted Gradle module with only API/JDK contracts.
+- `core` is a real extracted Gradle module with JDK-only contracts/bridges.
+- The host workspace now consumes both through explicit project dependencies.
 
-4. `extremecraft-magic-compat`
-- Rationale: similar pattern to tech compat, usually fewer machine-side couplings.
+## Why `progression` Is Not Repo-Ready Yet
 
-5. `extremecraft-skills-compat`
-- Rationale: depends on final external skill backend transition timing.
+- Host still compiles `progression/src/main/java` directly.
+- `:progression` still compiles against host output/classpath as a bridge.
+- Direct imports to host runtime packages still remain.
+- Client/UI, packet, classsystem, skills, and machine/material paths are still
+  host-coupled.
+
+## Extraction Order
+
+1. `extremecraft-api`
+   - lowest-risk first-wave repo
+2. `extremecraft-core`
+   - stable shared contract layer
+3. `extremecraft-progression`
+   - only after host bridge removal and direct host imports are reduced
+4. future domain repos
+   - only after real ownership/build boundaries exist
 
 ## Current Blocking Items
 
-1. Root runtime source set still owns most gameplay implementations.
-2. Several core/progression classes remain in root package paths due staged migration safety.
-3. Legacy adapters still active in root (`platform/*`, old compatibility layers).
-4. Domain systems (machine/magic/skills) still partially monolith-owned.
-5. Some module contracts still use runtime-specific assumptions not yet fully abstracted.
+1. `platform` still owns Forge/bootstrap/runtime glue and must stay host-owned.
+2. `src` still owns most gameplay implementation.
+3. `progression` still needs host runtime classes for compile/runtime behavior.
+4. Some host-owned code still uses package prefixes that resemble extracted
+   module ownership (`com.extremecraft.ecosystem.core` under `src/main/java`).
+5. No tech/magic/world/machine split currently has a build-enforced module
+   boundary.
 
-## Adapter Deletion Strategy After Split
+## Safe Next Steps
 
-Delete only after all checks pass:
-
-1. equivalent module-owned implementation exists
-2. no reference from root runtime or compat modules
-3. no migration fallback requirement
-4. integration tests pass with adapter removed
-
-Initial post-split deletion candidates:
-
-- deprecated legacy progression adapters after progression repo fully consumes canonical services
-- root ecosystem package markers once all ownership classes are moved
-
-## Root Runtime Reduction Plan
-
-Stage 1 (in progress):
-- move stable shared contracts/services to module source sets
-- keep root as consumer
-
-Stage 2:
-- move canonical progression implementation ownership to progression module
-- keep root bridge classes only
-
-Stage 3:
-- migrate domain compat ownership into respective compat modules
-- root becomes launch/wiring layer only
-
-## CurseForge Relationship Proposal
-
-- `ExtremeCraft Core`:
-  - foundational required dependency for ecosystem modules
-
-- `ExtremeCraft Progression`:
-  - depends on Core
-  - authoritative progression gameplay layer
-
-- `ExtremeCraft Tech Compat`:
-  - optional addon
-  - depends on Core + Progression + external tech mods
-
-- `ExtremeCraft Magic Compat`:
-  - optional addon
-  - depends on Core + Progression + Ars Nouveau
-
-- `ExtremeCraft Skills Compat`:
-  - optional addon
-  - depends on Core + Progression + Pufferfish Skills
-
-## Safe Next Extraction Targets
-
-1. Move additional `com.extremecraft.ecosystem.core.*` classes (compat/network contracts) into `extremecraft-core` once their direct runtime couplings are split into adapter + contract.
-2. Move progression service implementations into `extremecraft-progression` in dependency-safe slices.
-3. Introduce module-local tests for dependency direction and forbidden import checks.
-4. Add CI check for cycle detection and forbidden project dependency edges.
+1. Keep `api` and `core` clean and publishable.
+2. Continue narrow progression read-only seam extraction.
+3. Remove progression's host compile bridge only after imports/tests prove it.
+4. Refuse future repo claims for domain splits until the build graph matches the
+   docs.

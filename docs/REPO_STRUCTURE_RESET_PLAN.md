@@ -1,6 +1,6 @@
 # Repository Structure Reset Plan
 
-Status: active migration audit
+Status: historical cleanup plan; use `docs/WORKSPACE_REAL_STATE_AUDIT.md` for the current audited state.
 
 This document is the current inventory and cleanup plan for the workspace root. It records what is active, transitional, legacy, generated, or local-only so contributors do not mistake scaffolding for runtime ownership.
 

@@ -18,8 +18,10 @@ generated snapshot elsewhere in the repo.
 
 ## Build And Runtime Truth
 
-- Current Forge runtime code is compiled from `platform/src/main/java`, `core/src/main/java`, `src/main/java`, and `api/src/main/java`.
-- Current Forge runtime resources are loaded from `src/main/resources`.
+- Current Forge host runtime code is compiled from `platform/src/main/java`, `progression/src/main/java`, and `src/main/java`.
+- Current Forge host runtime resources are loaded from `platform/src/main/resources` and `src/main/resources`.
+- `api/` and `core/` are separate extracted library projects consumed by the host runtime.
+- `progression/` is also an included project, but it is still bridge-mode because the host compiles `progression/src/main/java` directly.
 - `platform/` is the live bootstrap and adapter source root.
 - `core/` is the live extracted shared-contracts module.
 - `src/` is still the transitional gameplay/runtime owner for systems not yet safely split.
@@ -29,13 +31,14 @@ generated snapshot elsewhere in the repo.
 
 - `platform/src/main/java/com/extremecraft/platform/**`: `CANONICAL LIVE RUNTIME OWNER` for bootstrap glue, data wiring, and compatibility gates
 - `platform/src/main/java/com/extremecraft/core/**`: `CANONICAL LIVE RUNTIME OWNER` for the Forge bootstrap entrypoint and platform-adjacent runtime wiring
-- `core/src/main/java`: `CANONICAL LIVE RUNTIME OWNER` for extracted shared contracts and core services
+- `core/src/main/java`: extracted module-owned contracts/services consumed by the host runtime
 - `src/main/java` and `src/main/resources`: `CANONICAL LIVE RUNTIME OWNER` for remaining transitional gameplay/runtime code and data
-- `api/src/main/java`: `CANONICAL LIVE RUNTIME OWNER` for public API contracts, not gameplay mutation logic
+- `progression/src/main/java`: `CANONICAL LIVE RUNTIME OWNER` for progression authority while bridge mode remains active
+- `api/src/main/java`: extracted module-owned API contracts, not gameplay mutation logic
 - `tools/**`: `TOOLING SOURCE`
 - `workspace/**`: mixed `TOOLING SOURCE`, `GENERATED REFERENCE SNAPSHOT`, and local scratch state
 - `docs/generated/**`: `GENERATED REFERENCE SNAPSHOT`
-- `build/**`, `run/**`, `src/build/**`, `src/.gradle/**`: `DISTRIBUTABLE / BUILD OUTPUT`
+- `build/**`, `run/**`, `workspace/build/**`, `workspace/generated/**`, `workspace/exports/**`, `src/build/**`, `src/.gradle/**`: `DISTRIBUTABLE / BUILD OUTPUT`
 - `gameplay/`, `tech/`, `magic/`, `worldgen/`, `client/`, `mod/`, and `extremecraft-*` scaffolds: `LEGACY / DISCONNECTED` as runtime code owners for now
 
 ## Verified Runtime Ownership Table
@@ -60,7 +63,7 @@ generated snapshot elsewhere in the repo.
 | World generation | datapack `worldgen/**` + `forge/**` | `data/extremecraft/worldgen/**`, `data/extremecraft/forge/**` | vanilla/Forge worldgen bootstrap at runtime | `world_generation/*.json` + `WorldGenerationDataLoader` are profile metadata only |
 | Network packet ownership | `network/ModNetwork` | `ModNetwork.init()` and packet handlers under `network/packet/**` | server-authoritative handlers in registered packets only | Packet classes not registered in `ModNetwork` are not live network authority even if they still compile |
 | Runtime sync | `network/sync/RuntimeSyncService` | sync requests from canonical services only | sync-only S2C payload generation, including dedicated stage reporting | Snapshot sync is mirror-only, not mutation authority |
-| Generated workspace outputs | `workspace/build`, `workspace/generated`, `workspace/exports`, `tools/generated`, `docs/generated` | tooling/generator/export flows | inspection, packaging review, snapshot comparison | intentionally preserved generated/reference outputs; do not edit first for gameplay |
+| Generated workspace outputs | `workspace/build`, `workspace/generated`, `workspace/exports`, `tools/generated`, `docs/generated` | tooling/generator/export flows | inspection, packaging review, snapshot comparison | generated/local output areas; do not edit first for gameplay |
 
 ## Machines
 

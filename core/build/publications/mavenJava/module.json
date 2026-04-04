@@ -1,0 +1,78 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "com.extremecraft",
+    "module": "extremecraft-core",
+    "version": "1.2.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "com.extremecraft",
+          "module": "extremecraft-api",
+          "version": {
+            "requires": "1.2.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "extremecraft-core-1.2.0.jar",
+          "url": "extremecraft-core-1.2.0.jar",
+          "size": 13443,
+          "sha512": "0c0e5d964c330ec56db445bcf986cc5e3e21059e761ecf579f7b41e1bdb06bcf33aa27c4a42cd60c8d54177f947c31b0e9da26115b8290b5fe67a1507dae3b04",
+          "sha256": "6ddd836f4c29614b2835e7980f6a13502813603c8fe0bea5ba2f37c6966ddeb2",
+          "sha1": "8a35edaab18a9976aaf3dde40e594bf69543e1fd",
+          "md5": "a0050f960251f6828b9b5f54f81cb0b5"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "com.extremecraft",
+          "module": "extremecraft-api",
+          "version": {
+            "requires": "1.2.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "extremecraft-core-1.2.0.jar",
+          "url": "extremecraft-core-1.2.0.jar",
+          "size": 13443,
+          "sha512": "0c0e5d964c330ec56db445bcf986cc5e3e21059e761ecf579f7b41e1bdb06bcf33aa27c4a42cd60c8d54177f947c31b0e9da26115b8290b5fe67a1507dae3b04",
+          "sha256": "6ddd836f4c29614b2835e7980f6a13502813603c8fe0bea5ba2f37c6966ddeb2",
+          "sha1": "8a35edaab18a9976aaf3dde40e594bf69543e1fd",
+          "md5": "a0050f960251f6828b9b5f54f81cb0b5"
+        }
+      ]
+    }
+  ]
+}

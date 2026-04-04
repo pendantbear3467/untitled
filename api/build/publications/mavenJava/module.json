@@ -1,0 +1,60 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "com.extremecraft",
+    "module": "extremecraft-api",
+    "version": "1.2.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "extremecraft-api-1.2.0.jar",
+          "url": "extremecraft-api-1.2.0.jar",
+          "size": 14531,
+          "sha512": "acd45b723c1ff20ebb417c9ce7d83845dd4fb7eab65c7ddec11094e5ed2be157eb583029ceb3817397f5d858fe4b9b58814c150169771656bf18bfaeb6e9234f",
+          "sha256": "f92bcd56464e08c09722145f789d17d27c3b272c0524f05389718e999a52e89d",
+          "sha1": "6bc9953cbac924763baf8cbb1f6d91b9a35449ff",
+          "md5": "52c79aea1a65e6b4259837403521b5a9"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "extremecraft-api-1.2.0.jar",
+          "url": "extremecraft-api-1.2.0.jar",
+          "size": 14531,
+          "sha512": "acd45b723c1ff20ebb417c9ce7d83845dd4fb7eab65c7ddec11094e5ed2be157eb583029ceb3817397f5d858fe4b9b58814c150169771656bf18bfaeb6e9234f",
+          "sha256": "f92bcd56464e08c09722145f789d17d27c3b272c0524f05389718e999a52e89d",
+          "sha1": "6bc9953cbac924763baf8cbb1f6d91b9a35449ff",
+          "md5": "52c79aea1a65e6b4259837403521b5a9"
+        }
+      ]
+    }
+  ]
+}

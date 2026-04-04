@@ -2,15 +2,15 @@
 
 Scratch and intermediate workspace area used by local tooling.
 
-Use this folder for temporary, user-generated outputs that should not be treated
-as authoritative source content for the mod runtime.
+Use this folder for tooling inputs plus temporary/generated outputs that should
+not be treated as authoritative source content for the mod runtime.
 
 Do not store canonical Java/runtime resources here.
 
-Nuance:
+Generated subfolders:
 
-- `build/`, `generated/`, and `exports/` may be intentionally versioned snapshots
-  or packaging outputs kept for inspection/comparison.
+- `build/`, `generated/`, and `exports/` are local/generated output areas.
+- Only the README markers in those folders should stay tracked.
 - `.studio/autosave/`, `.studio/logs/`, and `.studio/recovery/` are local tool
   state, not project source.
 

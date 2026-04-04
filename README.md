@@ -4,12 +4,12 @@ ExtremeCraft is a large-scale Minecraft Forge mod for 1.20.1 focused on technolo
 
 ## Repository Layout
 
-- `platform/src/main/java`: Forge bootstrap, registry glue, compatibility gates, and other transitional platform wiring.
-- `core/`: Extracted shared contracts and reusable core services.
-- `progression/src/main/java`: Progression authority source root, separated from the remaining gameplay monolith.
-- `src/main/java`: Remaining transitional gameplay/runtime Java code loaded by Forge.
+- `platform/src/main/java`: Forge bootstrap, registry glue, compatibility gates, and other host-owned platform wiring.
+- `src/main/java`: Remaining host gameplay/runtime Java code.
+- `progression/src/main/java`: Progression authority sources still host-compiled in bridge mode.
 - `src/main/resources`: Runtime assets and built-in datapack content (`assets/`, `data/`, `META-INF/`).
-- `api/`: Public Java API module consumed by integrations.
+- `api/`: Public Java API module. Real Gradle module and create-now repo candidate.
+- `core/`: Shared contracts and reusable core services. Real Gradle module and create-now repo candidate.
 - `tools/python`: Python platform tooling (Asset Studio, SDK, compiler, plugin pipeline).
 - `tools/scripts`: Python launcher wrappers that keep tooling entrypoints out of the repo root.
 - `tools/`: Build/validation utility scripts used by Gradle checks.
@@ -17,10 +17,11 @@ ExtremeCraft is a large-scale Minecraft Forge mod for 1.20.1 focused on technolo
 - `docs/`: Reference docs and generated validation/report artifacts.
 - `examples/`: Example addon/template projects.
 - `scripts/`: Optional helper scripts for contributor workflows.
+- `workspace/`: Tooling workspace inputs plus generated local outputs. `workspace/build`, `workspace/generated`, and `workspace/exports` are not source ownership signals.
 
 Detailed folder-by-folder documentation: `docs/REPOSITORY_FOLDER_GUIDE.md`
 Canonical edit-first ownership map: `docs/CANONICAL_OWNERSHIP_MAP.md`
-Workspace reset audit: `docs/REPO_STRUCTURE_RESET_PLAN.md`
+Workspace real-state audit: `docs/WORKSPACE_REAL_STATE_AUDIT.md`
 Repo split execution checklist: `docs/REPO_SPLIT_EXECUTION_PLAN.md`
 Full documentation map: `docs/DOCUMENTATION_INDEX.md`
 
@@ -29,7 +30,8 @@ Full documentation map: `docs/DOCUMENTATION_INDEX.md`
 - Create now: `api`, `core`
 - Included subproject now (bridge mode, repo later): `progression`
 - Keep host-owned in this pass: `platform`, `src`
-- Support/workspace folders (not standalone repos right now): `docs`, `scripts`, `tests`, `examples`, `workspace`, `datapacks`
+- Support/workspace folders (not standalone repos right now): `docs`, `scripts`, `tests`, `examples`, `workspace`, `datapacks`, `config`, `gradle`, `.github`
+- Not real modules yet: tech, magic, machine, world, and similar domain splits
 
 ## What ExtremeCraft Includes
 
@@ -83,12 +85,13 @@ Build distributable artifacts:
 - Platform/bootstrap wiring: `platform/src/main/java/com/extremecraft/platform/**` and `platform/src/main/java/com/extremecraft/core/**`
 - Shared contracts and reusable core services: `core/src/main/java/com/extremecraft/ecosystem/core/**`
 - Progression authority: `progression/src/main/java/com/extremecraft/progression/**`
-- Remaining transitional gameplay/runtime code: `src/main/java/com/extremecraft/**`
+- Remaining host gameplay/runtime code: `src/main/java/com/extremecraft/**`
 - Runtime assets and builtin datapack content: `src/main/resources/assets/extremecraft/**`, `src/main/resources/data/extremecraft/**`
 - Edit-first ownership map for live gameplay changes: `docs/CANONICAL_OWNERSHIP_MAP.md`
 - Datapack contributor workspace: `datapacks/`
 - Python/tooling/generators: `tools/`, `tools/scripts/assetstudio.py`, `tools/scripts/generate_assets.py`, `tools/scripts/main.py`
 - API and integration-facing module: `api/`
+- Host/build truth audit: `docs/WORKSPACE_REAL_STATE_AUDIT.md`
 
 ## Safe Contribution Areas
 

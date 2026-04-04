@@ -1,12 +1,19 @@
 # ARCHITECTURE
 
-This document summarizes the runtime architecture used by the Forge mod in `platform/src/main/java`, `progression/src/main/java`, `core/src/main/java`, `src/main/java`, and `src/main/resources`.
+This document summarizes the runtime architecture used by the Forge host workspace plus the extracted `api` and `core` library projects.
 
 ## Game Engine Systems
 
 Primary bootstrap: `com.extremecraft.core.ExtremeCraft`.
 
-The bootstrap and platform wiring now live in the top-level `platform/` source root, the extracted shared contracts live in `core/`, and progression is now included as a Gradle subproject in bridge mode while still compiled in the host runtime from `progression/src/main/java`. The remaining gameplay systems still live in the transitional `src/` runtime tree.
+Actual build/runtime truth:
+
+- Host runtime source roots: `platform/src/main/java`, `progression/src/main/java`, `src/main/java`
+- Host runtime resources: `platform/src/main/resources`, `src/main/resources`
+- Extracted library projects consumed by host: `api`, `core`
+- `progression` is an included Gradle subproject in bridge mode, but the host still compiles `progression/src/main/java` directly until remaining host-runtime imports are removed
+
+The bootstrap and platform wiring live in the top-level `platform/` source root. The remaining gameplay systems still live in the transitional `src/` runtime tree.
 
 Core responsibilities:
 
@@ -151,6 +158,7 @@ For a complete docs/README navigation index, see `docs/DOCUMENTATION_INDEX.md`.
 - Datapack/runtime content: `src/main/resources/data/extremecraft/**`
 - Assets (models, lang, textures): `src/main/resources/assets/extremecraft/**`
 - Python/content tooling: `tools/`, `tools/scripts/assetstudio.py`, `tools/scripts/generate_assets.py`, `tools/scripts/main.py`
+- Workspace/build audit: `docs/WORKSPACE_REAL_STATE_AUDIT.md`
 
 ## Finishing-Pass Safe Zones
 

@@ -1,27 +1,19 @@
 # Progression Subproject Readiness
 
-Status: progression is now an included Gradle subproject in bridge mode in the host repo; repo extraction remains deferred.
+Status: included Gradle subproject in bridge mode. Repo extraction remains
+deferred.
 
-This report does not claim progression is repo-ready yet.
+This document does not claim progression is repo-ready.
 
 ## Current Decision
 
-- progression is authority-hardened and now included as project `:progression`
-- progression is subproject now, repo later
-- progression should not be split into its own repository in this pass
+- `progression` stays in the host repo
+- `:progression` remains useful as an included project for ownership/build
+  visibility
+- repo split is blocked until the host bridge and remaining host imports are
+  removed
 
-## Pre-Conversion Blockers (Audited)
-
-Before including `:progression`, the following blockers were confirmed and remain relevant for repo extraction:
-
-1. Direct imports from progression into host-owned runtime packages (`quest`, `network`, `machine`, `reactor`, and other host domains).
-2. Path-sensitive source-policy tests scanning both `src/main/java` and `progression/src/main/java`.
-3. Host bootstrap/wiring in `platform` still orchestrates progression-adjacent lifecycle and events.
-4. Runtime behavior depends on host-coupled classpaths and cannot yet assume isolated progression publication.
-
-These blockers do not prevent included-subproject conversion, but they do block clean external repo extraction.
-
-## Confirmed Authority Guardrails
+## Guardrails That Must Stay Intact
 
 - write boundary: `ProgressionFacade`
 - read boundary: `ProgressionReadAccess`
@@ -29,79 +21,48 @@ These blockers do not prevent included-subproject conversion, but they do block 
   - `GameplayAuthoritySourceTest`
   - `ProgressionBoundarySourceTest`
 
-## Direct Host Runtime Coupling (Representative)
+## What Improved In This Pass
 
-The progression source root still imports host-owned runtime packages including but not limited to:
+- Host quest model/catalog imports were reduced again through the core quest
+  descriptor/catalog bridge.
+- Progression reward claim and command flows now consume read-only
+  `ProgressionQuestDescriptor` contracts instead of host `QuestDefinition` /
+  `QuestManager` types directly.
+- `progression` README/docs now correctly describe bridge mode instead of
+  pretending the repo split is already done.
 
-- quest system (`com.extremecraft.quest.*`)
-- network and packets (`com.extremecraft.network.*`)
-- machine and reactor paths (`com.extremecraft.machine.*`, `com.extremecraft.reactor.*`)
-- class/ability/magic/runtime packages still owned by host source roots
+## Remaining Direct Host Runtime Coupling
 
-These imports are expected at this stage and block immediate clean repo extraction.
+Representative direct imports still present in `progression/src/main/java`:
 
-## Included-Subproject Conversion Completed (Bridge Mode)
+- `com.extremecraft.network.*`
+- `com.extremecraft.classsystem.*`
+- `com.extremecraft.skills.*`
+- `com.extremecraft.ability.*`
+- `com.extremecraft.magic.*`
+- `com.extremecraft.machine.*`
+- `com.extremecraft.materials.*`
+- host client GUI classes
 
-1. `progression/build.gradle` is active.
-2. `settings.gradle` includes `:progression`.
-3. Root runtime still compiles `progression/src/main/java` to preserve behavior while host coupling remains.
-4. Progression subproject compiles against host output/classpath as a temporary bridge.
+These are the reasons repo extraction is still deferred.
 
-## Small Coupling Reduction Completed
+## Why The Bridge Still Exists
 
-- Extracted shared constants contract to `core/src/main/java/com/extremecraft/ecosystem/core/ECConstants.java`.
-- Updated progression capability/stage/skilltree event surfaces to consume core constants instead of host-only `com.extremecraft.core.ECConstants`.
-- Kept `platform/src/main/java/com/extremecraft/core/ECConstants.java` as a compatibility adapter to avoid runtime behavior changes.
-
-## Additional Read-Only Seam Completed
-
-- Added `core/src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionRuntimeFlags.java` as a tiny shared progression runtime flag holder.
-- Updated `ProgressionGate`, `UnlockAccessService`, and `UnlockRuleLoader` to read the debug-bypass flag from core instead of host config.
-- Kept `Config` as the host-side publisher of that flag via config reload events, so runtime behavior remains unchanged.
-- Remaining direct host coupling still includes progression reads into host quest, skill, network, machine, and reactor/runtime packages.
-
-## Additional Read-Only Seam Completed (Quest Type Contract)
-
-- Added `core/src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionQuestType.java` as a shared enum contract.
-- Updated progression gameplay event hooks to use `ProgressionQuestType` instead of importing host `com.extremecraft.quest.QuestType` directly.
-- Preserved behavior by mapping host quest type values by enum name when evaluating quest progress increments.
-- Remaining direct host quest coupling still includes `QuestDefinition` and `QuestManager`, which remain runtime owners in host.
-
-## Additional Read-Only Seam Completed (Quest Descriptor Contract)
-
-- Added `core/src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionQuestDescriptor.java` as a read-only quest descriptor contract.
-- Added host mapper `src/main/java/com/extremecraft/quest/QuestDescriptorView.java` to project host quest definitions into that descriptor.
-- Updated progression event quest increment flow to consume the descriptor instead of directly typing against host `QuestDefinition`.
-- Host quest ownership remains in place through `QuestManager`; this seam only removes one direct model-type dependency from progression.
-
-## Additional Read-Only Seam Completed (Quest Catalog Bridge)
-
-- Added `core/src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionQuestCatalogBridge.java` as a small read-only catalog provider contract.
-- Registered host `QuestManager` as the provider using `QuestDescriptorView` projection.
-- Updated progression event quest increment flow to read descriptors through the core bridge instead of calling `QuestManager` directly.
-- Host quest ownership still remains in `QuestManager`; this seam narrows direct progression import coupling only.
-
-## Additional Read-Only Seam Completed (Skill Level Bridge)
-
-- Added `core/src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionSkillLevelBridge.java` as a tiny read-only skill level lookup bridge.
-- Registered host `SkillsApi` as the bridge provider.
-- Updated `UnlockRuleLoader` to read required skill levels through the core bridge instead of direct host `SkillsApi` calls.
-- Skill ownership and mutation remain host-owned; this seam narrows only read dependency coupling.
-
-## Additional Read-Only Seam Completed (Research Bridge)
-
-- Added `core/src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionResearchBridge.java` as a tiny read-only research lookup bridge.
-- Registered host `ResearchApi` as the bridge provider.
-- Updated `UnlockRuleLoader` research unlock checks to use the core bridge instead of direct host `ResearchApi` reads.
-- Research ownership and mutation remain host-owned; this seam narrows only read dependency coupling.
+1. Root runtime still compiles `progression/src/main/java`.
+2. `progression/build.gradle` still uses host output/classpath as `compileOnly`.
+3. Path-sensitive boundary tests still scan both `src/main/java` and
+   `progression/src/main/java`.
+4. Platform/bootstrap behavior in `platform` still wires progression-adjacent
+   lifecycle and runtime services.
 
 ## Required Cleanup Before Repo Split
 
-1. Progression compiles independently as a Gradle subproject.
-2. Host runtime depends on progression through explicit module dependency.
-3. Progression no longer depends on host-only implementation packages directly.
-4. Boundary tests pass with progression as a real module boundary.
+1. Remove direct host package imports from progression.
+2. Replace host compile-classpath bridge with explicit module dependencies only.
+3. Stop compiling progression sources directly in the host runtime.
+4. Keep authority/boundary tests green after each seam reduction.
 
 ## Safe Next Step
 
-Convert progression into an included Gradle subproject only after coupling-reduction commits are complete and compile-test validation remains green.
+Keep `progression` as a bridge-mode included project and continue only narrow,
+read-only seam reductions until the host bridge can be removed cleanly.

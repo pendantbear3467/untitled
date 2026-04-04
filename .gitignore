@@ -130,6 +130,14 @@ src/main/resources/data/extremecraft/worldgen/*
 !workspace/exports/
 workspace/exports/*
 !workspace/exports/README.md
+workspace/build/
+!workspace/build/
+workspace/build/*
+!workspace/build/README.md
+workspace/generated/
+!workspace/generated/
+workspace/generated/*
+!workspace/generated/README.md
 
 ### Mac OS ###
 .DS_Store
@@ -146,9 +154,6 @@ crash-reports/
 
 # Copilot context allowlist: keep runtime/build dirs ignored,
 # but expose high-signal text artifacts for indexing and review.
-!build/extremecraft-validation-report.txt
-!build/reports/
-!build/reports/**
 !run/server.properties
 !run/config/
 run/config/*

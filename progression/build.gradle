@@ -1,5 +1,6 @@
 plugins {
     id 'java-library'
+    id 'maven-publish'
 }
 
 java {
@@ -29,3 +30,20 @@ tasks.named('compileJava').configure {
     // Ensure host outputs/classpath are materialized before progression bridge compilation.
     dependsOn rootProject.tasks.named('compileJava')
 }
+
+// Future Maven publication (enabled after decoupling host-package imports).
+// Currently disabled in bridge mode due to compileOnly host dependency.
+// publishing {
+//     publications {
+//         mavenJava(MavenPublication) {
+//             from components.java
+//             groupId = 'com.extremecraft'
+//             artifactId = 'extremecraft-progression'
+//             version = rootProject.version
+//         }
+//     }
+//     repositories {
+//         mavenLocal()
+//     }
+// }
+
