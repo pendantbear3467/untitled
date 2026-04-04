@@ -137,7 +137,7 @@ public final class ProgressionFacade {
 
         @Override
         public boolean hasUnlock(ServerPlayer player, String unlockId) {
-            return ProgressApi.get(player).map(data -> data.hasUnlock(unlockId)).orElse(false);
+            return ProgressApi.get(player).map(data -> data.hasUnlockGrant(unlockId)).orElse(false);
         }
     }
 
