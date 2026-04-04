@@ -1,12 +1,16 @@
 # extremecraft-skills-compat
 
-Phase-2 scaffold for skills integration ownership.
+Skills compatibility module.
 
-Ownership target:
-- Pufferfish Skills integration
-- skill reward mapping
-- stat integration bridges
-- cross-mod skill progression hooks
+Owns:
+- Pufferfish Skills integration bridges
+- skill reward mapping and stat bridge logic
 
-Current state:
-- source-empty by design for low-risk incremental extraction
+Depends on:
+- `:api`
+- `:extremecraft-core`
+- `:extremecraft-progression` (contracts only)
+
+Must not own:
+- canonical progression writes
+- shared core contracts

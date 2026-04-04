@@ -1,12 +1,16 @@
 # extremecraft-magic-compat
 
-Phase-2 scaffold for magic integration ownership.
+Magic compatibility module.
 
-Ownership target:
-- Ars Nouveau integration
-- mage bonuses
-- magic unlock hooks
-- spell/magic progression bridges
+Owns:
+- Ars Nouveau integration bridges
+- mage bonuses and magic unlock hooks
 
-Current state:
-- source-empty by design for low-risk incremental extraction
+Depends on:
+- `:api`
+- `:extremecraft-core`
+- `:extremecraft-progression` (contracts only)
+
+Must not own:
+- canonical progression writes
+- shared core contracts

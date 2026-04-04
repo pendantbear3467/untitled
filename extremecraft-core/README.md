@@ -1,15 +1,19 @@
 # extremecraft-core
 
-Phase-2 scaffold for the ExtremeCraft ecosystem split.
+Core library module for shared ecosystem contracts and cross-module abstractions.
 
-Ownership target:
-- shared foundations
-- public API bridge surface
-- compat hook contracts
-- shared networking abstractions
-- shared config helpers
-- common tags/events/registries used by other modules
+Owns:
+- shared service contracts and registries
+- progression read contracts consumed by non-progression modules
+- stable compat hook abstractions intended for addon-facing integration
 
-Current state:
-- source-empty by design for low-risk incremental extraction
-- runtime code remains in src/main until extraction steps move classes safely
+Depends on:
+- `:api`
+
+Exposes:
+- `com.extremecraft.ecosystem.core.*` contracts
+
+Must stay internal elsewhere:
+- gameplay mutation logic
+- progression writes
+- domain-specific compat implementations

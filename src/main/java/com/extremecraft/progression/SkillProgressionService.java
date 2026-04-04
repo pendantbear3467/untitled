@@ -36,7 +36,7 @@ public final class SkillProgressionService {
         }
 
         if (!isAllowedGameplaySource(source)) {
-            LOGGER.warn("[ProgressionGuard] Rejected non-gameplay skill XP write: source={} skill={} amount={}", source, skillId, amount);
+            LOGGER.warn("[ProgressionGuard] Rejected non-combat skill XP write: source={} skill={} amount={}", source, skillId, amount);
             return 0;
         }
 
@@ -72,7 +72,8 @@ public final class SkillProgressionService {
 
     private static boolean isAllowedGameplaySource(Source source) {
         return switch (source) {
-            case COMBAT, MINING, ENGINEERING, ARCANE, EXPLORATION, DEBUG_COMMAND -> true;
+            case COMBAT, DEBUG_COMMAND -> true;
+            case MINING, ENGINEERING, ARCANE, EXPLORATION -> false;
         };
     }
 }

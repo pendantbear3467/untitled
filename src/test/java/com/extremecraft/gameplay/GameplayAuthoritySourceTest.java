@@ -56,6 +56,14 @@ class GameplayAuthoritySourceTest {
         assertTrue(progressCommands.contains("ProgressionFacade.setPlayerLevel("), "Progress command level set should route through ProgressionFacade");
     }
 
+    @Test
+    void skillXpPolicyIsCombatOnlyWithDebugOverride() throws IOException {
+        String skillService = read("src/main/java/com/extremecraft/progression/SkillProgressionService.java");
+
+        assertTrue(skillService.contains("case COMBAT, DEBUG_COMMAND -> true"), "Skill XP policy should allow combat and debug sources only");
+        assertTrue(skillService.contains("case MINING, ENGINEERING, ARCANE, EXPLORATION -> false"), "Non-combat skill XP sources should be rejected");
+    }
+
     private static String read(String relativePath) throws IOException {
         return Files.readString(ROOT.resolve(relativePath), StandardCharsets.UTF_8);
     }

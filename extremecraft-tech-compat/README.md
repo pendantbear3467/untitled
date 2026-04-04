@@ -1,13 +1,17 @@
 # extremecraft-tech-compat
 
-Phase-2 scaffold for tech integration ownership.
+Tech compatibility module.
 
-Ownership target:
-- Mekanism integration
-- Extreme Reactors integration
-- engineer bonuses
-- tech unlock hooks
-- machine/reactor progression bridges
+Owns:
+- Mekanism / Extreme Reactors integration bridges
+- engineer bonuses and tech unlock hooks
+- tech domain adapter logic
 
-Current state:
-- source-empty by design for low-risk incremental extraction
+Depends on:
+- `:api`
+- `:extremecraft-core`
+- `:extremecraft-progression` (contracts only)
+
+Must not own:
+- canonical progression writes
+- shared core contracts

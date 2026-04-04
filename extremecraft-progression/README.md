@@ -1,14 +1,19 @@
 # extremecraft-progression
 
-Phase-2 scaffold for progression authority extraction.
+Progression authority module.
 
-Ownership target:
-- classes
-- guilds
-- quests
-- unlock conditions
-- progression authority and mutation services
-- progression sync and player-facing progression UI
+Owns:
+- canonical progression mutation authority
+- classes/quests/unlocks progression state and rules
+- progression sync coordination
 
-Current state:
-- source-empty by design for low-risk incremental extraction
+Depends on:
+- `:api`
+- `:extremecraft-core`
+
+Exposes:
+- progression facade and read/query surfaces
+
+Must stay internal:
+- low-level capability mutation internals
+- write-only internals used by progression package services
