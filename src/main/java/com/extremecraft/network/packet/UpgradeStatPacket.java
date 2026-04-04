@@ -1,8 +1,8 @@
 package com.extremecraft.network.packet;
 
 import com.extremecraft.network.security.ServerPacketLimiter;
+import com.extremecraft.progression.ProgressionFacade;
 import com.extremecraft.progression.PlayerStatsService;
-import com.extremecraft.progression.skilltree.SkillTreeService;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
@@ -58,7 +58,7 @@ public record UpgradeStatPacket(String upgradeId) {
                     return;
                 }
 
-                SkillTreeService.tryUnlockByNodeId(sender, nodeId);
+                ProgressionFacade.unlockSkillNodeById(sender, nodeId);
                 return;
             }
 

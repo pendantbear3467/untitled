@@ -13,7 +13,7 @@ import java.util.function.Supplier;
  * <p>This is a lightweight runtime guard for the migration period: lower-level services still
  * execute the real writes, but they warn when callers bypass the facade-owned mutation boundary.</p>
  */
-final class ProgressionMutationAuthority {
+public final class ProgressionMutationAuthority {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final ThreadLocal<Integer> FACADE_DEPTH = ThreadLocal.withInitial(() -> 0);
 
@@ -56,7 +56,7 @@ final class ProgressionMutationAuthority {
         }
     }
 
-    static void warnIfBypassed(String operation) {
+    public static void warnIfBypassed(String operation) {
         if (FACADE_DEPTH.get() > 0) {
             return;
         }

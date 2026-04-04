@@ -45,5 +45,9 @@ interface InternalProgressionWriteAccess {
 
     boolean claimGuildQuestReward(ServerPlayer player, QuestDefinition quest);
 
+    boolean unlockSkillNodeById(ServerPlayer player, String nodeId);
+
+    boolean unlockSkillNode(ServerPlayer player, String treeId, String nodeId);
+
     boolean switchClass(ServerPlayer player, String classId);
 }

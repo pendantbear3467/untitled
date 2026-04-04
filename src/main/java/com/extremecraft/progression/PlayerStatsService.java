@@ -30,7 +30,7 @@ public final class PlayerStatsService {
             boolean changed;
             if (upgradeId.startsWith("skill:")) {
                 String nodeId = upgradeId.substring("skill:".length());
-                changed = tryUnlockSkillNode(player, nodeId);
+                changed = ProgressionFacade.unlockSkillNodeById(player, nodeId);
             } else {
                 changed = stats.upgradePrimaryStat(upgradeId);
             }
@@ -49,6 +49,7 @@ public final class PlayerStatsService {
      * unlock state, and runtime sync stay aligned.</p>
      */
     public static boolean tryUnlockSkillNode(ServerPlayer player, String nodeId) {
+        ProgressionMutationAuthority.warnIfBypassed("tryUnlockSkillNode");
         if (player == null || nodeId == null || nodeId.isBlank()) {
             return false;
         }
@@ -61,11 +62,11 @@ public final class PlayerStatsService {
         return unlockSkillNode(player, stats, nodeId.trim().toLowerCase());
     }
 
-    public static boolean addExperience(ServerPlayer player, int amount) {
+    static boolean addExperience(ServerPlayer player, int amount) {
         return addExperience(player, amount, true);
     }
 
-    public static boolean addExperience(ServerPlayer player, int amount, boolean syncImmediately) {
+    static boolean addExperience(ServerPlayer player, int amount, boolean syncImmediately) {
         return PlayerStatsApi.get(player).map(stats -> {
             boolean leveled = stats.addExperience(amount);
             if (syncImmediately) {
@@ -75,11 +76,11 @@ public final class PlayerStatsService {
         }).orElse(false);
     }
 
-    public static void setLevel(ServerPlayer player, int level) {
+    static void setLevel(ServerPlayer player, int level) {
         setLevel(player, level, true);
     }
 
-    public static void setLevel(ServerPlayer player, int level, boolean syncImmediately) {
+    static void setLevel(ServerPlayer player, int level, boolean syncImmediately) {
         if (player == null) {
             return;
         }
@@ -113,7 +114,7 @@ public final class PlayerStatsService {
         RuntimeSyncService.syncSkillUnlocks(player);
     }
 
-    public static boolean syncProgressionMirror(ServerPlayer player, boolean syncImmediately) {
+    static boolean syncProgressionMirror(ServerPlayer player, boolean syncImmediately) {
         if (player == null) {
             return false;
         }

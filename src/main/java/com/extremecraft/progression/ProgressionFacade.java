@@ -2,6 +2,7 @@ package com.extremecraft.progression;
 
 import com.extremecraft.ecosystem.core.progression.ProgressionReadAccess;
 import com.extremecraft.progression.capability.ProgressApi;
+import com.extremecraft.progression.skilltree.SkillTreeService;
 import com.extremecraft.quest.QuestDefinition;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
@@ -87,6 +88,14 @@ public final class ProgressionFacade {
 
     public static boolean claimGuildQuestReward(ServerPlayer player, QuestDefinition quest) {
         return ProgressionMutationAuthority.runBoolean("claimGuildQuestReward", () -> WRITE_ACCESS.claimGuildQuestReward(player, quest));
+    }
+
+    public static boolean unlockSkillNodeById(ServerPlayer player, String nodeId) {
+        return ProgressionMutationAuthority.runBoolean("unlockSkillNodeById", () -> WRITE_ACCESS.unlockSkillNodeById(player, nodeId));
+    }
+
+    public static boolean unlockSkillNode(ServerPlayer player, String treeId, String nodeId) {
+        return ProgressionMutationAuthority.runBoolean("unlockSkillNode", () -> WRITE_ACCESS.unlockSkillNode(player, treeId, nodeId));
     }
 
     public static boolean switchClass(ServerPlayer player, String classId) {
@@ -254,6 +263,16 @@ public final class ProgressionFacade {
         @Override
         public boolean claimGuildQuestReward(ServerPlayer player, QuestDefinition quest) {
             return QuestRewardService.claimQuestReward(player, quest);
+        }
+
+        @Override
+        public boolean unlockSkillNodeById(ServerPlayer player, String nodeId) {
+            return SkillTreeService.tryUnlockByNodeId(player, nodeId);
+        }
+
+        @Override
+        public boolean unlockSkillNode(ServerPlayer player, String treeId, String nodeId) {
+            return SkillTreeService.tryUnlock(player, treeId, nodeId);
         }
 
         @Override

@@ -43,7 +43,6 @@ import com.extremecraft.progression.SkillProgressionService;
 import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.classsystem.data.ClassDefinitions;
 import com.extremecraft.progression.skilltree.SkillTreeManager;
-import com.extremecraft.progression.skilltree.SkillTreeService;
 import com.extremecraft.skills.SkillRegistry;
 import com.extremecraft.skills.SkillsApi;
 import com.mojang.brigadier.CommandDispatcher;
@@ -263,7 +262,7 @@ public final class ECDevCommands {
                                         return 0;
                                     }
 
-                                    boolean success = SkillTreeService.tryUnlock(player, tree, node);
+                                    boolean success = ProgressionFacade.unlockSkillNode(player, tree, node);
                                     if (!success) {
                                         ctx.getSource().sendFailure(Component.literal("Cannot unlock node: " + node));
                                         return 0;

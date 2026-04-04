@@ -8,11 +8,11 @@ import net.minecraft.server.level.ServerPlayer;
  * <p>New gameplay code should mutate XP/level through this service so legacy capability
  * mirrors stay synchronized while canonical progression authority remains in one path.</p>
  */
-public final class ProgressionMutationService {
+final class ProgressionMutationService {
     private ProgressionMutationService() {
     }
 
-    public static int grantXp(ServerPlayer player, int amount) {
+    static int grantXp(ServerPlayer player, int amount) {
         ProgressionMutationAuthority.warnIfBypassed("grantXp");
         if (player == null || amount <= 0) {
             return 0;
@@ -31,7 +31,7 @@ public final class ProgressionMutationService {
         return levelUps;
     }
 
-    public static void setLevel(ServerPlayer player, int level) {
+    static void setLevel(ServerPlayer player, int level) {
         ProgressionMutationAuthority.warnIfBypassed("setLevel");
         if (player == null) {
             return;

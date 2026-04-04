@@ -1,6 +1,7 @@
 package com.extremecraft.progression.skilltree;
 
 import com.extremecraft.network.security.ServerPacketLimiter;
+import com.extremecraft.progression.ProgressionFacade;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
@@ -50,7 +51,7 @@ public record UnlockSkillNodeC2S(String treeId, String nodeId) {
             }
 
             // Server-authoritative unlock path: keep all checks above to avoid malformed client unlock attempts.
-            SkillTreeService.tryUnlock(sender, treeId, nodeId);
+            ProgressionFacade.unlockSkillNode(sender, treeId, nodeId);
         });
         context.setPacketHandled(true);
     }

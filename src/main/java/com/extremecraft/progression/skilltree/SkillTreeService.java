@@ -3,6 +3,7 @@ package com.extremecraft.progression.skilltree;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.sync.RuntimeSyncService;
 import com.extremecraft.progression.PlayerProgressData;
+import com.extremecraft.progression.ProgressionMutationAuthority;
 import com.extremecraft.progression.PlayerStatsService;
 import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.capability.PlayerStatsApi;
@@ -30,6 +31,7 @@ public final class SkillTreeService {
     }
 
     public static boolean tryUnlockByNodeId(ServerPlayer player, String nodeId) {
+        ProgressionMutationAuthority.warnIfBypassed("unlockSkillNodeById");
         if (player == null || nodeId == null || nodeId.isBlank()) {
             return false;
         }
@@ -45,6 +47,7 @@ public final class SkillTreeService {
     }
 
     public static boolean tryUnlock(ServerPlayer player, String treeId, String nodeId) {
+        ProgressionMutationAuthority.warnIfBypassed("unlockSkillNode");
         if (player == null || treeId == null || treeId.isBlank() || nodeId == null || nodeId.isBlank()) {
             return false;
         }
