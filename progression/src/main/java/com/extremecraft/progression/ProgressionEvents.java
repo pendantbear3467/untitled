@@ -2,10 +2,9 @@ package com.extremecraft.progression;
 
 import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.classsystem.ability.ClassAbilityService;
+import com.extremecraft.ecosystem.core.progression.ProgressionQuestCatalogBridge;
 import com.extremecraft.ecosystem.core.progression.ProgressionQuestDescriptor;
 import com.extremecraft.ecosystem.core.progression.ProgressionQuestType;
-import com.extremecraft.quest.QuestDescriptorView;
-import com.extremecraft.quest.QuestManager;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.TickEvent;
@@ -142,8 +141,7 @@ public class ProgressionEvents {
 
         final boolean[] changed = {false};
 
-        for (var quest : QuestManager.all()) {
-            ProgressionQuestDescriptor descriptor = QuestDescriptorView.from(quest);
+        for (ProgressionQuestDescriptor descriptor : ProgressionQuestCatalogBridge.allQuestDescriptors()) {
             ProgressionQuestType questType = ProgressionQuestType.fromName(descriptor.typeName()).orElse(null);
             if (questType != type) continue;
             if (ProgressionFacade.readAccess().questCompleted(player, descriptor.id())) continue;

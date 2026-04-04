@@ -74,6 +74,27 @@ These imports are expected at this stage and block immediate clean repo extracti
 - Updated progression event quest increment flow to consume the descriptor instead of directly typing against host `QuestDefinition`.
 - Host quest ownership remains in place through `QuestManager`; this seam only removes one direct model-type dependency from progression.
 
+## Additional Read-Only Seam Completed (Quest Catalog Bridge)
+
+- Added `core/src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionQuestCatalogBridge.java` as a small read-only catalog provider contract.
+- Registered host `QuestManager` as the provider using `QuestDescriptorView` projection.
+- Updated progression event quest increment flow to read descriptors through the core bridge instead of calling `QuestManager` directly.
+- Host quest ownership still remains in `QuestManager`; this seam narrows direct progression import coupling only.
+
+## Additional Read-Only Seam Completed (Skill Level Bridge)
+
+- Added `core/src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionSkillLevelBridge.java` as a tiny read-only skill level lookup bridge.
+- Registered host `SkillsApi` as the bridge provider.
+- Updated `UnlockRuleLoader` to read required skill levels through the core bridge instead of direct host `SkillsApi` calls.
+- Skill ownership and mutation remain host-owned; this seam narrows only read dependency coupling.
+
+## Additional Read-Only Seam Completed (Research Bridge)
+
+- Added `core/src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionResearchBridge.java` as a tiny read-only research lookup bridge.
+- Registered host `ResearchApi` as the bridge provider.
+- Updated `UnlockRuleLoader` research unlock checks to use the core bridge instead of direct host `ResearchApi` reads.
+- Research ownership and mutation remain host-owned; this seam narrows only read dependency coupling.
+
 ## Required Cleanup Before Repo Split
 
 1. Progression compiles independently as a Gradle subproject.

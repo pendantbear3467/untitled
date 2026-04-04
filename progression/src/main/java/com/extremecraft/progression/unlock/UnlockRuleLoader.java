@@ -1,12 +1,12 @@
 package com.extremecraft.progression.unlock;
 
 import com.extremecraft.ecosystem.core.progression.ProgressionRuntimeFlags;
+import com.extremecraft.ecosystem.core.progression.ProgressionResearchBridge;
+import com.extremecraft.ecosystem.core.progression.ProgressionSkillLevelBridge;
 import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.classsystem.ClassIdResolver;
 import com.extremecraft.progression.stage.ProgressionStage;
 import com.extremecraft.progression.stage.StageManager;
-import com.extremecraft.research.ResearchApi;
-import com.extremecraft.skills.SkillsApi;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -135,7 +135,7 @@ public class UnlockRuleLoader extends SimpleJsonResourceReloadListener {
         }
 
         if (!rule.requiredSkill().isBlank() && rule.requiredSkillLevel() > 0) {
-            int level = SkillsApi.get(player).map(skills -> skills.getSkillLevel(rule.requiredSkill())).orElse(0);
+            int level = ProgressionSkillLevelBridge.skillLevel(player, rule.requiredSkill());
             if (level < rule.requiredSkillLevel()) {
                 return false;
             }
@@ -177,7 +177,7 @@ public class UnlockRuleLoader extends SimpleJsonResourceReloadListener {
         String normalized = unlockId.trim().toLowerCase(Locale.ROOT);
         if (normalized.startsWith("research:")) {
             String researchId = normalized.substring("research:".length());
-            return ResearchApi.get(player).map(research -> research.hasResearch(researchId)).orElse(false);
+            return ProgressionResearchBridge.hasResearch(player, researchId);
         }
 
         if (normalized.startsWith("quest:")) {

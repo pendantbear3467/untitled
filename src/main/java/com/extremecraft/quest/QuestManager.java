@@ -1,5 +1,6 @@
 package com.extremecraft.quest;
 
+import com.extremecraft.ecosystem.core.progression.ProgressionQuestCatalogBridge;
 import com.extremecraft.progression.classsystem.ClassIdResolver;
 import com.extremecraft.progression.stage.ProgressionStage;
 import com.google.gson.Gson;
@@ -34,6 +35,10 @@ public class QuestManager extends SimpleJsonResourceReloadListener {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<String, QuestDefinition> QUESTS = new LinkedHashMap<>();
+
+    static {
+        ProgressionQuestCatalogBridge.setProvider(() -> all().stream().map(QuestDescriptorView::from).toList());
+    }
 
     public QuestManager() {
         super(GSON, "extremecraft_quests");
