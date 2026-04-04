@@ -1,5 +1,6 @@
 package com.extremecraft.progression.capability;
 
+import com.extremecraft.progression.ProgressionMutationAuthority;
 import com.extremecraft.progression.skilltree.SkillModifier;
 import com.extremecraft.progression.skilltree.SkillNode;
 import com.extremecraft.progression.skilltree.SkillTreeManager;
@@ -149,6 +150,7 @@ public class PlayerStatsCapability {
     }
 
     public boolean addExperience(int amount) {
+        ProgressionMutationAuthority.warnIfBypassed("addLegacyPlayerStatsExperience");
         if (amount <= 0) {
             return false;
         }
@@ -195,6 +197,7 @@ public class PlayerStatsCapability {
     }
 
     public void setLevel(int level) {
+        ProgressionMutationAuthority.warnIfBypassed("setLegacyPlayerStatsLevel");
         this.level = Math.max(1, level);
         this.experience = 0;
         this.experienceToNextLevel = xpForLevel(this.level);
@@ -202,6 +205,7 @@ public class PlayerStatsCapability {
     }
 
     public boolean unlockSkillNode(String nodeId, int skillPointCost) {
+        ProgressionMutationAuthority.warnIfBypassed("unlockSkillNodeWithCost");
         if (nodeId == null || nodeId.isBlank() || skillPointCost <= 0 || skillPoints < skillPointCost) {
             return false;
         }
@@ -216,6 +220,7 @@ public class PlayerStatsCapability {
     }
 
     public boolean unlockSkillNode(String nodeId) {
+        ProgressionMutationAuthority.warnIfBypassed("unlockSkillNode");
         if (nodeId == null || nodeId.isBlank()) {
             return false;
         }

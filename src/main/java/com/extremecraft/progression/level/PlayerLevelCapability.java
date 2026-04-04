@@ -1,5 +1,6 @@
 package com.extremecraft.progression.level;
 
+import com.extremecraft.progression.ProgressionMutationAuthority;
 import net.minecraft.nbt.CompoundTag;
 
 public class PlayerLevelCapability {
@@ -24,6 +25,7 @@ public class PlayerLevelCapability {
     }
 
     public int grantXp(int amount) {
+        ProgressionMutationAuthority.warnIfBypassed("grantLegacyXp");
         if (amount <= 0) {
             return 0;
         }
@@ -40,6 +42,7 @@ public class PlayerLevelCapability {
     }
 
     public void setLevel(int level) {
+        ProgressionMutationAuthority.warnIfBypassed("setLegacyLevel");
         this.level = Math.max(1, level);
         this.xp = 0;
     }

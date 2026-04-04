@@ -1,74 +1,111 @@
 # Progression Mutation Audit
 
-This document records the active write surface for progression during the ecosystem migration.
+## Scope
 
-The target boundary is:
+This audit covers the live Forge runtime under `src/main/java` and focuses on
+progression-domain mutation authority during the ecosystem migration.
 
-`ProgressionFacade` -> internal progression services -> backing capabilities/mirrors
+Primary rule:
 
-Compat modules should read through `ProgressionReadAccess` and should not own progression mutation.
+- external gameplay, packet, and command surfaces mutate progression only through `ProgressionFacade`
+- backing capabilities and mirrors remain storage-only or compatibility-only
+- legacy write paths stay contained, deprecated, and unregistered
 
-## Canonical Write Boundary
+## Canonical Mutation Map
 
-- Public write entrypoint: `src/main/java/com/extremecraft/progression/ProgressionFacade.java`
-- Public read contract: `src/main/java/com/extremecraft/ecosystem/core/progression/ProgressionReadAccess.java`
-- Internal player XP/level owner: `src/main/java/com/extremecraft/progression/ProgressionMutationService.java`
-- Internal capability mutation owner: `src/main/java/com/extremecraft/progression/ProgressionService.java`
-- Internal skill XP owner: `src/main/java/com/extremecraft/progression/SkillProgressionService.java`
-- Internal class XP owner: `src/main/java/com/extremecraft/progression/ClassProgressionService.java`
-- Internal quest reward owner: `src/main/java/com/extremecraft/progression/QuestRewardService.java`
+External mutation entrypoint:
 
-## Mutation Audit
+- `com.extremecraft.progression.ProgressionFacade`
 
-| Entry point | Domain | Classification | Current state |
+Facade-owned execution layers:
+
+- player XP and level: `ProgressionMutationService`
+- skill XP: `SkillProgressionService`
+- class XP: `ClassProgressionService`
+- quest reward application: `QuestRewardService`
+- skill-tree node unlocks: `progression.skilltree.SkillTreeService`
+
+Backing-state owners:
+
+- canonical progression capability: `PlayerProgressData`
+- skill XP backing state: `skills.PlayerSkillsCapability`
+- legacy level mirror: `progression.level.PlayerLevelCapability`
+- legacy stats mirror: `progression.capability.PlayerStatsCapability`
+
+## Mutation Inventory
+
+### Valid live mutation entrypoints
+
+| Area | File(s) | Classification | Notes |
 | --- | --- | --- | --- |
-| `ProgressionEvents.onKill` | player XP, combat skill XP, quest progress | valid | Uses `ProgressionFacade.grantPlayerXp`, `grantCombatSkillXp`, and `addQuestProgress` |
-| `ProgressionEvents.onCraft` | player XP, quest progress | valid | Uses `ProgressionFacade.grantPlayerXp` and `addQuestProgress` |
-| `ProgressionEvents.onBlockBreak` | player XP, quest progress | valid | Uses `ProgressionFacade.grantPlayerXp` and `addQuestProgress` |
-| `ProgressionEvents.onPlayerTick` region discovery | discovered regions, player XP, quest progress | valid | Uses `ProgressionFacade.discoverRegion` and follow-up facade writes |
-| `QuestRewardService.claimQuestReward` | quest claim, unlocks, player XP, class XP, stage grants | valid | Orchestrates quest rewards through `ProgressionFacade`; does not mutate capabilities directly |
-| `SkillTreeService` / `PlayerStatsService.tryUnlockSkillNode` | player skill-point spend | valid | Routes skill-point consumption/refund through `ProgressionFacade` |
-| `ProgressCommands` | admin level/class/quest commands | valid | Level set and quest claim route through `ProgressionFacade` |
-| `ECDevCommands` | debug XP, skill XP, class XP, level set | valid | Debug mutation calls now route through `ProgressionFacade` |
-| `LevelService.grantXp` / `LevelService.setLevel` | legacy player-level API | legacy adapter | Delegates back into `ProgressionFacade`; no longer owns gameplay authority |
-| `XPManager.grant` | legacy XP wrapper | legacy adapter | Delegates back into `ProgressionFacade` |
-| `GuildQuestRewardService.claimQuestReward` | legacy quest reward wrapper | legacy adapter | Delegates to `QuestRewardService` |
-| `ProgressionService.*` mutators | internal capability write helpers | internal only | Package-restricted and guarded; callers should come through `ProgressionFacade` |
-| `ProgressionMutationService.*` | internal XP/level mutation helpers | internal only | Package-restricted and guarded; callers should come through `ProgressionFacade` |
-| `PlayerProgressData` mutators | backing state | internal only | Write methods are package-restricted; collection views are read-only |
-| `PlayerSkillsCapability` mutators | backing state | guarded backing state | Still public because of package layout, but now warn when bypassing `SkillProgressionService` |
+| Gameplay XP + quest progress | `progression/ProgressionEvents.java` | Valid | Uses `ProgressionFacade` for XP, quest progress, region discovery, and combat skill XP. |
+| Quest reward claims | `progression/ProgressCommands.java` | Valid | Claims route through `ProgressionFacade.claimGuildQuestReward`. |
+| Debug/admin XP/class/skill mutation | `command/ECDevCommands.java` | Valid | Debug commands now write through `ProgressionFacade`. |
+| Skill-tree unlock packets | `network/packet/UpgradeStatPacket.java`, `progression/skilltree/UnlockSkillNodeC2S.java` | Valid | Both now route through `ProgressionFacade` before `SkillTreeService`. |
+| Legacy XP compatibility wrappers | `progression/level/LevelService.java`, `progression/XPManager.java` | Valid but legacy | Public wrappers delegate back into `ProgressionFacade`; they no longer own mutation. |
 
-## Invalid Or Risky Paths Removed From Authority
+### Invalid or legacy mutation paths
 
-- `ProgressCommands` no longer set levels through `ProgressionMutationService` directly.
-- `ECDevCommands` no longer treat `LevelService` as the primary XP/level owner.
-- `ProgressionEvents` no longer call progression discovery writes through `ProgressionService` directly.
-- `PlayerStatsService` no longer consumes/refunds player skill points by mutating `PlayerProgressData` directly.
-- `PlayerProgressData` no longer exposes mutable collection getters as an edit surface.
-- Live skill XP policy remains combat-only plus admin/debug override; non-combat enum sources are explicitly rejected until a new canonical rule is introduced.
+| Area | File(s) | Classification | Containment status |
+| --- | --- | --- | --- |
+| Prototype persistent-data progression stack | `game/ProgressionSystem.java` | Invalid legacy authority | Deprecated, not registered by `core/ExtremeCraft`, retained for reference only. |
+| Old level gameplay XP hook | `progression/level/PlayerLevelGameplayEvents.java` | Invalid legacy authority | Not registered by bootstrap; still compiles as a disconnected compatibility artifact. |
+| Direct backing-capability mutation methods | `PlayerSkillsCapability`, `PlayerLevelCapability`, `PlayerStatsCapability` | Invalid if called directly | Runtime guard logging now warns when writes bypass facade scope. |
+| Mirror update APIs | `progression/capability/PlayerProgressCapabilityApi.java` | Legacy mirror surface | No live callers in the runtime audit; keep compatibility-only. |
+
+## Corrected Architecture
+
+Write flow:
+
+1. External caller enters `ProgressionFacade`.
+2. Facade delegates to a progression-owned execution layer.
+3. Execution layer mutates canonical progression state first.
+4. Migration mirrors sync afterward from progression-owned services only.
+
+Read flow:
+
+1. Cross-domain callers should prefer `ProgressionFacade.readAccess()`.
+2. Backing capabilities remain readable for progression-internal code and compatibility UI.
+3. Compat modules may query progression but must not write to canonical or mirror state directly.
 
 ## Enforcement Strategy
 
-- `ProgressionFacade` is the only intended public mutation API.
-- `ProgressionReadAccess` is the intended cross-module read API.
-- `ProgressionMutationAuthority` warns when internal mutation services are called without entering through the facade.
-- `ProgressionService` and `ProgressionMutationService` are no longer public architecture owners.
-- `PlayerProgressData` mutation methods are package-restricted and its exposed collections are unmodifiable.
-- `LevelService`, `XPManager`, and `GuildQuestRewardService` are explicitly deprecated compatibility adapters.
+Static restrictions:
 
-## Dependency Transition Guidance
+- `ProgressionService` is package-private.
+- `ProgressionMutationService` is package-private.
+- `PlayerProgressData` write methods are package-private.
+- `QuestRewardService` is package-private.
+- `SkillProgressionService` and `ClassProgressionService` expose public enums but keep write methods package-restricted.
 
-The following domains should not own progression mutation:
+Runtime guardrails:
 
-- Machines: read progression gates/unlocks, but write through `ProgressionFacade` only when a machine flow is explicitly designed to award progression.
-- Reactors: expose telemetry or hooks, but do not mutate progression state directly.
-- Magic: cast systems may query progression/class/unlock state; they should award progression only through `ProgressionFacade`.
-- Skills: compat/stat modules should treat `PlayerSkillsCapability` as backing state and route combat/debug skill XP through `SkillProgressionService` via the facade.
+- `ProgressionMutationAuthority` tracks whether a mutation is inside facade scope.
+- Canonical services warn on direct bypass attempts.
+- Backing capability writes in skill/level/stats mirrors warn when mutated outside facade scope.
+
+Source tests:
+
+- `ProgressionBoundarySourceTest` rejects new direct callers to lower-level mutation services and backing-state writes.
+
+## Dependency Transition Plan
+
+Current target for ownership removal:
+
+- machines / reactors: query progression gates only; emit unlock hooks or bonus providers, not progression writes
+- magic: award progression only by calling `ProgressionFacade`; keep magic-specific state outside progression
+- skills package: storage and definition backend only; progression owns mutation policy
+- compat modules: adapters and read models only; no direct capability mutation
+
+Replacement pattern:
+
+- integration systems produce events, hooks, or bonus payloads
+- progression evaluates the event and applies the mutation
+- compat modules consume read-only progression state through `ProgressionReadAccess`
 
 ## Next Safe Extraction Steps
 
-1. Replace direct `ProgressApi` reads in compat/integration modules with injected `ProgressionReadAccess` usage.
-2. Move legacy mirror update APIs such as `PlayerProgressCapabilityApi.update*` behind deprecation warnings or adapter-only packages.
-3. Split primary-stat upgrades out of `PlayerStatsService` into an explicit progression-facing upgrade service if that domain is kept.
-4. Extract a dedicated skill-state write contract so `PlayerSkillsCapability` no longer needs public mutators.
-5. Migrate compat modules (`extremecraft-tech-compat`, `extremecraft-magic-compat`, `extremecraft-skills-compat`) to depend on the read contract plus facade hooks only.
+1. Move `game/ProgressionSystem` into a dedicated `legacy` package once source references remain at zero.
+2. Extract facade-facing progression contracts into `extremecraft-progression` first; keep mirror types private until adapters are ready.
+3. Convert machine/reactor/magic callers to depend on `ProgressionReadAccess` and explicit progression hooks rather than direct capability types.
+4. Add a follow-up CI validator that fails when new non-progression packages call lower-level mutation services directly.

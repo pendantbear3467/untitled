@@ -1,7 +1,5 @@
 package com.extremecraft.gameplay;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -10,53 +8,81 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProgressionBoundarySourceTest {
     private static final Path ROOT = Path.of("").toAbsolutePath();
-    private static final Path MAIN_JAVA = ROOT.resolve("src/main/java");
+    private static final Path JAVA_ROOT = ROOT.resolve("src/main/java");
 
     @Test
-    void nonProgressionPackagesDoNotBypassFacadeMutationAuthority() throws IOException {
-        List<String> violations = new ArrayList<>();
-
-        try (Stream<Path> files = Files.walk(MAIN_JAVA)) {
-            files.filter(path -> path.toString().endsWith(".java"))
-                    .filter(path -> !isAllowedDirectMutationOwner(path))
-                    .forEach(path -> {
-                        try {
-                            String source = Files.readString(path, StandardCharsets.UTF_8);
-                            check(source, path, violations, "ProgressionService.addXp(");
-                            check(source, path, violations, "ProgressionService.setLevel(");
-                            check(source, path, violations, "ProgressionMutationService.grantXp(");
-                            check(source, path, violations, "ProgressionMutationService.setLevel(");
-                            check(source, path, violations, "LevelService.grantXp(");
-                            check(source, path, violations, "LevelService.setLevel(");
-                            check(source, path, violations, "SkillProgressionService.grantSkillXp(");
-                            check(source, path, violations, "ClassProgressionService.grantClassXp(");
-                            check(source, path, violations, "QuestRewardService.claimQuestReward(");
-                            check(source, path, violations, "GuildQuestRewardService.claimQuestReward(");
-                        } catch (IOException exception) {
-                            throw new RuntimeException(exception);
-                        }
-                    });
-        }
-
-        assertTrue(violations.isEmpty(), () -> "Progression mutation boundary violations:\n" + String.join("\n", violations));
+    void lowerLevelMutationServicesStayBehindFacade() throws IOException {
+        assertOnlyAllowedCallers("ProgressionMutationService.grantXp(", Set.of(
+                "src/main/java/com/extremecraft/progression/ProgressionFacade.java"
+        ));
+        assertOnlyAllowedCallers("ProgressionMutationService.setLevel(", Set.of(
+                "src/main/java/com/extremecraft/progression/ProgressionFacade.java"
+        ));
+        assertOnlyAllowedCallers("SkillTreeService.tryUnlockByNodeId(", Set.of(
+                "src/main/java/com/extremecraft/progression/ProgressionFacade.java"
+        ));
+        assertOnlyAllowedCallers("SkillTreeService.tryUnlock(", Set.of(
+                "src/main/java/com/extremecraft/progression/ProgressionFacade.java"
+        ));
+        assertOnlyAllowedCallers("SkillProgressionService.grantSkillXp(", Set.of(
+                "src/main/java/com/extremecraft/progression/ProgressionFacade.java"
+        ));
+        assertOnlyAllowedCallers("ClassProgressionService.grantClassXp(", Set.of(
+                "src/main/java/com/extremecraft/progression/ProgressionFacade.java"
+        ));
+        assertOnlyAllowedCallers("QuestRewardService.claimQuestReward(", Set.of(
+                "src/main/java/com/extremecraft/progression/GuildQuestRewardService.java",
+                "src/main/java/com/extremecraft/progression/ProgressionFacade.java"
+        ));
     }
 
-    private static boolean isAllowedDirectMutationOwner(Path path) {
-        String normalized = MAIN_JAVA.relativize(path).toString().replace('\\', '/');
-        return normalized.startsWith("com/extremecraft/progression/")
-                || normalized.equals("com/extremecraft/game/ProgressionSystem.java");
+    @Test
+    void directBackingStateWritesStayContained() throws IOException {
+        assertOnlyAllowedCallers("LevelService.grantXp(", Set.of(
+                "src/main/java/com/extremecraft/progression/level/PlayerLevelGameplayEvents.java"
+        ));
+        assertOnlyAllowedCallers("LevelService.setLevel(", Set.of());
+        assertOnlyAllowedCallers("skills.addSkillXp(", Set.of(
+                "src/main/java/com/extremecraft/progression/SkillProgressionService.java"
+        ));
+        assertOnlyAllowedCallers("data.addXp(", Set.of(
+                "src/main/java/com/extremecraft/progression/ProgressionService.java"
+        ));
+        assertOnlyAllowedCallers("data.setLevel(", Set.of(
+                "src/main/java/com/extremecraft/progression/ProgressionService.java"
+        ));
+        assertOnlyAllowedCallers("data.addClassExperience(", Set.of(
+                "src/main/java/com/extremecraft/progression/ClassProgressionService.java"
+        ));
     }
 
-    private static void check(String source, Path path, List<String> violations, String bannedCall) {
-        if (!source.contains(bannedCall)) {
-            return;
+    private static void assertOnlyAllowedCallers(String needle, Set<String> allowedRelativePaths) throws IOException {
+        List<String> offenders = new ArrayList<>();
+
+        try (var files = Files.walk(JAVA_ROOT)) {
+            files.filter(path -> path.toString().endsWith(".java")).forEach(path -> {
+                try {
+                    String relative = ROOT.relativize(path).toString().replace('\\', '/');
+                    if (allowedRelativePaths.contains(relative)) {
+                        return;
+                    }
+
+                    String source = Files.readString(path, StandardCharsets.UTF_8);
+                    if (source.contains(needle)) {
+                        offenders.add(relative);
+                    }
+                } catch (IOException exception) {
+                    throw new RuntimeException(exception);
+                }
+            });
         }
 
-        String relative = ROOT.relativize(path).toString().replace('\\', '/');
-        violations.add(relative + " contains " + bannedCall);
+        assertTrue(offenders.isEmpty(), () -> "Unexpected callers for " + needle + ": " + String.join(", ", offenders));
     }
 }
