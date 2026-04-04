@@ -109,3 +109,7 @@
 	#Enable optional GeckoLib integration hooks when GeckoLib is present.
 	enableGeckoLibHooks = true
 
+[development]
+	#If true, progression gates are bypassed for debugging access to machines/items/abilities/systems.
+	bypassProgressionGates = false
+
