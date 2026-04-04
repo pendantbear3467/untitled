@@ -17,14 +17,15 @@ final class QuestRewardService {
             return false;
         }
 
-        return ProgressApi.get(player).map(data -> {
-            if (ProgressionService.isQuestCompleted(player, quest.id())) {
-                return false;
-            }
+        if (ProgressionFacade.readAccess().questCompleted(player, quest.id())) {
+            return false;
+        }
 
-            if (ProgressionService.getQuestProgress(player, quest.id()) < quest.target()) {
-                return false;
-            }
+        if (ProgressionFacade.readAccess().questProgress(player, quest.id()) < quest.target()) {
+            return false;
+        }
+
+        return ProgressApi.get(player).map(data -> {
 
             ProgressionFacade.markQuestCompleted(player, quest.id());
             ProgressionFacade.grantUnlock(player, "quest:" + quest.id());

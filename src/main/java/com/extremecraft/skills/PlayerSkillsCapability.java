@@ -1,11 +1,14 @@
 package com.extremecraft.skills;
 
 import net.minecraft.nbt.CompoundTag;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class PlayerSkillsCapability {
+    private static final Logger LOGGER = LogManager.getLogger();
     private final Map<String, Integer> skillLevels = new HashMap<>();
     private final Map<String, Integer> skillXp = new HashMap<>();
 
@@ -18,6 +21,7 @@ public class PlayerSkillsCapability {
     }
 
     public void setSkillLevel(String skillId, int level) {
+        warnIfBypassed("setSkillLevel");
         SkillDefinition def = SkillRegistry.byId(skillId);
         int max = def == null ? Math.max(0, level) : def.maxLevel();
         int clamped = Math.max(0, Math.min(level, max));
@@ -32,6 +36,7 @@ public class PlayerSkillsCapability {
     }
 
     public void addSkillLevel(String skillId, int amount) {
+        warnIfBypassed("addSkillLevel");
         if (amount <= 0) {
             return;
         }
@@ -39,6 +44,7 @@ public class PlayerSkillsCapability {
     }
 
     public int addSkillXp(String skillId, int amount) {
+        warnIfBypassed("addSkillXp");
         if (skillId == null || skillId.isBlank() || amount <= 0) {
             return 0;
         }
@@ -115,5 +121,21 @@ public class PlayerSkillsCapability {
         skillLevels.putAll(other.skillLevels);
         skillXp.clear();
         skillXp.putAll(other.skillXp);
+    }
+
+    private static void warnIfBypassed(String operation) {
+        String self = PlayerSkillsCapability.class.getName();
+
+        for (StackTraceElement frame : Thread.currentThread().getStackTrace()) {
+            String className = frame.getClassName();
+            if (className.equals(self) || className.startsWith("java.lang.Thread")) {
+                continue;
+            }
+
+            if (!className.equals("com.extremecraft.progression.SkillProgressionService")) {
+                LOGGER.warn("[ProgressionGuard] Skill mutation '{}' bypassed SkillProgressionService. Caller={}", operation, className);
+            }
+            return;
+        }
     }
 }

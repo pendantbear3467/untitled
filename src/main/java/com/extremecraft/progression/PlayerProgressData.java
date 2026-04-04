@@ -9,6 +9,7 @@ import net.minecraft.nbt.Tag;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
@@ -41,15 +42,15 @@ public class PlayerProgressData {
     public int classSkillPoints() { return classSkillPoints; }
     public String currentClass() { return currentClass; }
 
-    public Set<String> unlockedClasses() { return unlockedClasses; }
-    public Set<String> completedQuests() { return completedQuests; }
-    public Set<String> unlockGrants() { return unlockGrants; }
-    public Map<String, Integer> questProgress() { return questProgress; }
-    public Set<String> discoveredRegions() { return discoveredRegions; }
-    public Map<String, Integer> classExperience() { return classExperience; }
-    public Map<String, Integer> classLevels() { return classLevels; }
+    public Set<String> unlockedClasses() { return Collections.unmodifiableSet(unlockedClasses); }
+    public Set<String> completedQuests() { return Collections.unmodifiableSet(completedQuests); }
+    public Set<String> unlockGrants() { return Collections.unmodifiableSet(unlockGrants); }
+    public Map<String, Integer> questProgress() { return Collections.unmodifiableMap(questProgress); }
+    public Set<String> discoveredRegions() { return Collections.unmodifiableSet(discoveredRegions); }
+    public Map<String, Integer> classExperience() { return Collections.unmodifiableMap(classExperience); }
+    public Map<String, Integer> classLevels() { return Collections.unmodifiableMap(classLevels); }
 
-    public void setCurrentClass(String classId) {
+    void setCurrentClass(String classId) {
         String normalized = normalizeClassId(classId);
         if (normalized.isBlank() || normalized.equalsIgnoreCase(this.currentClass)) {
             return;
@@ -61,7 +62,7 @@ public class PlayerProgressData {
         markSyncDirty();
     }
 
-    public void unlockClass(String classId) {
+    void unlockClass(String classId) {
         String normalized = normalizeClassId(classId);
         if (normalized.isBlank()) {
             return;
@@ -73,14 +74,14 @@ public class PlayerProgressData {
         }
     }
 
-    public void setLevel(int level) {
+    void setLevel(int level) {
         this.level = Math.max(1, level);
         this.xp = 0;
         markAttributesDirty();
         markSyncDirty();
     }
 
-    public void addXp(int amount) {
+    void addXp(int amount) {
         if (amount <= 0) {
             return;
         }
@@ -100,14 +101,14 @@ public class PlayerProgressData {
         markSyncDirty();
     }
 
-    public void addPlayerSkillPoints(int amount) {
+    void addPlayerSkillPoints(int amount) {
         if (amount > 0) {
             playerSkillPoints += amount;
             markSyncDirty();
         }
     }
 
-    public boolean consumePlayerSkillPoints(int amount) {
+    boolean consumePlayerSkillPoints(int amount) {
         if (amount <= 0 || playerSkillPoints < amount) {
             return false;
         }
@@ -117,7 +118,7 @@ public class PlayerProgressData {
         return true;
     }
 
-    public void addClassSkillPoints(int amount) {
+    void addClassSkillPoints(int amount) {
         if (amount > 0) {
             classSkillPoints += amount;
             markSyncDirty();
@@ -134,7 +135,7 @@ public class PlayerProgressData {
         return normalized.isBlank() ? 1 : classLevels.getOrDefault(normalized, 1);
     }
 
-    public int addClassExperience(String classId, int amount) {
+    int addClassExperience(String classId, int amount) {
         String normalized = normalizeClassId(classId);
         if (normalized.isBlank() || amount <= 0) {
             return 0;
@@ -159,7 +160,7 @@ public class PlayerProgressData {
         return gainedLevels;
     }
 
-    public void addQuestProgress(String questId, int amount) {
+    void addQuestProgress(String questId, int amount) {
         if (amount <= 0) return;
         questProgress.merge(questId, amount, Integer::sum);
         markSyncDirty();
@@ -176,7 +177,7 @@ public class PlayerProgressData {
         return unlockGrants.contains(unlockId.trim().toLowerCase());
     }
 
-    public boolean grantUnlock(String unlockId) {
+    boolean grantUnlock(String unlockId) {
         if (unlockId == null || unlockId.isBlank()) {
             return false;
         }
@@ -189,7 +190,7 @@ public class PlayerProgressData {
         return false;
     }
 
-    public boolean grantUnlocks(Collection<String> unlockIds) {
+    boolean grantUnlocks(Collection<String> unlockIds) {
         if (unlockIds == null || unlockIds.isEmpty()) {
             return false;
         }
@@ -201,7 +202,7 @@ public class PlayerProgressData {
         return changed;
     }
 
-    public void setQuestCompleted(String questId) {
+    void setQuestCompleted(String questId) {
         if (completedQuests.add(questId)) {
             markSyncDirty();
         }
@@ -211,7 +212,7 @@ public class PlayerProgressData {
         return questProgress.getOrDefault(questId, 0);
     }
 
-    public boolean discoverRegion(String regionKey) {
+    boolean discoverRegion(String regionKey) {
         if (regionKey == null || regionKey.isBlank()) {
             return false;
         }
@@ -224,22 +225,22 @@ public class PlayerProgressData {
         return false;
     }
 
-    public void markSyncDirty() {
+    void markSyncDirty() {
         syncDirty = true;
     }
 
-    public void markAttributesDirty() {
+    void markAttributesDirty() {
         attributesDirty = true;
         syncDirty = true;
     }
 
-    public boolean consumeSyncDirty() {
+    boolean consumeSyncDirty() {
         boolean dirty = syncDirty;
         syncDirty = false;
         return dirty;
     }
 
-    public boolean consumeAttributesDirty() {
+    boolean consumeAttributesDirty() {
         boolean dirty = attributesDirty;
         attributesDirty = false;
         return dirty;
@@ -376,7 +377,7 @@ public class PlayerProgressData {
         attributesDirty = false;
     }
 
-    public void copyFrom(PlayerProgressData other) {
+    void copyFrom(PlayerProgressData other) {
         this.level = other.level;
         this.xp = other.xp;
         this.playerSkillPoints = other.playerSkillPoints;
