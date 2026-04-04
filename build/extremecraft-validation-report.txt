@@ -1,48 +1,5 @@
 ExtremeCraft Dev Validation Report
-Generated: 2026-04-03T21:38:15.7715469
-Total findings: 11
+Generated: 2026-04-03T21:45:36.9083398
+Total findings: 0
 
-LOW
-src/main/resources/data/extremecraft/README.md:1
-data/extremecraft/machines is METADATA ONLY. Live tech machines use MachineCatalog + data/extremecraft/recipes/machine_processing.
-
-LOW
-src/main/resources/data/extremecraft/README.md:1
-data/extremecraft/quests is METADATA ONLY. Live quest gameplay uses data/extremecraft/extremecraft_quests + QuestManager.
-
-LOW
-src/main/resources/data/extremecraft/README.md:1
-data/extremecraft/materials is METADATA ONLY. Live material registration still starts in OreMaterialCatalog + future.registry.
-
-LOW
-src/main/resources/data/extremecraft/README.md:1
-data/extremecraft/world_generation is METADATA ONLY. Live placement uses data/extremecraft/worldgen + data/extremecraft/forge.
-
-LOW
-src/main/resources/data/extremecraft/README.md:1
-data/extremecraft/abilities_platform is METADATA ONLY. Live generic abilities use data/extremecraft/abilities + AbilityRegistry.
-
-LOW
-src/main/resources/data/extremecraft/README.md:1
-Legacy datapack directory detected: data/extremecraft/skilltrees. Canonical live skill tree path is data/extremecraft/skill_trees.
-
-LOW
-src/main/resources/data/extremecraft/README.md:1
-data/extremecraft/classes is the CANONICAL gameplay class source, but compatibility adapters still mirror it into ClassRegistry/ClassDataLoader. Gameplay ownership is progression.classsystem.data.ClassDefinitionLoader.
-
-LOW
-src/main/resources/data/extremecraft/README.md:1
-data/extremecraft/research is the CANONICAL gameplay research source, but platform ResearchDataLoader still mirrors it for snapshots/debug output. Gameplay ownership is ResearchManager.
-
-LOW
-src/main/resources/data/extremecraft/README.md:1
-Legacy module-trigger ability files still exist under data/extremecraft/abilities: dash, fireball, heal, shockwave. Canonical module trigger path is data/extremecraft/module_abilities.
-
-LOW
-src/main/resources/data/extremecraft/README.md:1
-Ability and spell ids overlap across data/extremecraft/abilities and data/extremecraft/spells: arcane_shield, blink, fireball. Edit abilities/ for active ability casts and spells/ for spell behavior; they are separate trigger domains even though both compile through AbilityExecutor.
-
-LOW
-src/main/resources/data/extremecraft/README.md:1
-Machine metadata ids without a live tech-machine owner in MachineCatalog: aether_collector, arcane_crusher, arc_infusion_machine, baseline_crusher, bone_boiler (+6 more). Editing these files will not activate a tech machine runtime by itself.
-
+No issues detected by static validator rules.
