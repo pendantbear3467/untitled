@@ -72,6 +72,7 @@ public final class TechItems {
         ITEMS.register("mana_crystal", () -> new Item(new Item.Properties()));
         ITEMS.register("arcane_dust", () -> new Item(new Item.Properties()));
         ITEMS.register("spell_book", () -> new SpellBookItem(new Item.Properties().stacksTo(1)));
+        ITEMS.register("geiger_counter", () -> new Item(new Item.Properties().stacksTo(1)));
         ITEMS.register("ancient_rune", () -> new Item(new Item.Properties()));
         ITEMS.register("void_essence", () -> new Item(new Item.Properties()));
 

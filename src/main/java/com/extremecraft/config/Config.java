@@ -275,6 +275,10 @@ public final class Config {
         return safeBoolean(COMMON.compatibility.enableGeckoLibHooks, true);
     }
 
+    public static boolean isDebugProgressionBypassEnabled() {
+        return safeBoolean(COMMON.development.bypassProgressionGates, false);
+    }
+
     private static Set<String> parseMachineIds(List<? extends String> rawIds) {
         Set<String> parsed = new LinkedHashSet<>();
         for (String raw : rawIds) {
@@ -338,6 +342,7 @@ public final class Config {
         public final Abilities abilities;
         public final Mobs mobs;
         public final Compatibility compatibility;
+        public final Development development;
 
         private Common(ForgeConfigSpec.Builder builder) {
             this.machines = new Machines(builder);
@@ -345,6 +350,7 @@ public final class Config {
             this.abilities = new Abilities(builder);
             this.mobs = new Mobs(builder);
             this.compatibility = new Compatibility(builder);
+            this.development = new Development(builder);
         }
     }
 
@@ -514,6 +520,17 @@ public final class Config {
                     .define("enableJeiHooks", true);
             enableGeckoLibHooks = builder.comment("Enable optional GeckoLib integration hooks when GeckoLib is present.")
                     .define("enableGeckoLibHooks", true);
+            builder.pop();
+        }
+    }
+
+    public static final class Development {
+        public final ForgeConfigSpec.BooleanValue bypassProgressionGates;
+
+        private Development(ForgeConfigSpec.Builder builder) {
+            builder.push("development");
+            bypassProgressionGates = builder.comment("If true, progression gates are bypassed for debugging access to machines/items/abilities/systems.")
+                    .define("bypassProgressionGates", false);
             builder.pop();
         }
     }

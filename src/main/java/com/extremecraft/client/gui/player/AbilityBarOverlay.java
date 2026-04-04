@@ -5,8 +5,10 @@ import com.extremecraft.client.gui.theme.ECGuiPrimitives;
 import com.extremecraft.client.gui.theme.ECGuiTheme;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.core.ECConstants;
+import com.extremecraft.magic.SpellBookItem;
 import com.extremecraft.magic.mana.ManaApi;
 import com.extremecraft.radiation.ChunkContaminationService;
+import com.extremecraft.radiation.RadiationProtectionService;
 import com.extremecraft.radiation.RadiationService;
 import com.extremecraft.reactor.ReactorIdentity;
 import com.extremecraft.network.sync.RuntimeSyncClientState;
@@ -23,6 +25,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.slf4j.Logger;
@@ -50,6 +53,7 @@ public class AbilityBarOverlay {
     private static final int SLOT_COUNT = 4;
     private static final int DEV_PANEL_WIDTH = 196;
     private static final int HUD_PANEL_WIDTH = 116;
+    private static final int HOTBAR_WIDTH = 182;
 
     @SubscribeEvent
     public void onRenderOverlay(RenderGuiOverlayEvent.Post event) {
@@ -68,18 +72,22 @@ public class AbilityBarOverlay {
         int totalWidth = (SLOT_COUNT * SLOT_SIZE) + ((SLOT_COUNT - 1) * 4);
         int startX = (screenWidth - totalWidth) / 2 + anchorX;
         int y = screenHeight - 42 + anchorY;
+        int hotbarLeft = ((screenWidth - HOTBAR_WIDTH) / 2) + anchorX;
 
-        for (int slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++) {
-            int x = startX + slotIndex * (SLOT_SIZE + 4);
-            renderSlot(gui, player, slotIndex, x, y);
+        boolean spellHudVisible = SpellBookItem.hasSpellBookAccess(player);
+        if (spellHudVisible) {
+            for (int slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++) {
+                int x = startX + slotIndex * (SLOT_SIZE + 4);
+                renderSlot(gui, player, slotIndex, x, y);
+            }
         }
 
         if (DwConfig.CLIENT.enableManaHudOverlay.get()) {
-            renderManaHud(gui, player, startX - HUD_PANEL_WIDTH - 6, y);
+            renderManaHud(gui, player, hotbarLeft - HUD_PANEL_WIDTH - 8, y);
         }
 
         if (DwConfig.CLIENT.enableRadiationHudOverlay.get()) {
-            renderRadiationHud(gui, player, startX + totalWidth + 6, y);
+            renderContextualRadiationHud(gui, player, hotbarLeft + HOTBAR_WIDTH + 8, y);
         }
 
         if (DeveloperOverlayState.isEnabled()) {
@@ -103,22 +111,34 @@ public class AbilityBarOverlay {
     /**
      * Draws contamination/radiation state using local services plus synced machine reactor states.
      */
-    private void renderRadiationHud(GuiGraphics gui, LocalPlayer player, int x, int y) {
+    private void renderContextualRadiationHud(GuiGraphics gui, LocalPlayer player, int x, int y) {
+        if (RadiationProtectionService.isHazmatSuitEquipped(player)) {
+            renderHazmatRadiationHud(gui, player, x, y);
+            return;
+        }
+
+        if (isHoldingGeigerCounter(player)) {
+            renderGeigerReadout(gui, player, x, y);
+        }
+    }
+
+    private void renderHazmatRadiationHud(GuiGraphics gui, LocalPlayer player, int x, int y) {
         int width = HUD_PANEL_WIDTH;
         double ambient = RadiationService.ambientExposure(player);
         double dose = RadiationService.accumulatedDose(player);
         double contamination = RadiationService.contaminationPressure(player);
         double threshold = Math.max(1.0D, ChunkContaminationService.profile().debuffThreshold());
         boolean warning = dose >= threshold || contamination >= threshold || ambient >= 2.0D;
+        double protection = RadiationProtectionService.protectionFactor(player);
 
         gui.fill(x, y, x + width, y + SLOT_SIZE + 18, warning ? 0xB03A120E : 0xB0111A12);
-        ECGuiPrimitives.drawSectionHeader(gui, Minecraft.getInstance().font, Component.literal("Radiation"), x + 4, y + 3, 72, warning ? ECGuiTheme.STATE_WARN : ECGuiTheme.STATE_READY);
+        ECGuiPrimitives.drawSectionHeader(gui, Minecraft.getInstance().font, Component.literal("Hazmat"), x + 4, y + 3, 72, warning ? ECGuiTheme.STATE_WARN : ECGuiTheme.STATE_READY);
         gui.drawString(Minecraft.getInstance().font, Component.literal(String.format("Dose %.1f  Env %.1f", dose, ambient)), x + 4, y + 13, ECGuiTheme.TEXT_PRIMARY, false);
+        gui.drawString(Minecraft.getInstance().font, Component.literal(String.format("Shield %.0f%%", protection * 100.0D)), x + 4, y + 22, ECGuiTheme.TEXT_SECONDARY, false);
 
         int barRight = x + width - 4;
         int barLeft = x + 62;
         double contaminationRatio = Math.max(0.0D, Math.min(1.0D, contamination / threshold));
-        int contaminationFill = Math.min(barRight - barLeft, (int) Math.round(contaminationRatio * (barRight - barLeft)));
         ECGuiPrimitives.drawSegmentedBar(gui, barLeft, y + 15, barRight - barLeft, 4, (float) contaminationRatio, warning ? ECGuiTheme.STATE_WARN : ECGuiTheme.ACCENT_CYAN_DIM);
         gui.drawString(Minecraft.getInstance().font, Component.literal(String.format("Contam %.1f", contamination)), x + 4, y + 14, ECGuiTheme.TEXT_SECONDARY, false);
 
@@ -153,6 +173,38 @@ public class AbilityBarOverlay {
         if (reactorWarning) {
             ECGuiPrimitives.drawStatusChip(gui, Minecraft.getInstance().font, x + width - 72, y + 2, Component.literal("Reactor Alert"), ECGuiTheme.STATE_WARN);
         }
+    }
+
+    private void renderGeigerReadout(GuiGraphics gui, LocalPlayer player, int x, int y) {
+        int width = HUD_PANEL_WIDTH;
+        double ambient = RadiationService.ambientExposure(player);
+        double contamination = RadiationService.contaminationPressure(player);
+        double threshold = Math.max(1.0D, ChunkContaminationService.profile().debuffThreshold());
+        boolean warning = ambient >= 2.0D || contamination >= threshold;
+
+        gui.fill(x, y, x + width, y + SLOT_SIZE, warning ? 0xB02E1511 : 0xB010171F);
+        ECGuiPrimitives.drawSectionHeader(gui, Minecraft.getInstance().font, Component.literal("Geiger"), x + 4, y + 3, 64, warning ? ECGuiTheme.STATE_WARN : ECGuiTheme.STATE_READY);
+        gui.drawString(Minecraft.getInstance().font, Component.literal(String.format("Env %.2f", ambient)), x + 4, y + 13, ECGuiTheme.TEXT_PRIMARY, false);
+
+        float ratio = (float) Math.max(0.0D, Math.min(1.0D, ambient / Math.max(2.0D, threshold)));
+        ECGuiPrimitives.drawSegmentedBar(gui, x + 56, y + 14, width - 60, 4, ratio, warning ? ECGuiTheme.STATE_WARN : ECGuiTheme.ACCENT_CYAN_DIM);
+    }
+
+    private static boolean isHoldingGeigerCounter(LocalPlayer player) {
+        ItemStack main = player.getMainHandItem();
+        ItemStack offhand = player.getOffhandItem();
+        return isGeigerCounter(main) || isGeigerCounter(offhand);
+    }
+
+    private static boolean isGeigerCounter(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return false;
+        }
+        ResourceLocation id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (id == null) {
+            return false;
+        }
+        return "extremecraft".equals(id.getNamespace()) && "geiger_counter".equals(id.getPath());
     }
 
     /**

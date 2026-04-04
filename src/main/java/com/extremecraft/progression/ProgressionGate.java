@@ -1,5 +1,6 @@
 package com.extremecraft.progression;
 
+import com.extremecraft.config.Config;
 import com.extremecraft.machine.core.MachineCatalog;
 import com.extremecraft.progression.stage.ProgressionStage;
 import com.extremecraft.progression.stage.StageManager;
@@ -66,6 +67,10 @@ public final class ProgressionGate {
     }
 
     public static boolean canUseMachine(Player player, String machineId) {
+        if (Config.isDebugProgressionBypassEnabled()) {
+            return true;
+        }
+
         String normalizedMachineId = ReactorIdentity.normalizeMachineId(machineId);
         boolean stageAllowed = requiredMachineStage(normalizedMachineId).map(stage -> StageManager.hasStage(player, stage)).orElse(true);
         if (!stageAllowed) {
@@ -80,6 +85,10 @@ public final class ProgressionGate {
     }
 
     public static boolean canUseRecipe(Player player, String recipeId) {
+        if (Config.isDebugProgressionBypassEnabled()) {
+            return true;
+        }
+
         // This helper is authoritative only for runtime flows that already have player context.
         boolean stageAllowed = requiredRecipeStage(recipeId).map(stage -> StageManager.hasStage(player, stage)).orElse(true);
         if (!stageAllowed) {
