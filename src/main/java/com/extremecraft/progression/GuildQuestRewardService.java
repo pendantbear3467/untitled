@@ -4,10 +4,7 @@ import com.extremecraft.quest.QuestDefinition;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
- * Canonical guild quest reward claim path.
- *
- * <p>Quest completion, player XP, class XP, stage grants, unlock grants, and class-unlock rewards
- * should converge here for live guild quest claims.</p>
+ * LEGACY ADAPTER: compatibility alias for {@link QuestRewardService}.
  */
 @Deprecated(forRemoval = false, since = "1.2.0")
 public final class GuildQuestRewardService {

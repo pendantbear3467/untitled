@@ -7,11 +7,12 @@ import net.minecraft.server.level.ServerPlayer;
 /**
  * Canonical guild quest reward claim path.
  */
-public final class QuestRewardService {
+final class QuestRewardService {
     private QuestRewardService() {
     }
 
-    public static boolean claimQuestReward(ServerPlayer player, QuestDefinition quest) {
+    static boolean claimQuestReward(ServerPlayer player, QuestDefinition quest) {
+        ProgressionMutationAuthority.warnIfBypassed("claimQuestReward");
         if (player == null || quest == null) {
             return false;
         }
@@ -49,7 +50,7 @@ public final class QuestRewardService {
         }).orElse(false);
     }
 
-    public static int calculateClassXpReward(QuestDefinition quest) {
+    static int calculateClassXpReward(QuestDefinition quest) {
         if (quest == null) {
             return 0;
         }

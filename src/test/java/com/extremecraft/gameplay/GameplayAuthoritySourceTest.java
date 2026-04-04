@@ -43,6 +43,19 @@ class GameplayAuthoritySourceTest {
         assertTrue(clientState.contains("applyStageState"), "Client runtime sync state should expose a stage mirror");
     }
 
+    @Test
+    void commandsRouteProgressionMutationsThroughFacade() throws IOException {
+        String devCommands = read("src/main/java/com/extremecraft/command/ECDevCommands.java");
+        String progressCommands = read("src/main/java/com/extremecraft/progression/ProgressCommands.java");
+
+        assertFalse(devCommands.contains("LevelService.grantXp("), "Dev command XP writes should avoid legacy LevelService mutation path");
+        assertFalse(devCommands.contains("LevelService.setLevel("), "Dev command level writes should avoid legacy LevelService mutation path");
+        assertTrue(devCommands.contains("ProgressionFacade.grantPlayerXp("), "Dev command XP writes should route through ProgressionFacade");
+        assertTrue(devCommands.contains("ProgressionFacade.setPlayerLevel("), "Dev command level writes should route through ProgressionFacade");
+        assertFalse(progressCommands.contains("ProgressionMutationService.setLevel("), "Progress command level set should route through ProgressionFacade");
+        assertTrue(progressCommands.contains("ProgressionFacade.setPlayerLevel("), "Progress command level set should route through ProgressionFacade");
+    }
+
     private static String read(String relativePath) throws IOException {
         return Files.readString(ROOT.resolve(relativePath), StandardCharsets.UTF_8);
     }

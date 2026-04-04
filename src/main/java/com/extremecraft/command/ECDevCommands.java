@@ -39,12 +39,9 @@ import com.extremecraft.platform.data.validator.PlatformValidationRunner;
 import com.extremecraft.platform.module.ModuleRegistry;
 import com.extremecraft.progression.ClassProgressionService;
 import com.extremecraft.progression.ProgressionFacade;
-import com.extremecraft.progression.ProgressionService;
 import com.extremecraft.progression.SkillProgressionService;
 import com.extremecraft.progression.capability.ProgressApi;
 import com.extremecraft.progression.classsystem.data.ClassDefinitions;
-import com.extremecraft.progression.level.LevelService;
-import com.extremecraft.progression.level.PlayerLevelApi;
 import com.extremecraft.progression.skilltree.SkillTreeManager;
 import com.extremecraft.progression.skilltree.SkillTreeService;
 import com.extremecraft.skills.SkillRegistry;
@@ -202,7 +199,7 @@ public final class ECDevCommands {
                                 .executes(ctx -> {
                                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                                     int amount = IntegerArgumentType.getInteger(ctx, "amount");
-                                    int levelUps = LevelService.grantXp(player, amount);
+                                    int levelUps = ProgressionFacade.grantPlayerXp(player, amount);
                                     ctx.getSource().sendSuccess(() -> Component.literal("Granted " + amount + " XP (level ups: " + levelUps + ")"), false);
                                     return 1;
                                 })))
@@ -282,10 +279,8 @@ public final class ECDevCommands {
                                 .executes(ctx -> {
                                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                                     int level = IntegerArgumentType.getInteger(ctx, "level");
-                                    LevelService.setLevel(player, level);
-                                    PlayerLevelApi.get(player).ifPresent(levelData ->
-                                            ctx.getSource().sendSuccess(() -> Component.literal("Level set to " + levelData.level()), false)
-                                    );
+                                    ProgressionFacade.setPlayerLevel(player, level);
+                                    ctx.getSource().sendSuccess(() -> Component.literal("Level set to " + ProgressionFacade.readAccess().level(player)), false);
                                     return 1;
                                 }))));
 

@@ -39,6 +39,8 @@ repositories {
 dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.4.0'
     implementation project(':api')
+    implementation project(':extremecraft-core')
+    implementation project(':extremecraft-progression')
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
 }
 
@@ -77,6 +79,7 @@ subprojects {
     }
 
     repositories {
+        maven { url = 'https://maven.minecraftforge.net' }
         mavenCentral()
     }
 

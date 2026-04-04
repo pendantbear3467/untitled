@@ -27,7 +27,7 @@ public class ProgressionEvents {
     @SubscribeEvent
     public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            ProgressApi.get(player).ifPresent(data -> data.markAttributesDirty());
+            ProgressionSyncService.markCanonicalAttributesDirty(player);
             ProgressionSyncService.flush(player);
             PlayerStatsService.syncProgressionMirror(player, true);
             ClassAbilityService.syncState(player);
@@ -71,7 +71,6 @@ public class ProgressionEvents {
             if (ProgressionFacade.discoverRegion(player, regionKey)) {
                 ProgressionFacade.grantPlayerXp(player, 8);
                 incrementQuest(player, QuestType.EXPLORATION, 1);
-                ProgressionSyncService.flush(player);
             }
         }
     }
@@ -144,9 +143,9 @@ public class ProgressionEvents {
 
         for (QuestDefinition quest : QuestManager.all()) {
             if (quest.type() != type) continue;
-            if (ProgressionService.isQuestCompleted(player, quest.id())) continue;
+            if (ProgressionFacade.readAccess().questCompleted(player, quest.id())) continue;
 
-            int current = ProgressionService.getQuestProgress(player, quest.id());
+            int current = ProgressionFacade.readAccess().questProgress(player, quest.id());
             int next = Math.min(quest.target(), current + amount);
             int delta = next - current;
             if (delta > 0) {

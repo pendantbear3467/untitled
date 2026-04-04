@@ -2,23 +2,24 @@ package com.extremecraft.progression.level;
 
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.SyncPlayerLevelS2CPacket;
-import com.extremecraft.progression.ProgressionMutationService;
+import com.extremecraft.progression.ProgressionFacade;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.PacketDistributor;
 
 /**
  * Compatibility facade for the older player-level capability mirror.
  *
- * <p>Canonical live XP mutation authority routes through {@code ProgressionMutationService};
+ * <p>Canonical live XP mutation authority routes through {@link ProgressionFacade};
  * callers that still need the level capability should delegate through this class rather than
  * mutating the legacy mirror directly.</p>
  */
+@Deprecated(forRemoval = false, since = "1.2.0")
 public final class LevelService {
     private LevelService() {
     }
 
     public static int grantXp(ServerPlayer player, int amount) {
-        return ProgressionMutationService.grantXp(player, amount);
+        return ProgressionFacade.grantPlayerXp(player, amount);
     }
 
     public static int grantLegacyXp(ServerPlayer player, int amount, boolean syncImmediately) {
@@ -38,7 +39,7 @@ public final class LevelService {
     }
 
     public static void setLevel(ServerPlayer player, int level) {
-        ProgressionMutationService.setLevel(player, level);
+        ProgressionFacade.setPlayerLevel(player, level);
     }
 
     public static void setLegacyLevel(ServerPlayer player, int level, boolean syncImmediately) {

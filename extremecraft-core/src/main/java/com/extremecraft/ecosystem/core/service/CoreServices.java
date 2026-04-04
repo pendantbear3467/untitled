@@ -1,15 +1,13 @@
 package com.extremecraft.ecosystem.core.service;
 
-import com.extremecraft.modules.runtime.ModuleRuntimeService;
-
 /**
- * Shared cross-module service registry intended to live in ExtremeCraft Core.
+ * Shared cross-module service registry owned by ExtremeCraft Core.
  */
 public final class CoreServices {
     private static CoreSkillService skillService = player -> { };
     private static CoreMachineService machineService = player -> { };
     private static CoreResearchService researchService = player -> { };
-    private static CoreModuleService moduleService = ModuleRuntimeService::refreshPassiveModifiers;
+    private static CoreModuleService moduleService = player -> { };
     private static CoreEnergyNetworkService energyNetworkService = player -> { };
 
     private CoreServices() {

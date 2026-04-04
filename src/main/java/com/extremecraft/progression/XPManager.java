@@ -5,10 +5,10 @@ import net.minecraft.server.level.ServerPlayer;
 /**
  * Legacy compatibility wrapper for older XP callers.
  *
- * <p>New gameplay XP writes should enter through {@code ProgressionEvents},
- * {@code GuildQuestRewardService}, or debug/admin commands, all of which converge on
- * {@code ProgressionMutationService}.</p>
+ * <p>New gameplay XP writes should enter through {@link ProgressionFacade}, with this type kept
+ * only as a legacy adapter.</p>
  */
+@Deprecated(forRemoval = false, since = "1.2.0")
 public final class XPManager {
     private XPManager() {
     }
@@ -18,7 +18,7 @@ public final class XPManager {
             return;
         }
 
-        ProgressionMutationService.grantXp(player, amount);
+        ProgressionFacade.grantPlayerXp(player, amount);
     }
 
     public static int xpRequiredForLevel(int level) {

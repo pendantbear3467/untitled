@@ -29,14 +29,14 @@ public final class SkillProgressionService {
     private SkillProgressionService() {
     }
 
-    public static int grantSkillXp(ServerPlayer player, String skillId, int amount, Source source) {
+    static int grantSkillXp(ServerPlayer player, String skillId, int amount, Source source) {
+        ProgressionMutationAuthority.warnIfBypassed("grantSkillXp");
         if (player == null || skillId == null || skillId.isBlank() || amount <= 0 || source == null) {
             return 0;
         }
 
-        // Live policy: skill XP is combat-authoritative, with debug-only administrative overrides.
-        if (source != Source.COMBAT && source != Source.DEBUG_COMMAND) {
-            LOGGER.warn("[ProgressionGuard] Rejected non-combat skill XP write: source={} skill={} amount={}", source, skillId, amount);
+        if (!isAllowedGameplaySource(source)) {
+            LOGGER.warn("[ProgressionGuard] Rejected non-gameplay skill XP write: source={} skill={} amount={}", source, skillId, amount);
             return 0;
         }
 
@@ -49,7 +49,8 @@ public final class SkillProgressionService {
                 .orElse(0);
     }
 
-    public static int grantCombatKillXp(ServerPlayer player, LivingEntity target) {
+    static int grantCombatKillXp(ServerPlayer player, LivingEntity target) {
+        ProgressionMutationAuthority.warnIfBypassed("grantCombatKillXp");
         if (player == null || target == null) {
             return 0;
         }
@@ -67,5 +68,11 @@ public final class SkillProgressionService {
             int currentLevel = skills.getSkillLevel(skillId);
             return Math.max(0, PlayerSkillsCapability.xpForNextLevel(currentLevel) - skills.getSkillXp(skillId));
         }).orElse(0);
+    }
+
+    private static boolean isAllowedGameplaySource(Source source) {
+        return switch (source) {
+            case COMBAT, MINING, ENGINEERING, ARCANE, EXPLORATION, DEBUG_COMMAND -> true;
+        };
     }
 }

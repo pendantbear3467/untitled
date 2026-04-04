@@ -19,7 +19,8 @@ public final class ClassProgressionService {
     private ClassProgressionService() {
     }
 
-    public static int grantClassXp(ServerPlayer player, String classId, int amount, Source source) {
+    static int grantClassXp(ServerPlayer player, String classId, int amount, Source source) {
+        ProgressionMutationAuthority.warnIfBypassed("grantClassXp");
         if (player == null || amount <= 0 || source == null) {
             return 0;
         }
@@ -36,7 +37,7 @@ public final class ClassProgressionService {
         if (gainedLevels > 0) {
             ProgressionSyncService.flush(player);
         } else {
-            ProgressApi.get(player).ifPresent(PlayerProgressData::markSyncDirty);
+            ProgressionSyncService.markCanonicalSyncDirty(player);
             ProgressionSyncService.flush(player);
         }
         return gainedLevels;

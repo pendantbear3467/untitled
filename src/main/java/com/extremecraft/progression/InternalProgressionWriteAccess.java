@@ -15,6 +15,8 @@ import java.util.Collection;
 interface InternalProgressionWriteAccess {
     int grantPlayerXp(ServerPlayer player, int amount);
 
+    void setPlayerLevel(ServerPlayer player, int level);
+
     int grantCombatSkillXp(ServerPlayer player, LivingEntity target);
 
     int grantSkillXp(ServerPlayer player, String skillId, int amount, SkillProgressionService.Source source);

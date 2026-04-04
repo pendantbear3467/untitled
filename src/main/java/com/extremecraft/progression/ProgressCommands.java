@@ -31,7 +31,7 @@ public final class ProgressCommands {
                                         .then(Commands.argument("value", IntegerArgumentType.integer(1, 999)).executes(ctx -> {
                                             ServerPlayer player = ctx.getSource().getPlayerOrException();
                                             int value = IntegerArgumentType.getInteger(ctx, "value");
-                                            ProgressionMutationService.setLevel(player, value);
+                                            ProgressionFacade.setPlayerLevel(player, value);
                                             return 1;
                                         }))))
                         .then(Commands.literal("class")

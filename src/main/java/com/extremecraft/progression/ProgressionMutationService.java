@@ -1,6 +1,5 @@
 package com.extremecraft.progression;
 
-import com.extremecraft.progression.level.LevelService;
 import net.minecraft.server.level.ServerPlayer;
 
 /**
@@ -14,6 +13,7 @@ public final class ProgressionMutationService {
     }
 
     public static int grantXp(ServerPlayer player, int amount) {
+        ProgressionMutationAuthority.warnIfBypassed("grantXp");
         if (player == null || amount <= 0) {
             return 0;
         }
@@ -22,7 +22,7 @@ public final class ProgressionMutationService {
         ProgressionService.addXp(player, amount);
 
         // Legacy mirrors kept in sync for existing systems/UI during migration.
-        int levelUps = LevelService.grantLegacyXp(player, amount, false);
+        int levelUps = com.extremecraft.progression.level.LevelService.grantLegacyXp(player, amount, false);
         PlayerStatsService.addExperience(player, amount, false);
         PlayerStatsService.syncProgressionMirror(player, false);
 
@@ -32,6 +32,7 @@ public final class ProgressionMutationService {
     }
 
     public static void setLevel(ServerPlayer player, int level) {
+        ProgressionMutationAuthority.warnIfBypassed("setLevel");
         if (player == null) {
             return;
         }
@@ -42,7 +43,7 @@ public final class ProgressionMutationService {
         ProgressionService.setLevel(player, safeLevel);
 
         // Legacy mirrors kept in sync for existing systems/UI during migration.
-        LevelService.setLegacyLevel(player, safeLevel, false);
+        com.extremecraft.progression.level.LevelService.setLegacyLevel(player, safeLevel, false);
         PlayerStatsService.setLevel(player, safeLevel, false);
         PlayerStatsService.syncProgressionMirror(player, false);
 

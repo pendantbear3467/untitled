@@ -164,9 +164,8 @@ public final class PlayerStatsService {
             return false;
         }
 
-        ProgressApi.get(player).ifPresent(com.extremecraft.progression.PlayerProgressData::markSyncDirty);
+        ProgressionSyncService.markCanonicalSyncDirty(player);
         ProgressionSyncService.flush(player);
         return true;
     }
 }
-
