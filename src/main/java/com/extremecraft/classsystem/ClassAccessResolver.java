@@ -5,7 +5,6 @@ import com.extremecraft.progression.classsystem.ClassDefinition;
 import com.extremecraft.progression.classsystem.data.ClassDefinitions;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 

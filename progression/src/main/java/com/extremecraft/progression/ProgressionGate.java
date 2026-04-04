@@ -6,7 +6,6 @@ import com.extremecraft.ecosystem.core.progression.ProgressionRuntimeFlags;
 import com.extremecraft.progression.stage.ProgressionStage;
 import com.extremecraft.progression.stage.StageManager;
 import com.extremecraft.progression.unlock.UnlockAccessService;
-import com.extremecraft.progression.unlock.UnlockRuleLoader;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
