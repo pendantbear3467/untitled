@@ -34,10 +34,10 @@ public final class ClassProgressionService {
         }).orElse(0);
 
         if (gainedLevels > 0) {
-            ProgressionService.flushDirty(player);
+            ProgressionSyncService.flush(player);
         } else {
             ProgressApi.get(player).ifPresent(PlayerProgressData::markSyncDirty);
-            ProgressionService.flushDirty(player);
+            ProgressionSyncService.flush(player);
         }
         return gainedLevels;
     }

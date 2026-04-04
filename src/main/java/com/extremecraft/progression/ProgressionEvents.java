@@ -28,7 +28,7 @@ public class ProgressionEvents {
     public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             ProgressApi.get(player).ifPresent(data -> data.markAttributesDirty());
-            ProgressionService.flushDirty(player);
+            ProgressionSyncService.flush(player);
             PlayerStatsService.syncProgressionMirror(player, true);
             ClassAbilityService.syncState(player);
         }
@@ -46,7 +46,7 @@ public class ProgressionEvents {
         ProgressApi.get(oldPlayer).ifPresent(oldData ->
                 ProgressApi.get(newPlayer).ifPresent(newData -> {
                     newData.copyFrom(oldData);
-                    ProgressionService.flushDirty(newPlayer);
+                    ProgressionSyncService.flush(newPlayer);
                 })
         );
     }
@@ -59,7 +59,7 @@ public class ProgressionEvents {
         if (event.phase != TickEvent.Phase.END || event.player.level().isClientSide) return;
         if (!(event.player instanceof ServerPlayer player)) return;
 
-        ProgressionService.flushDirty(player);
+        ProgressionSyncService.flush(player);
 
         int regionTickInterval = 80;
         int regionTickOffset = Math.floorMod(player.getUUID().hashCode(), regionTickInterval);
@@ -68,11 +68,10 @@ public class ProgressionEvents {
             int rz = player.blockPosition().getZ() >> 8;
             // Region key is coarse-grained to prevent per-chunk progression spam.
             String regionKey = player.level().dimension().location() + "|" + rx + "|" + rz;
-            if (ProgressionService.discoverRegion(player, regionKey, false)) {
+            if (ProgressionFacade.discoverRegion(player, regionKey)) {
                 ProgressionFacade.grantPlayerXp(player, 8);
                 incrementQuest(player, QuestType.EXPLORATION, 1);
-                ProgressionFacade.grantSkillXp(player, "engineering", 10, SkillProgressionService.Source.EXPLORATION);
-                ProgressionService.flushDirty(player);
+                ProgressionSyncService.flush(player);
             }
         }
     }
@@ -107,11 +106,9 @@ public class ProgressionEvents {
 
         ItemStack crafted = event.getCrafting();
         String itemId = crafted.getItem().builtInRegistryHolder().key().location().getPath();
-        if (itemId.contains("rune") || itemId.contains("mana") || itemId.contains("arcane")) {
-            ProgressionFacade.grantSkillXp(player, "arcane", Math.max(6, count * 4), SkillProgressionService.Source.ARCANE);
-        }
-        if (itemId.contains("machine") || itemId.contains("generator") || itemId.contains("reactor") || itemId.contains("cable")) {
-            ProgressionFacade.grantSkillXp(player, "engineering", Math.max(6, count * 4), SkillProgressionService.Source.ENGINEERING);
+        if (itemId.contains("rune") || itemId.contains("mana") || itemId.contains("arcane")
+                || itemId.contains("machine") || itemId.contains("generator") || itemId.contains("reactor") || itemId.contains("cable")) {
+            // Domain-themed crafting remains quest/player-XP relevant but does not directly grant skill XP.
         }
     }
 
@@ -134,7 +131,6 @@ public class ProgressionEvents {
             int xp = event.getState().getDestroySpeed(player.level(), event.getPos()) > 5.0F ? 2 : 1;
             ProgressionFacade.grantPlayerXp(player, xp);
             incrementQuest(player, QuestType.COLLECTION, 1);
-            ProgressionFacade.grantSkillXp(player, "mining", 4, SkillProgressionService.Source.MINING);
         }
     }
 
@@ -159,7 +155,7 @@ public class ProgressionEvents {
         }
 
         if (changed[0]) {
-            ProgressionService.flushDirty(player);
+            ProgressionSyncService.flush(player);
         }
     }
 }

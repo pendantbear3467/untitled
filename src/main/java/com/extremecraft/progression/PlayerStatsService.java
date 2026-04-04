@@ -153,20 +153,19 @@ public final class PlayerStatsService {
             }
         }
 
-        com.extremecraft.progression.PlayerProgressData progress = ProgressApi.get(player).orElse(null);
-        if (progress == null || !progress.consumePlayerSkillPoints(node.cost())) {
+        if (!ProgressionFacade.consumePlayerSkillPoints(player, node.cost())) {
             return false;
         }
 
-        stats.setSkillPoints(progress.playerSkillPoints());
+        stats.setSkillPoints(ProgressionFacade.readAccess().playerSkillPoints(player));
         if (!stats.unlockSkillNode(node.id())) {
-            progress.addPlayerSkillPoints(node.cost());
-            stats.setSkillPoints(progress.playerSkillPoints());
+            ProgressionFacade.addPlayerSkillPoints(player, node.cost());
+            stats.setSkillPoints(ProgressionFacade.readAccess().playerSkillPoints(player));
             return false;
         }
 
-        progress.markSyncDirty();
-        ProgressionService.flushDirty(player);
+        ProgressApi.get(player).ifPresent(com.extremecraft.progression.PlayerProgressData::markSyncDirty);
+        ProgressionSyncService.flush(player);
         return true;
     }
 }

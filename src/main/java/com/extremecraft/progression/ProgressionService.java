@@ -11,6 +11,8 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraftforge.network.PacketDistributor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.UUID;
 
@@ -22,6 +24,7 @@ import java.util.UUID;
  * directly from unrelated gameplay code.</p>
  */
 public final class ProgressionService {
+    private static final Logger LOGGER = LogManager.getLogger();
     private static final UUID LEVEL_HEALTH_MOD = UUID.fromString("b6ab1ed2-1f7e-4965-9f53-19d8b237db0b");
     private static final UUID LEVEL_ATTACK_MOD = UUID.fromString("3a2d5b50-6b16-469f-8e0a-df018dd7707c");
     private static final UUID CLASS_HEALTH_MOD = UUID.fromString("ca6b0177-d863-4be1-a2f6-dbbd7c79e18f");
@@ -35,11 +38,13 @@ public final class ProgressionService {
      * Adds player XP via progression capability and flushes dirty flags.
      */
     public static void addXp(ServerPlayer player, int amount) {
+        warnIfExternalMutationCaller("addXp");
         ProgressApi.get(player).ifPresent(data -> data.addXp(amount));
         flushDirty(player);
     }
 
     public static void setLevel(ServerPlayer player, int level) {
+        warnIfExternalMutationCaller("setLevel");
         ProgressApi.get(player).ifPresent(data -> data.setLevel(level));
         flushDirty(player);
     }
@@ -49,6 +54,7 @@ public final class ProgressionService {
     }
 
     public static boolean addPlayerSkillPoints(ServerPlayer player, int amount, boolean flushImmediately) {
+        warnIfExternalMutationCaller("addPlayerSkillPoints");
         if (player == null || amount <= 0) {
             return false;
         }
@@ -75,6 +81,7 @@ public final class ProgressionService {
     }
 
     public static boolean addClassSkillPoints(ServerPlayer player, int amount, boolean flushImmediately) {
+        warnIfExternalMutationCaller("addClassSkillPoints");
         if (player == null || amount <= 0) {
             return false;
         }
@@ -96,6 +103,7 @@ public final class ProgressionService {
     }
 
     public static boolean unlockClass(ServerPlayer player, String classId, boolean flushImmediately) {
+        warnIfExternalMutationCaller("unlockClass");
         if (player == null || classId == null || classId.isBlank()) {
             return false;
         }
@@ -117,6 +125,7 @@ public final class ProgressionService {
     }
 
     public static boolean grantUnlock(ServerPlayer player, String unlockId, boolean flushImmediately) {
+        warnIfExternalMutationCaller("grantUnlock");
         if (player == null || unlockId == null || unlockId.isBlank()) {
             return false;
         }
@@ -133,6 +142,7 @@ public final class ProgressionService {
     }
 
     public static boolean grantUnlocks(ServerPlayer player, java.util.Collection<String> unlockIds, boolean flushImmediately) {
+        warnIfExternalMutationCaller("grantUnlocks");
         if (player == null || unlockIds == null || unlockIds.isEmpty()) {
             return false;
         }
@@ -149,6 +159,7 @@ public final class ProgressionService {
     }
 
     public static boolean addQuestProgress(ServerPlayer player, String questId, int amount, boolean flushImmediately) {
+        warnIfExternalMutationCaller("addQuestProgress");
         if (player == null || questId == null || questId.isBlank() || amount <= 0) {
             return false;
         }
@@ -170,6 +181,7 @@ public final class ProgressionService {
     }
 
     public static boolean markQuestCompleted(ServerPlayer player, String questId, boolean flushImmediately) {
+        warnIfExternalMutationCaller("markQuestCompleted");
         if (player == null || questId == null || questId.isBlank()) {
             return false;
         }
@@ -191,6 +203,7 @@ public final class ProgressionService {
     }
 
     public static boolean discoverRegion(ServerPlayer player, String regionKey, boolean flushImmediately) {
+        warnIfExternalMutationCaller("discoverRegion");
         if (player == null || regionKey == null || regionKey.isBlank()) {
             return false;
         }
@@ -219,6 +232,7 @@ public final class ProgressionService {
     }
 
     public static boolean switchClass(ServerPlayer player, String classId) {
+        warnIfExternalMutationCaller("switchClass");
         return ProgressApi.get(player).map(data -> {
             String normalized = ClassIdResolver.normalizeCanonical(classId);
             if (normalized.isBlank() || !data.unlockedClasses().contains(normalized)) {
@@ -299,5 +313,35 @@ public final class ProgressionService {
         if (existing != null) attr.removeModifier(existing);
         if (Math.abs(amount) < 0.00001D) return;
         attr.addTransientModifier(new AttributeModifier(id, name, amount, AttributeModifier.Operation.ADDITION));
+    }
+
+    public static boolean consumePlayerSkillPoints(ServerPlayer player, int amount) {
+        warnIfExternalMutationCaller("consumePlayerSkillPoints");
+        if (player == null || amount <= 0) {
+            return false;
+        }
+
+        boolean changed = ProgressApi.get(player).map(data -> data.consumePlayerSkillPoints(amount)).orElse(false);
+        if (changed) {
+            flushDirty(player);
+        }
+        return changed;
+    }
+
+    private static void warnIfExternalMutationCaller(String operation) {
+        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+        String owner = ProgressionService.class.getName();
+
+        for (StackTraceElement frame : stack) {
+            String className = frame.getClassName();
+            if (className.equals(owner) || className.startsWith("java.lang.Thread")) {
+                continue;
+            }
+
+            if (!className.startsWith("com.extremecraft.progression.")) {
+                LOGGER.warn("[ProgressionGuard] External progression mutation attempt via {} from {}", operation, className);
+            }
+            return;
+        }
     }
 }

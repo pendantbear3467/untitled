@@ -5,6 +5,8 @@ import com.extremecraft.skills.SkillRegistry;
 import com.extremecraft.skills.SkillsApi;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Canonical live write path for skill XP.
@@ -13,6 +15,8 @@ import net.minecraft.world.entity.LivingEntity;
  * code should not mutate skill progression directly.</p>
  */
 public final class SkillProgressionService {
+    private static final Logger LOGGER = LogManager.getLogger();
+
     public enum Source {
         COMBAT,
         MINING,
@@ -27,6 +31,12 @@ public final class SkillProgressionService {
 
     public static int grantSkillXp(ServerPlayer player, String skillId, int amount, Source source) {
         if (player == null || skillId == null || skillId.isBlank() || amount <= 0 || source == null) {
+            return 0;
+        }
+
+        // Live policy: skill XP is combat-authoritative, with debug-only administrative overrides.
+        if (source != Source.COMBAT && source != Source.DEBUG_COMMAND) {
+            LOGGER.warn("[ProgressionGuard] Rejected non-combat skill XP write: source={} skill={} amount={}", source, skillId, amount);
             return 0;
         }
 
