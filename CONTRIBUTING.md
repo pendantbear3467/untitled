@@ -19,7 +19,7 @@ Setup:
 
 ## Creating Datapacks
 
-1. Add JSON under `data/extremecraft/...` using `DATAPACK_FORMAT.md`.
+1. Add JSON under `src/main/resources/data/extremecraft/...` using `DATAPACK_FORMAT.md`.
 2. Keep ids lowercase and stable.
 3. Validate with `./gradlew.bat check`.
 4. Include at least one concrete test scenario in your PR notes.
@@ -53,10 +53,19 @@ Additional guardrails:
 ## Repository Orientation For Contributors
 
 - Gameplay/runtime Java: `src/main/java`
+- Transitional progression authority source root: `progression/src/main/java`
+- Transitional platform/bootstrap source root: `platform/src/main/java`
+- Shared extracted modules: `api/`, `core/`
 - Runtime assets/datapack content: `src/main/resources`
 - Python asset/compiler/editor tooling: `tools/python`
 - Validation/build helper tools: `tools/`
 - Datapack workspace and examples: `datapacks/`, `examples/`
+
+## Current Modularization Status
+
+- `api` and `core` are first-wave extraction-ready modules.
+- `progression` is authority-hardened and prepared for subproject extraction next, but remains host-owned in this pass.
+- `platform` and `src` remain host-owned while Forge bootstrap and runtime coupling are reduced.
 
 ## Recommended Validation Pass Before PR
 

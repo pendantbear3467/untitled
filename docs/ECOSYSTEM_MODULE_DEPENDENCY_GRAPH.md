@@ -5,10 +5,8 @@
 ```mermaid
 graph TD
   API[api] --> CORE[core]
-  PLATFORM[platform] --> CORE
-  PLATFORM --> API
-  ROOT[root src runtime] --> API
-  ROOT --> CORE
+  HOST[host runtime: platform + progression + src] --> API
+  HOST --> CORE
 ```
 
 ## Root Runtime Module
@@ -16,7 +14,23 @@ graph TD
 - Root runtime module currently depends on:
   - `:api`
   - `:core`
-- Root still contains launch glue, migration adapters, and not-yet-extracted gameplay ownership.
+- Root still contains launch glue, migration adapters, progression source root wiring, and not-yet-extracted gameplay ownership.
+
+## Staged Graph Targets
+
+### Stage 1 (now)
+
+- Keep `api` and `core` as real modules and first-wave repo candidates.
+- Keep `platform`, `progression`, and `src` host-owned.
+
+### Stage 2 (next pass)
+
+- Promote `progression/` to a true included Gradle subproject after coupling reduction.
+- Keep repo split deferred until progression no longer directly depends on host-only packages.
+
+### Stage 3 (later optional)
+
+- Evaluate tools/domain repo splits only after ownership and dependency constraints are enforced by code and build boundaries.
 
 ## Forbidden Dependency Directions
 
@@ -34,5 +48,5 @@ graph TD
 ## Publication-Oriented Relationship Model
 
 - `core`: base required dependency.
-- `platform`: runtime bootstrap and glue over core + root gameplay.
+- `platform`: host-owned runtime bootstrap and glue over core + host gameplay.
 - future compat modules: optional addons depending on core + runtime contracts.

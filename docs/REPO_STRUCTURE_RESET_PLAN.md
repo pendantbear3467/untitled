@@ -4,6 +4,39 @@ Status: active migration audit
 
 This document is the current inventory and cleanup plan for the workspace root. It records what is active, transitional, legacy, generated, or local-only so contributors do not mistake scaffolding for runtime ownership.
 
+## Authoritative Module/Repo Decision Snapshot
+
+- Create repo now:
+	- `api`
+	- `core`
+- Subproject-next, repo-later:
+	- `progression`
+- Host-owned in this pass:
+	- `platform`
+	- `src`
+- Not repo targets in this pass:
+	- `docs`, `scripts`, `tests`, `examples`, `workspace`, `datapacks`, `config`
+- Long-term optional only (after additional cleanup):
+	- `tools`
+	- domain splits such as tech/magic/world
+
+## Top-Level Classification Matrix
+
+| Folder | Classification | Current repo split decision |
+| --- | --- | --- |
+| `api/` | real module | create separate repo now |
+| `core/` | real module | create separate repo now |
+| `progression/` | candidate future module | convert to included subproject next, repo later |
+| `platform/` | host runtime | keep in host |
+| `src/` | host runtime transitional monolith | keep in host |
+| `tools/` | tooling | keep in host for now |
+| `docs/` | docs/support | never standalone repo in this pass |
+| `scripts/` | docs/support tooling | never standalone repo in this pass |
+| `tests/` | host/tooling validation | keep in host |
+| `datapacks/` | contributor content workspace | keep in host |
+| `examples/` | examples/support | keep in host |
+| `workspace/` | local tooling/snapshot support | keep in host |
+
 ## Current Root Inventory
 
 ### Curated / keep
@@ -162,3 +195,16 @@ gradle/
 1. Move the root command catalog into `docs/` and leave a short pointer in the root if needed.
 2. Continue extracting only safe runtime seams out of `src/` after verifying ownership and compile impact.
 3. Keep the progression authority boundary intact while any future migration happens.
+
+## Extraction Sequence With Rollback Points
+
+1. Baseline tag/branch before extraction (`split-baseline-*`).
+2. Extract `api` first, wire host via composite include or published artifact.
+3. Compile and run progression boundary/source-policy tests.
+4. Extract `core` second, rewire host similarly.
+5. Compile and rerun progression boundary/source-policy tests.
+6. Keep `platform` + `src` + `progression` host-owned until progression coupling is reduced.
+
+Rollback point after each extraction:
+
+- If compile or boundary tests fail, revert to the last split baseline tag and re-apply only the previous successful extraction.

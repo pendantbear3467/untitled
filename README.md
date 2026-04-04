@@ -21,7 +21,15 @@ ExtremeCraft is a large-scale Minecraft Forge mod for 1.20.1 focused on technolo
 Detailed folder-by-folder documentation: `docs/REPOSITORY_FOLDER_GUIDE.md`
 Canonical edit-first ownership map: `docs/CANONICAL_OWNERSHIP_MAP.md`
 Workspace reset audit: `docs/REPO_STRUCTURE_RESET_PLAN.md`
+Repo split execution checklist: `docs/REPO_SPLIT_EXECUTION_PLAN.md`
 Full documentation map: `docs/DOCUMENTATION_INDEX.md`
+
+## Repo Split Status (Current)
+
+- Create now: `api`, `core`
+- Next (subproject first, repo later): `progression`
+- Keep host-owned in this pass: `platform`, `src`
+- Support/workspace folders (not standalone repos right now): `docs`, `scripts`, `tests`, `examples`, `workspace`, `datapacks`
 
 ## What ExtremeCraft Includes
 

@@ -16,4 +16,6 @@ dependencyResolutionManagement {
 
 rootProject.name = 'ExtremeCraft'
 
+// Keep includes limited to true Gradle modules.
+// Progression remains a host source root in this pass until coupling is reduced.
 include 'api', 'core'
