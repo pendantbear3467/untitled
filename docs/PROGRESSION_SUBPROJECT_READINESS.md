@@ -47,6 +47,12 @@ These imports are expected at this stage and block immediate clean repo extracti
 3. Root runtime still compiles `progression/src/main/java` to preserve behavior while host coupling remains.
 4. Progression subproject compiles against host output/classpath as a temporary bridge.
 
+## Small Coupling Reduction Completed
+
+- Extracted shared constants contract to `core/src/main/java/com/extremecraft/ecosystem/core/ECConstants.java`.
+- Updated progression capability/stage/skilltree event surfaces to consume core constants instead of host-only `com.extremecraft.core.ECConstants`.
+- Kept `platform/src/main/java/com/extremecraft/core/ECConstants.java` as a compatibility adapter to avoid runtime behavior changes.
+
 ## Required Cleanup Before Repo Split
 
 1. Progression compiles independently as a Gradle subproject.

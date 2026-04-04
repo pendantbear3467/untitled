@@ -3,7 +3,7 @@ package com.extremecraft.progression.skilltree;
 import com.extremecraft.client.gui.BaseExtremeScreen;
 import com.extremecraft.client.gui.theme.ECGuiPrimitives;
 import com.extremecraft.client.gui.theme.ECGuiTheme;
-import com.extremecraft.core.ECConstants;
+import com.extremecraft.ecosystem.core.ECConstants;
 
 import com.extremecraft.progression.capability.ProgressApi;
 import net.minecraft.client.Minecraft;
@@ -370,4 +370,5 @@ public class SkillTreeScreen extends BaseExtremeScreen {
         ACTIVE
     }
 }
+
 

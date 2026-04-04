@@ -1,6 +1,6 @@
 package com.extremecraft.progression.capability;
 
-import com.extremecraft.core.ECConstants;
+import com.extremecraft.ecosystem.core.ECConstants;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.SyncPlayerProgressCapabilityPacket;
 import net.minecraft.resources.ResourceLocation;
@@ -47,3 +47,4 @@ public class PlayerProgressCapabilityEvents {
         ModNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncPlayerProgressCapabilityPacket(data.serializeNBT()));
     }
 }
+

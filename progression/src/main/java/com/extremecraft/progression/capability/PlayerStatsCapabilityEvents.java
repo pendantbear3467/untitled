@@ -1,6 +1,6 @@
 package com.extremecraft.progression.capability;
 
-import com.extremecraft.core.ECConstants;
+import com.extremecraft.ecosystem.core.ECConstants;
 import com.extremecraft.progression.PlayerStatsService;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -41,3 +41,4 @@ public class PlayerStatsCapabilityEvents {
         }
     }
 }
+

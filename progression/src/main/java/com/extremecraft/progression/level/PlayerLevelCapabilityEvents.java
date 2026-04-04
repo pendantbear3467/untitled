@@ -1,6 +1,6 @@
 package com.extremecraft.progression.level;
 
-import com.extremecraft.core.ECConstants;
+import com.extremecraft.ecosystem.core.ECConstants;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -40,3 +40,4 @@ public class PlayerLevelCapabilityEvents {
         }
     }
 }
+

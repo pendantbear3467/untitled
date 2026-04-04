@@ -1,6 +1,6 @@
 package com.extremecraft.progression.stage;
 
-import com.extremecraft.core.ECConstants;
+import com.extremecraft.ecosystem.core.ECConstants;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
@@ -32,3 +32,4 @@ public class StageCapabilityEvents {
         }
     }
 }
+
