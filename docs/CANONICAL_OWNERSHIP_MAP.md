@@ -45,11 +45,11 @@ generated snapshot elsewhere in the repo.
 | Unlocks | `unlock/UnlockRuleLoader`, `UnlockAccessService`, `ProgressionGate` | `data/extremecraft/progression/unlocks/*.json`, progression grant paths | `MachineBlock.use`, `AbilityEngine`, `ClassAbilityService`, `SpellExecutor`, `UnlockAccessService` | `canUseRecipe` is a real helper but not automatically applied to autonomous machine processing |
 | Skills | `skills/SkillRegistry` + `SkillProgressionService` | `data/extremecraft/skills/*.json`, `SkillProgressionService` | `ProgressionEvents` gameplay hooks, `SkillsApi`, runtime stat calculations | Direct `PlayerSkillsCapability` mutation should be treated as backing-state only |
 | Skill trees | `progression/skilltree/SkillTreeManager`, `SkillTreeService` | `data/extremecraft/skill_trees/*.json`, `SkillTreeService.tryUnlock*` | `UnlockSkillNodeC2S`, `UpgradeStatPacket` compatibility shim, `PlayerStatsService.tryUnlockSkillNode` | `skilltrees/*.json` is legacy folder naming; `SkillTreeRegistry` is a synchronized compatibility mirror |
-| Classes | `progression/classsystem/data/ClassDefinitionLoader` + `ClassDefinitions` | `data/extremecraft/classes/*.json` | `ClassAccessResolver` now resolves canonical definitions first | `ClassRegistry` still reads the folder but only as compatibility fallback |
+| Classes | `progression/classsystem/data/ClassDefinitionLoader` + `ClassDefinitions` | `data/extremecraft/classes/*.json` | `ClassAccessResolver` now resolves canonical definitions first | `ClassRegistry` is now a compatibility adapter projected from canonical class definitions |
 | Class abilities | `ClassAbilityLoader` + `ClassAbilityService` | `data/extremecraft/class_abilities/*.json` | `ActivateClassAbilityC2SPacket` -> `ClassAbilityService.tryActivate` | Unlock/class enforcement now happens in `ClassAbilityService`; older client/UI code is not authoritative |
-| Abilities | `AbilityRegistry`, `AbilityEngine`, `AbilityExecutor` | `data/extremecraft/abilities/*.json` and runtime handlers in `ability/**` | `ActivateAbilityC2SPacket` -> `AbilityEngine.cast` | `abilities_platform/*.json` + `AbilityDataLoader` are metadata-only; module ability loader intentionally reuses the same live folder |
+| Abilities | `AbilityRegistry`, `AbilityEngine`, `AbilityExecutor` | `data/extremecraft/abilities/*.json` and runtime handlers in `ability/**` | `ActivateAbilityC2SPacket` -> `AbilityEngine.cast` | `abilities_platform/*.json` + `AbilityDataLoader` are metadata-only; module trigger payloads moved to `module_abilities/*.json` with warned fallback from `abilities/*.json` |
 | Spells | `SpellLoader`, `SpellRegistry`, `SpellExecutor` | `data/extremecraft/spells/*.json` | `SpellExecutor.tryCast*` and spell-item/keybind entrypoints | `SpellDefinition.java` is an older parallel model; live spell runtime compiles `Spell` into `AbilityDefinition` at cast time |
-| Modules | `modules/loader/**`, `modules/service/**`, `modules/runtime/**` | `armor_modules/*.json`, `tool_modules/*.json`, shared `abilities/*.json` | `ModuleInstallService`, `ModuleRuntimeService`, module packets/events, `PlayerStatsGameplayEvents.onBreakSpeed` for mining-speed stat application | `data/extremecraft/modules/*.json` + `item/module/ModuleLoader` are mirror/legacy; `item/module/**` is not the canonical modular-gear path |
+| Modules | `modules/loader/**`, `modules/service/**`, `modules/runtime/**` | `armor_modules/*.json`, `tool_modules/*.json`, `module_abilities/*.json` | `ModuleInstallService`, `ModuleRuntimeService`, module packets/events, `PlayerStatsGameplayEvents.onBreakSpeed` for mining-speed stat application | `data/extremecraft/modules/*.json` + `item/module/ModuleLoader` are mirror/legacy; `item/module/**` is not the canonical modular-gear path |
 | Modular gear install/runtime | `ModuleInstallService` + `ModuleRuntimeService` | install/remove through service, runtime triggers in `ModuleRuntimeEvents` | `InstallModuleC2SPacket`, `RemoveModuleC2SPacket`, `ModuleRuntimeEvents` | Required skill-node checks remain live here; module definitions are read from armor/tool module registries |
 | Materials | `machine/material/OreMaterialCatalog` + `future/registry/TechBlocks/TechItems` | code-owned material catalog and registry chain | ore/item/block registration and any runtime stat/lookups using registered items/blocks | `materials/*.json` + `MaterialDataLoader` are metadata mirrors |
 | World generation | datapack `worldgen/**` + `forge/**` | `data/extremecraft/worldgen/**`, `data/extremecraft/forge/**` | vanilla/Forge worldgen bootstrap at runtime | `world_generation/*.json` + `WorldGenerationDataLoader` are profile metadata only |
@@ -239,9 +239,9 @@ Shared runtime readers:
 
 Interpretation:
 
-- `classes/*.json` is intentionally shared.
+- `classes/*.json` is gameplay-authoritative.
 - `progression/classsystem/data` is the canonical definition owner and primary runtime read source.
-- `classsystem/ClassRegistry` is a compatibility adapter/fallback for older callers.
+- `classsystem/ClassRegistry` is now a compatibility projection over canonical definitions, not a second datapack loader.
 
 ### Class Abilities
 
@@ -265,11 +265,13 @@ Edit here:
   - `src/main/java/com/extremecraft/ability/AbilityEngine.java`
   - `src/main/java/com/extremecraft/ability/AbilityExecutor.java`
 
-Important shared-use note:
+Execution note:
 
-- `abilities/*.json` is also read by `src/main/java/com/extremecraft/modules/loader/ModuleAbilityLoader.java`
-- This is intentional for module-triggered abilities that reuse the shared ability schema
-- Editing a shared ability id can affect both generic ability behavior and modular gear behavior
+- `AbilityExecutor.executeDefinition(...)` is the shared compiled-definition effect path.
+- `AbilityEngine` owns active ability cast triggers.
+- `SpellExecutor` owns spell cast triggers and compiles spells into `AbilityDefinition`.
+- `ClassAbilityService` owns class ability triggers and compiles supported class abilities into `AbilityDefinition`.
+- `ModuleRuntimeService` owns module-trigger timing/cooldowns and compiles active trigger payloads from `module_abilities/*.json` into `AbilityDefinition`.
 - Unlock-rule enforcement for generic abilities happens in `src/main/java/com/extremecraft/ability/AbilityEngine.java`
 
 Metadata-only mirror:
@@ -315,10 +317,15 @@ Edit here for installable armor/tool modules:
   - live tool wrapper example:
     - `src/main/java/com/extremecraft/item/tool/ModularDrillItem.java`
 
-Shared module ability definitions:
+Canonical module trigger ability definitions:
 
-- `src/main/resources/data/extremecraft/abilities/*.json`
+- `src/main/resources/data/extremecraft/module_abilities/*.json`
 - loader: `src/main/java/com/extremecraft/modules/loader/ModuleAbilityLoader.java`
+
+Compatibility fallback:
+
+- trigger-bearing legacy files under `src/main/resources/data/extremecraft/abilities/*.json`
+- kept only to avoid breaking older packs immediately; validation now warns on this layout
 
 Do not edit first:
 

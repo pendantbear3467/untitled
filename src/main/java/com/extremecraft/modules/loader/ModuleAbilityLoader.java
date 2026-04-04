@@ -21,11 +21,11 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Loader for module-triggered ability definitions that intentionally reuse the shared
- * {@code data/extremecraft/abilities} folder.
+ * Loader for module-triggered ability definitions.
  *
- * <p>This is a shared live datapack path with the generic ability runtime. Module-triggered
- * abilities read only the trigger/cooldown/mana/scaling subset they need.</p>
+ * <p>Canonical module trigger content now lives in {@code data/extremecraft/module_abilities}.
+ * A warned compatibility fallback still reads trigger-bearing files from
+ * {@code data/extremecraft/abilities} so older packs do not break immediately.</p>
  */
 public class ModuleAbilityLoader {
     private static final Gson GSON = new Gson();
@@ -33,18 +33,25 @@ public class ModuleAbilityLoader {
 
     @SubscribeEvent
     public void onAddReloadListeners(AddReloadListenerEvent event) {
-        event.addListener(new Loader());
+        event.addListener(new Loader("module_abilities", false));
+        event.addListener(new Loader("abilities", true));
     }
 
     private static final class Loader extends SimpleJsonResourceReloadListener {
-        private Loader() {
-            super(GSON, "abilities");
+        private final String rootPath;
+        private final boolean legacyFallback;
+
+        private Loader(String rootPath, boolean legacyFallback) {
+            super(GSON, rootPath);
+            this.rootPath = rootPath;
+            this.legacyFallback = legacyFallback;
         }
 
         @Override
         protected void apply(Map<ResourceLocation, JsonElement> jsonMap, ResourceManager resourceManager, ProfilerFiller profiler) {
             Map<String, ModuleAbilityDefinition> loaded = new LinkedHashMap<>();
             int malformed = 0;
+            int skippedNonModuleEntries = 0;
 
             for (Map.Entry<ResourceLocation, JsonElement> entry : jsonMap.entrySet()) {
                 try {
@@ -55,6 +62,11 @@ public class ModuleAbilityLoader {
                     }
 
                     JsonObject root = entry.getValue().getAsJsonObject();
+                    if (legacyFallback && !looksLikeLegacyModuleAbility(root)) {
+                        skippedNonModuleEntries++;
+                        continue;
+                    }
+
                     String id = GsonHelper.getAsString(root, "id", entry.getKey().getPath()).trim().toLowerCase(Locale.ROOT);
                     if (id.contains("/")) {
                         id = id.substring(id.lastIndexOf('/') + 1);
@@ -90,8 +102,26 @@ public class ModuleAbilityLoader {
                 }
             }
 
-            ModuleAbilityRegistry.replaceAll(loaded);
-            LOGGER.info("[Module] Reloaded module abilities: loaded={}, malformed={}", loaded.size(), malformed);
+            if (!legacyFallback) {
+                ModuleAbilityRegistry.replaceAll(loaded);
+                LOGGER.info("[Module] Reloaded canonical module abilities from {}: loaded={}, malformed={}", rootPath, loaded.size(), malformed);
+                return;
+            }
+
+            int merged = ModuleAbilityRegistry.mergeMissing(loaded);
+            int shadowed = Math.max(0, loaded.size() - merged);
+            if (merged > 0) {
+                LOGGER.warn("[Module] Loaded {} legacy module ability definition(s) from data/extremecraft/abilities. Canonical path is data/extremecraft/module_abilities.", merged);
+            }
+            if (shadowed > 0) {
+                LOGGER.info("[Module] Ignored {} legacy module ability definition(s) shadowed by canonical data/extremecraft/module_abilities entries.", shadowed);
+            }
+            LOGGER.info("[Module] Legacy module ability fallback scan from {}: candidates={}, skipped_non_module={}, malformed={}",
+                    rootPath, loaded.size(), skippedNonModuleEntries, malformed);
+        }
+
+        private static boolean looksLikeLegacyModuleAbility(JsonObject root) {
+            return root.has("trigger");
         }
 
         private static int readInt(JsonObject root, String primary, String legacy, int fallback) {
@@ -105,4 +135,3 @@ public class ModuleAbilityLoader {
         }
     }
 }
-

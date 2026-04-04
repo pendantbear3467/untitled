@@ -26,6 +26,7 @@ public final class TechBlocks {
     public static final Map<String, RegistryObject<Block>> ORE_BLOCKS = new LinkedHashMap<>();
     public static final Map<String, RegistryObject<Block>> STORAGE_BLOCKS = new LinkedHashMap<>();
     public static final Map<String, RegistryObject<Block>> MACHINE_BLOCKS = new LinkedHashMap<>();
+        public static final Map<String, RegistryObject<Block>> REACTOR_PART_BLOCKS = new LinkedHashMap<>();
     public static final Map<String, RegistryObject<Block>> CONTAMINATED_TERRAIN_BLOCKS = new LinkedHashMap<>();
     public static final Map<CableTier, RegistryObject<Block>> CABLE_BLOCKS = new LinkedHashMap<>();
 
@@ -52,6 +53,57 @@ public final class TechBlocks {
                         .requiresCorrectToolForDrops())))
         );
 
+        REACTOR_PART_BLOCKS.put("reactor_casing", BLOCKS.register("reactor_casing", () -> new Block(BlockBehaviour.Properties.of()
+                .mapColor(MapColor.METAL)
+                .strength(6.0F, 14.0F)
+                .sound(SoundType.NETHERITE_BLOCK)
+                .requiresCorrectToolForDrops())));
+        REACTOR_PART_BLOCKS.put("reactor_window", BLOCKS.register("reactor_window", () -> new Block(BlockBehaviour.Properties.of()
+                .mapColor(MapColor.COLOR_LIGHT_GRAY)
+                .strength(4.0F, 10.0F)
+                .sound(SoundType.GLASS)
+                .requiresCorrectToolForDrops())));
+        REACTOR_PART_BLOCKS.put("reactor_fuel_rod", BLOCKS.register("reactor_fuel_rod", () -> new Block(BlockBehaviour.Properties.of()
+                .mapColor(MapColor.COLOR_GREEN)
+                .strength(5.0F, 12.0F)
+                .sound(SoundType.METAL)
+                .requiresCorrectToolForDrops())));
+        REACTOR_PART_BLOCKS.put("reactor_control_rod", BLOCKS.register("reactor_control_rod", () -> new Block(BlockBehaviour.Properties.of()
+                .mapColor(MapColor.COLOR_GRAY)
+                .strength(5.0F, 12.0F)
+                .sound(SoundType.METAL)
+                .requiresCorrectToolForDrops())));
+        REACTOR_PART_BLOCKS.put("reactor_access_port", BLOCKS.register("reactor_access_port", () -> new Block(BlockBehaviour.Properties.of()
+                .mapColor(MapColor.COLOR_BLACK)
+                .strength(5.5F, 12.0F)
+                .sound(SoundType.METAL)
+                .requiresCorrectToolForDrops())));
+        REACTOR_PART_BLOCKS.put("reactor_power_tap", BLOCKS.register("reactor_power_tap", () -> new Block(BlockBehaviour.Properties.of()
+                .mapColor(MapColor.COLOR_BLUE)
+                .strength(5.5F, 12.0F)
+                .sound(SoundType.METAL)
+                .requiresCorrectToolForDrops())));
+        REACTOR_PART_BLOCKS.put("reactor_coolant_port", BLOCKS.register("reactor_coolant_port", () -> new Block(BlockBehaviour.Properties.of()
+                .mapColor(MapColor.WATER)
+                .strength(5.5F, 12.0F)
+                .sound(SoundType.METAL)
+                .requiresCorrectToolForDrops())));
+        REACTOR_PART_BLOCKS.put("reactor_waste_port", BLOCKS.register("reactor_waste_port", () -> new Block(BlockBehaviour.Properties.of()
+                .mapColor(MapColor.TERRACOTTA_GREEN)
+                .strength(5.5F, 12.0F)
+                .sound(SoundType.METAL)
+                .requiresCorrectToolForDrops())));
+        REACTOR_PART_BLOCKS.put("reactor_redstone_port", BLOCKS.register("reactor_redstone_port", () -> new Block(BlockBehaviour.Properties.of()
+                .mapColor(MapColor.COLOR_RED)
+                .strength(5.5F, 12.0F)
+                .sound(SoundType.METAL)
+                .requiresCorrectToolForDrops())));
+        REACTOR_PART_BLOCKS.put("reactor_graphite_block", BLOCKS.register("reactor_graphite_block", () -> new Block(BlockBehaviour.Properties.of()
+                .mapColor(MapColor.COLOR_BLACK)
+                .strength(4.0F, 10.0F)
+                .sound(SoundType.STONE)
+                .requiresCorrectToolForDrops())));
+
         CONTAMINATED_TERRAIN_BLOCKS.put("contaminated_dirt", BLOCKS.register("contaminated_dirt",
                 () -> new Block(BlockBehaviour.Properties.copy(Blocks.DIRT).mapColor(MapColor.TERRACOTTA_BROWN))));
         CONTAMINATED_TERRAIN_BLOCKS.put("contaminated_stone", BLOCKS.register("contaminated_stone",
@@ -77,6 +129,10 @@ public final class TechBlocks {
     public static List<RegistryObject<Block>> machineBlocks() {
         return new ArrayList<>(MACHINE_BLOCKS.values());
     }
+
+        public static List<RegistryObject<Block>> reactorPartBlocks() {
+                return new ArrayList<>(REACTOR_PART_BLOCKS.values());
+        }
 
     public static List<RegistryObject<Block>> cableBlocks() {
         return new ArrayList<>(CABLE_BLOCKS.values());

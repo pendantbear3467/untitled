@@ -52,8 +52,15 @@ public final class TechItems {
         });
 
         TechBlocks.MACHINE_BLOCKS.forEach((id, block) -> ITEMS.register(id, () -> new BlockItem(block.get(), new Item.Properties())));
+        TechBlocks.REACTOR_PART_BLOCKS.forEach((id, block) -> ITEMS.register(id, () -> new BlockItem(block.get(), new Item.Properties())));
         TechBlocks.CONTAMINATED_TERRAIN_BLOCKS.forEach((id, block) -> ITEMS.register(id, () -> new BlockItem(block.get(), new Item.Properties())));
         TechBlocks.CABLE_BLOCKS.forEach((tier, block) -> ITEMS.register(tier.id(), () -> new BlockItem(block.get(), new Item.Properties())));
+
+        ITEMS.register("thorium_ingot", () -> new Item(new Item.Properties()));
+        ITEMS.register("reactor_graphite", () -> new Item(new Item.Properties()));
+        ITEMS.register("reactor_core", () -> new Item(new Item.Properties()));
+        ITEMS.register("coolant_injector", () -> new Item(new Item.Properties()));
+        ITEMS.register("irradiated_crystal", () -> new Item(new Item.Properties()));
 
         registerArmorSet("copper", ECArmorMaterial.COPPER);
         registerArmorSet("titanium", ECArmorMaterial.TITANIUM);

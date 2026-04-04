@@ -25,6 +25,10 @@ public final class ECFoundationConfig {
         return COMMON.performance.profilerEnabled.get();
     }
 
+    public static boolean shouldLogOwnershipAudit() {
+        return COMMON.performance.logOwnershipAudit.get();
+    }
+
     public static int structureInvalidationRange() {
         return COMMON.performance.structureInvalidationRange.get();
     }
@@ -215,11 +219,13 @@ public final class ECFoundationConfig {
 
     public static final class Performance {
         public final ForgeConfigSpec.BooleanValue profilerEnabled;
+        public final ForgeConfigSpec.BooleanValue logOwnershipAudit;
         public final ForgeConfigSpec.IntValue structureInvalidationRange;
 
         private Performance(ForgeConfigSpec.Builder builder) {
             builder.push("performance");
             profilerEnabled = builder.define("profilerEnabled", true);
+            logOwnershipAudit = builder.define("logOwnershipAudit", true);
             structureInvalidationRange = builder.defineInRange("structureInvalidationRange", 8, 1, 32);
             builder.pop();
         }

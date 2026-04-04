@@ -1,8 +1,10 @@
 package com.extremecraft.progression.classsystem.ability;
 
-import com.extremecraft.combat.CombatEngine;
-import com.extremecraft.combat.DamageContext;
-import com.extremecraft.combat.DamageType;
+import com.extremecraft.ability.AbilityContext;
+import com.extremecraft.ability.AbilityDefinition;
+import com.extremecraft.ability.AbilityEffect;
+import com.extremecraft.ability.AbilityExecutor;
+import com.extremecraft.ability.AbilityTargetResolver;
 import com.extremecraft.magic.mana.ManaService;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.SyncClassAbilityStateS2CPacket;
@@ -15,8 +17,6 @@ import com.extremecraft.progression.classsystem.data.ClassDefinitions;
 import com.extremecraft.progression.unlock.UnlockAccessService;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.phys.AABB;
 import net.minecraftforge.network.PacketDistributor;
 
 import java.util.List;
@@ -27,9 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Server-authoritative class ability activation and cooldown management.
  *
- * <p>For first release this stays a narrow class-specific action path. Generic abilities and
- * spells remain the primary extensible cast/action systems. Unlock-rule enforcement also converges
- * here so class-ability access checks are not split across packet handlers and UI code.</p>
+ * <p>Class ability triggers remain distinct from generic abilities and spells, but compiled class
+ * ability payloads now execute through {@code AbilityExecutor.executeDefinition} so effect
+ * ownership is not split across parallel runtime pipelines.</p>
  */
 public final class ClassAbilityService {
     private static final Map<UUID, Map<String, Long>> COOLDOWNS = new ConcurrentHashMap<>();
@@ -158,30 +158,34 @@ public final class ClassAbilityService {
     private static boolean applyWarriorCleave(ServerPlayer player, ClassAbilityDefinition ability) {
         double baseDamage = ability.scaling().getOrDefault("base_damage", 6.0D);
         double strengthMultiplier = ability.scaling().getOrDefault("strength_multiplier", 1.25D);
+        double radius = Math.max(1.0D, ability.scaling().getOrDefault("radius", 3.0D));
 
         int strength = PlayerStatsApi.get(player).map(PlayerStatsCapability::strength).orElse(1);
-        float damage = (float) (baseDamage + (strength * strengthMultiplier));
-
-        List<LivingEntity> targets = player.level().getEntitiesOfClass(
-                LivingEntity.class,
-                new AABB(player.blockPosition()).inflate(3.0D),
-                e -> e.isAlive() && e != player
+        AbilityDefinition compiled = new AbilityDefinition(
+                "class:" + ability.id(),
+                ability.manaCost(),
+                ability.cooldownTicks(),
+                AbilityDefinition.TargetType.AREA,
+                radius,
+                radius,
+                ability.classId(),
+                List.of(new AbilityEffect(
+                        "damage",
+                        baseDamage + (strength * strengthMultiplier),
+                        0,
+                        0,
+                        "physical",
+                        Map.of()
+                ))
         );
 
-        if (targets.isEmpty()) {
+        AbilityContext context = AbilityContext.of(player, compiled);
+        if (AbilityTargetResolver.resolve(context).entities().isEmpty()) {
             return false;
         }
 
-        for (LivingEntity target : targets) {
-            CombatEngine.applyDamage(DamageContext.builder()
-                    .attacker(player)
-                    .target(target)
-                    .damageAmount(damage)
-                    .damageType(DamageType.PHYSICAL)
-                    .abilitySource("class:" + ability.id())
-                    .weaponSource(player.getMainHandItem())
-                    .armorValue(target.getArmorValue())
-                    .build());
+        if (!AbilityExecutor.executeDefinition(context)) {
+            return false;
         }
 
         player.swing(player.getUsedItemHand(), true);

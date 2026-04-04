@@ -517,6 +517,26 @@
   "advancement.extremecraft.first_release.primitive_power.title": "Primitive Spark",
   "advancement.extremecraft.first_release.primitive_power.description": "Bootstrap early power to enter industrial progression.",
   "advancement.extremecraft.first_release.reactor_age.title": "Reactor Age",
-  "advancement.extremecraft.first_release.reactor_age.description": "Commission your first fission-grade control line."
+  "advancement.extremecraft.first_release.reactor_age.description": "Commission your first fission-grade control line.",
+  "block.extremecraft.reactor_casing": "Reactor Casing",
+  "block.extremecraft.reactor_window": "Reactor Window",
+  "block.extremecraft.reactor_fuel_rod": "Reactor Fuel Rod",
+  "block.extremecraft.reactor_control_rod": "Reactor Control Rod",
+  "block.extremecraft.reactor_access_port": "Reactor Access Port",
+  "block.extremecraft.reactor_power_tap": "Reactor Power Tap",
+  "block.extremecraft.reactor_coolant_port": "Reactor Coolant Port",
+  "block.extremecraft.reactor_waste_port": "Reactor Waste Port",
+  "block.extremecraft.reactor_redstone_port": "Reactor Redstone Port",
+  "block.extremecraft.reactor_graphite_block": "Reactor Graphite Block",
+  "item.extremecraft.reactor_graphite_block": "Reactor Graphite Block",
+  "item.extremecraft.reactor_casing": "Reactor Casing",
+  "item.extremecraft.reactor_window": "Reactor Window",
+  "item.extremecraft.reactor_fuel_rod": "Reactor Fuel Rod",
+  "item.extremecraft.reactor_control_rod": "Reactor Control Rod",
+  "item.extremecraft.reactor_access_port": "Reactor Access Port",
+  "item.extremecraft.reactor_power_tap": "Reactor Power Tap",
+  "item.extremecraft.reactor_coolant_port": "Reactor Coolant Port",
+  "item.extremecraft.reactor_waste_port": "Reactor Waste Port",
+  "item.extremecraft.reactor_redstone_port": "Reactor Redstone Port"
 }
 

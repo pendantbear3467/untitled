@@ -47,7 +47,7 @@ public final class ProgressCommands {
                                         .then(Commands.argument("id", StringArgumentType.word()).executes(ctx -> {
                                             ServerPlayer player = ctx.getSource().getPlayerOrException();
                                             String id = StringArgumentType.getString(ctx, "id");
-                                            if (ProgressionService.switchClass(player, id)) {
+                                            if (ProgressionFacade.switchClass(player, id)) {
                                                 ctx.getSource().sendSuccess(() -> Component.literal("Class switched to " + id), false);
                                                 return 1;
                                             }

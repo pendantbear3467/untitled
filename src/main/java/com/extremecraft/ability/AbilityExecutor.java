@@ -39,21 +39,18 @@ public final class AbilityExecutor {
     }
 
     /**
-     * Executes a definition directly, usually from spell-specific integration paths.
+     * LEGACY wrapper kept for older spell-specific callers.
+     *
+     * <p>The canonical compiled-definition execution path for active abilities, spells,
+     * class abilities, and module-triggered effects is {@link #executeDefinition(AbilityContext)}.</p>
      */
     public static boolean executeSpellAbility(ServerPlayer player, AbilityDefinition definition) {
-        if (player == null || definition == null || player.level().isClientSide()) {
-            return false;
-        }
-
-        AbilityContext context = AbilityContext.of(player, definition);
-        AbilityTargetResolver.TargetBundle targets = AbilityTargetResolver.resolve(context);
-        applyEffects(context, targets.entities(), targets.center());
-        return true;
+        return executeDefinition(AbilityContext.of(player, definition));
     }
 
     /**
-     * Executes a definition from a preconstructed context, including resolved target pipeline.
+     * Canonical compiled-definition execution path shared by abilities, spells, class abilities,
+     * and module-triggered effects.
      */
     public static boolean executeDefinition(AbilityContext context) {
         if (context == null || context.player() == null || context.definition() == null || context.player().level().isClientSide()) {
@@ -223,6 +220,7 @@ public final class AbilityExecutor {
 
         float damage = (float) Math.max(0.0D, effect.value());
         DamageType damageType = switch ((effect.id() == null ? "" : effect.id()).trim().toLowerCase()) {
+            case "physical", "weapon", "melee" -> DamageType.PHYSICAL;
             case "fire", "ignite", "burn" -> DamageType.FIRE;
             case "ice", "frost", "freeze" -> DamageType.ICE;
             case "lightning", "shock" -> DamageType.LIGHTNING;

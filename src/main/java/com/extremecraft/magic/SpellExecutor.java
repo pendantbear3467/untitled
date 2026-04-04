@@ -34,7 +34,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Server-authoritative spell cast runtime.
  *
  * <p>Spell definitions live in {@code data/extremecraft/spells}. They are compiled into generic
- * {@code AbilityDefinition} payloads at cast time, so editing {@code abilities/*.json} does not
+ * {@code AbilityDefinition} payloads at cast time and executed through
+ * {@code AbilityExecutor.executeDefinition}, so editing {@code abilities/*.json} does not
  * directly change spell behavior. Unlock-rule enforcement also happens here so spell access is
  * decided at the canonical server-authoritative cast boundary.</p>
  */
@@ -215,7 +216,7 @@ public final class SpellExecutor {
         }
 
         AbilityDefinition definition = toAbilityDefinition(context, channelPulse);
-        boolean cast = AbilityExecutor.executeSpellAbility(context.caster(), definition);
+        boolean cast = AbilityExecutor.executeDefinition(com.extremecraft.ability.AbilityContext.of(context.caster(), definition));
 
         if (cast) {
             context.caster().swing(InteractionHand.MAIN_HAND, true);

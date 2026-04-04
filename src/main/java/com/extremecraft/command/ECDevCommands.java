@@ -13,6 +13,8 @@ import com.extremecraft.entity.system.GameplayMechanicsEvents;
 import com.extremecraft.magic.SpellCastingSystem;
 import com.extremecraft.magic.mana.ManaService;
 import com.extremecraft.machine.MachineRegistry;
+import com.extremecraft.machine.core.MachineCatalog;
+import com.extremecraft.machine.recipe.ModTechRecipeTypes;
 import com.extremecraft.network.ModNetwork;
 import com.extremecraft.network.packet.OpenExtremeCraftDebugScreenS2CPacket;
 import com.extremecraft.network.sync.RuntimeSyncService;
@@ -325,7 +327,7 @@ public final class ECDevCommands {
                                         return 0;
                                     }
 
-                                    if (!ProgressionService.switchClass(player, classId)) {
+                                    if (!ProgressionFacade.switchClass(player, classId)) {
                                         ctx.getSource().sendFailure(Component.literal("Class not unlocked: " + classId));
                                         return 0;
                                     }
@@ -340,7 +342,13 @@ public final class ECDevCommands {
                         .executes(ctx -> {
                             ServerPlayer player = ctx.getSource().getPlayerOrException();
                             RuntimeSyncService.syncMachineStates(player);
-                            ctx.getSource().sendSuccess(() -> Component.literal("Runtime machines=" + MachineRegistry.machines().size() + ", runtime recipes=" + MachineRegistry.recipes().size()), false);
+                            int liveRecipes = ctx.getSource().getServer().getRecipeManager().getAllRecipesFor(ModTechRecipeTypes.MACHINE_PROCESSING).size();
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Tech machines=" + MachineCatalog.DEFINITIONS.size()
+                                            + ", machine_processing recipes=" + liveRecipes
+                                            + ", legacy machine defs=" + MachineRegistry.machines().size()
+                                            + ", legacy machine recipes=" + MachineRegistry.recipes().size()
+                            ), false);
                             return 1;
                         })));
 

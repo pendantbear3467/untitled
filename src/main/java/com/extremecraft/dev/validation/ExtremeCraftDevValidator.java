@@ -67,6 +67,7 @@ public final class ExtremeCraftDevValidator {
         scanStaticCollectionLeaks(projectRoot, javaFiles, findings, dedupe);
 
         KnownResources knownResources = buildKnownResources(resourcesRoot);
+        scanDatapackOwnershipIssues(projectRoot, resourcesRoot, findings, dedupe);
         scanRegistryAndDatapackIssues(projectRoot, javaFiles, jsonFiles, knownResources, findings, dedupe);
         scanModelTextureLangConsistency(projectRoot, resourcesRoot, knownResources, findings, dedupe);
 
@@ -414,6 +415,19 @@ public final class ExtremeCraftDevValidator {
                 }
             }
         }
+    }
+
+    private static void scanDatapackOwnershipIssues(
+            Path root,
+            Path resourcesRoot,
+            List<Finding> findings,
+            Set<String> dedupe
+    ) {
+        Path dataRoot = resourcesRoot.resolve("data").resolve(MOD_ID);
+        Path anchor = Files.exists(dataRoot.resolve("README.md")) ? dataRoot.resolve("README.md") : resourcesRoot;
+        ECRuntimeOwnershipAudit.validateDatapackLayout(resourcesRoot, message ->
+                addFinding(root, anchor, 1, Severity.LOW, message, findings, dedupe)
+        );
     }
 
     private static void scanDuplicateRegistryNames(Path root, List<Path> javaFiles, List<Finding> findings, Set<String> dedupe) {
@@ -842,8 +856,6 @@ public final class ExtremeCraftDevValidator {
     ) {
     }
 }
-
-
 
 
 

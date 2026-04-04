@@ -6,9 +6,14 @@ This folder owns live modular gear definitions, install/remove services, passive
 
 Runtime-critical files:
 - `loader/ModuleDefinitionLoader` loads live armor/tool module definitions from `armor_modules` and `tool_modules`.
+- `loader/ModuleAbilityLoader` loads live module trigger payloads from `module_abilities` and only falls back to trigger-bearing `abilities` files for compatibility.
 - `service/ModuleInstallService` mutates installed module state.
 - `runtime/ModuleRuntimeService` applies passive effects and ability cooldown/runtime behavior.
 - `registry/*Registry` classes are the live runtime stores.
+
+Execution note:
+- Module trigger timing/cooldowns stay in `modules/runtime`.
+- Active triggered effects compile into the shared `ability/AbilityExecutor` path instead of maintaining a separate effect execution system.
 
 Metadata-only overlap:
 - `platform/data/loader/ModuleDataLoader` loads `data/extremecraft/modules/*.json` for platform metadata and debug surfaces.
@@ -22,3 +27,4 @@ Safe future additions:
 Common mistakes:
 - Adding a new installable module only under `data/extremecraft/modules`.
 - Mixing armor/tool module ownership in one loader path.
+- Putting new module trigger payloads in `data/extremecraft/abilities` instead of `data/extremecraft/module_abilities`.

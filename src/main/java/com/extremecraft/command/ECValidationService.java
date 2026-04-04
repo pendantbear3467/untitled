@@ -1,6 +1,7 @@
 package com.extremecraft.command;
 
 import com.extremecraft.core.ECConstants;
+import com.extremecraft.dev.validation.ECRuntimeOwnershipAudit;
 import com.extremecraft.machine.recipe.ModTechRecipeTypes;
 import com.extremecraft.machines.recipe.ModRecipeTypes;
 import com.google.gson.Gson;
@@ -316,6 +317,10 @@ public final class ECValidationService {
                 return;
             }
 
+            if (isLegacyModuleAbilityJson(json)) {
+                return;
+            }
+
             String fallbackId = stripJsonExtension(abilityFile.getFileName().toString());
             String abilityId = GsonHelper.getAsString(json, "id", fallbackId).trim().toLowerCase();
             if (abilityId.isBlank()) {
@@ -340,6 +345,11 @@ public final class ECValidationService {
         } catch (Exception ex) {
             reporter.warn("Invalid ability definition JSON " + relativeToResources(resourcesRoot, abilityFile) + ": " + ex.getMessage());
         }
+    }
+
+    private static boolean isLegacyModuleAbilityJson(JsonObject json) {
+        return json.has("trigger")
+                && (!json.has("effects") || !json.get("effects").isJsonArray() || json.getAsJsonArray("effects").isEmpty());
     }
 
     private static void validateOrphanedTopLevelResources(Path resourcesRoot,
@@ -760,10 +770,7 @@ public final class ECValidationService {
 
 
     private static void validateDatapackLayout(Path resourcesRoot, ValidationReporter reporter) {
-        Path dataRoot = resourcesRoot.resolve("data").resolve(ECConstants.MODID);
-        // TODO(alpha): keep this compatibility warning until legacy datapack roots are fully retired.
-        warnIfLegacyDirectoryPopulated(dataRoot, "skill_trees", "skilltrees", reporter);
-        warnIfLegacyDirectoryPopulated(dataRoot, "machines", "machine", reporter);
+        ECRuntimeOwnershipAudit.validateDatapackLayout(resourcesRoot, reporter::warn);
     }
 
     private static void warnIfLegacyDirectoryPopulated(Path dataRoot,
@@ -1064,4 +1071,3 @@ public final class ECValidationService {
         }
     }
 }
-

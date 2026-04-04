@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "extremecraft:block/reactor_control_rod"
+    }
+  }
+}

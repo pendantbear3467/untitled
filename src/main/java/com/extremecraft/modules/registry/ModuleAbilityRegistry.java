@@ -17,11 +17,28 @@ public final class ModuleAbilityRegistry {
         ABILITIES.putAll(abilities);
     }
 
+    public static synchronized int mergeMissing(Map<String, ModuleAbilityDefinition> abilities) {
+        int merged = 0;
+        for (Map.Entry<String, ModuleAbilityDefinition> entry : abilities.entrySet()) {
+            if (entry.getKey() == null || entry.getKey().isBlank() || entry.getValue() == null) {
+                continue;
+            }
+            if (ABILITIES.putIfAbsent(entry.getKey(), entry.getValue()) == null) {
+                merged++;
+            }
+        }
+        return merged;
+    }
+
     public static synchronized ModuleAbilityDefinition get(String id) {
         return ABILITIES.get(id);
     }
 
     public static synchronized Collection<ModuleAbilityDefinition> all() {
         return java.util.List.copyOf(ABILITIES.values());
+    }
+
+    public static synchronized int size() {
+        return ABILITIES.size();
     }
 }

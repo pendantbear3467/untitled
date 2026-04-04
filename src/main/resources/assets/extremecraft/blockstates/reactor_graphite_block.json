@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "extremecraft:block/reactor_graphite_block"
+    }
+  }
+}

@@ -1,33 +1,33 @@
 ExtremeCraft Dev Validation Report
-Generated: 2026-03-15T09:03:05.2058665
-Total findings: 41
+Generated: 2026-04-03T20:16:59.5660419
+Total findings: 51
 
 MEDIUM
-src/main/java/com/extremecraft/ability/AbilityExecutor.java:93
+src/main/java/com/extremecraft/ability/AbilityExecutor.java:117
 Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
 
 MEDIUM
-src/main/java/com/extremecraft/ability/AbilityExecutor.java:261
+src/main/java/com/extremecraft/ability/AbilityExecutor.java:319
 Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
 
 MEDIUM
-src/main/java/com/extremecraft/ability/AbilityExecutor.java:282
+src/main/java/com/extremecraft/ability/AbilityExecutor.java:343
 Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
 
 MEDIUM
-src/main/java/com/extremecraft/combat/CombatEngine.java:68
+src/main/java/com/extremecraft/combat/CombatEngine.java:70
 Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
 
 MEDIUM
-src/main/java/com/extremecraft/combat/dualwield/service/OffhandActionExecutor.java:205
+src/main/java/com/extremecraft/combat/dualwield/service/OffhandActionExecutor.java:207
 Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
-
-MEDIUM
-src/main/java/com/extremecraft/command/ECValidationService.java:45
-Static collection 'CRAFTING_CATEGORIES' has no obvious cleanup path (possible memory leak).
 
 MEDIUM
 src/main/java/com/extremecraft/command/ECValidationService.java:46
+Static collection 'CRAFTING_CATEGORIES' has no obvious cleanup path (possible memory leak).
+
+MEDIUM
+src/main/java/com/extremecraft/command/ECValidationService.java:47
 Static collection 'COOKING_CATEGORIES' has no obvious cleanup path (possible memory leak).
 
 MEDIUM
@@ -59,11 +59,7 @@ src/main/java/com/extremecraft/game/QuestRegistry.java:7
 Static collection 'QUESTS' has no obvious cleanup path (possible memory leak).
 
 MEDIUM
-src/main/java/com/extremecraft/item/tool/ModularDrillItem.java:80
-Gameplay mutation call without nearby explicit server-side guard (possible client/server desync risk).
-
-MEDIUM
-src/main/java/com/extremecraft/machine/core/MachineCatalog.java:11
+src/main/java/com/extremecraft/machine/core/MachineCatalog.java:18
 Static collection 'DEFINITIONS' has no obvious cleanup path (possible memory leak).
 
 MEDIUM
@@ -139,11 +135,11 @@ src/main/java/com/extremecraft/platform/module/ModuleRegistry.java:11
 Static collection 'MODULES' has no obvious cleanup path (possible memory leak).
 
 MEDIUM
-src/main/java/com/extremecraft/progression/ProgressionGate.java:24
+src/main/java/com/extremecraft/progression/ProgressionGate.java:27
 Static collection 'MACHINE_REQUIREMENTS' has no obvious cleanup path (possible memory leak).
 
 MEDIUM
-src/main/java/com/extremecraft/progression/ProgressionGate.java:25
+src/main/java/com/extremecraft/progression/ProgressionGate.java:28
 Static collection 'RECIPE_REQUIREMENTS' has no obvious cleanup path (possible memory leak).
 
 MEDIUM
@@ -159,10 +155,54 @@ src/main/java/com/extremecraft/progression/tech/TechTreeManager.java:15
 Static collection 'MACHINE_REQUIREMENTS' has no obvious cleanup path (possible memory leak).
 
 MEDIUM
-src/main/java/com/extremecraft/reactor/ReactorMultiblockService.java:18
+src/main/java/com/extremecraft/reactor/ReactorMultiblockService.java:30
 Static collection 'CACHE' has no obvious cleanup path (possible memory leak).
 
 MEDIUM
 src/main/java/com/extremecraft/registry/LegacyMappingHandler.java:23
 Static collection 'EXPLICIT_REMAPS' has no obvious cleanup path (possible memory leak).
+
+LOW
+src/main/resources/data/extremecraft/README.md:1
+data/extremecraft/machines is METADATA ONLY. Live tech machines use MachineCatalog + data/extremecraft/recipes/machine_processing.
+
+LOW
+src/main/resources/data/extremecraft/README.md:1
+data/extremecraft/quests is METADATA ONLY. Live quest gameplay uses data/extremecraft/extremecraft_quests + QuestManager.
+
+LOW
+src/main/resources/data/extremecraft/README.md:1
+data/extremecraft/materials is METADATA ONLY. Live material registration still starts in OreMaterialCatalog + future.registry.
+
+LOW
+src/main/resources/data/extremecraft/README.md:1
+data/extremecraft/world_generation is METADATA ONLY. Live placement uses data/extremecraft/worldgen + data/extremecraft/forge.
+
+LOW
+src/main/resources/data/extremecraft/README.md:1
+data/extremecraft/abilities_platform is METADATA ONLY. Live generic abilities use data/extremecraft/abilities + AbilityRegistry.
+
+LOW
+src/main/resources/data/extremecraft/README.md:1
+Legacy datapack directory detected: data/extremecraft/skilltrees. Canonical live skill tree path is data/extremecraft/skill_trees.
+
+LOW
+src/main/resources/data/extremecraft/README.md:1
+data/extremecraft/classes is the CANONICAL gameplay class source, but compatibility adapters still mirror it into ClassRegistry/ClassDataLoader. Gameplay ownership is progression.classsystem.data.ClassDefinitionLoader.
+
+LOW
+src/main/resources/data/extremecraft/README.md:1
+data/extremecraft/research is the CANONICAL gameplay research source, but platform ResearchDataLoader still mirrors it for snapshots/debug output. Gameplay ownership is ResearchManager.
+
+LOW
+src/main/resources/data/extremecraft/README.md:1
+Legacy module-trigger ability files still exist under data/extremecraft/abilities: dash, fireball, heal, shockwave. Canonical module trigger path is data/extremecraft/module_abilities.
+
+LOW
+src/main/resources/data/extremecraft/README.md:1
+Ability and spell ids overlap across data/extremecraft/abilities and data/extremecraft/spells: arcane_shield, blink, fireball. Edit abilities/ for active ability casts and spells/ for spell behavior; they are separate trigger domains even though both compile through AbilityExecutor.
+
+LOW
+src/main/resources/data/extremecraft/README.md:1
+Machine metadata ids without a live tech-machine owner in MachineCatalog: aether_collector, arcane_crusher, arc_infusion_machine, baseline_crusher, bone_boiler (+6 more). Editing these files will not activate a tech machine runtime by itself.
 

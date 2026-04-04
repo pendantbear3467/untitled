@@ -3,6 +3,8 @@ package com.extremecraft.client.gui.machine;
 import com.extremecraft.client.gui.theme.ECGuiPrimitives;
 import com.extremecraft.client.gui.theme.ECGuiTheme;
 import com.extremecraft.machine.menu.TechMachineMenu;
+import com.extremecraft.network.ModNetwork;
+import com.extremecraft.network.packet.ReactorControlC2SPacket;
 import com.extremecraft.network.sync.RuntimeSyncClientState;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -27,7 +29,9 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
     }
 
     private Button scramButton;
-    private boolean scramRequested;
+    private Button toggleActiveButton;
+    private Button rodMinusButton;
+    private Button rodPlusButton;
 
     public TechMachineScreen(TechMachineMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -36,10 +40,34 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
     @Override
     protected void init() {
         super.init();
-        scramButton = addRenderableWidget(Button.builder(Component.literal("SCRAM"), b -> scramRequested = true)
+        scramButton = addRenderableWidget(Button.builder(Component.literal("SCRAM"), b ->
+                        sendReactorControl(ReactorControlC2SPacket.ACTION_SCRAM, 0))
                 .bounds(leftPos + imageWidth + 8, topPos + 94, 56, 20)
                 .build());
+        toggleActiveButton = addRenderableWidget(Button.builder(Component.literal("ON/OFF"), b -> {
+                    CompoundTag reactor = reactorState();
+                    boolean currentlyActive = reactor.getBoolean("active");
+                    sendReactorControl(ReactorControlC2SPacket.ACTION_SET_ACTIVE, currentlyActive ? 0 : 1);
+                })
+                .bounds(leftPos + imageWidth + 8, topPos + 70, 56, 20)
+                .build());
+        rodMinusButton = addRenderableWidget(Button.builder(Component.literal("Rod-"), b -> {
+                    int insertion = Math.max(0, reactorState().getInt("manual_insertion_percent") - 10);
+                    sendReactorControl(ReactorControlC2SPacket.ACTION_SET_INSERTION, insertion);
+                })
+                .bounds(leftPos + imageWidth + 66, topPos + 70, 38, 20)
+                .build());
+        rodPlusButton = addRenderableWidget(Button.builder(Component.literal("Rod+"), b -> {
+                    int insertion = Math.min(100, reactorState().getInt("manual_insertion_percent") + 10);
+                    sendReactorControl(ReactorControlC2SPacket.ACTION_SET_INSERTION, insertion);
+                })
+                .bounds(leftPos + imageWidth + 108, topPos + 70, 38, 20)
+                .build());
+
         scramButton.visible = machineFamily() == MachineFamily.REACTOR;
+        toggleActiveButton.visible = machineFamily() == MachineFamily.REACTOR;
+        rodMinusButton.visible = machineFamily() == MachineFamily.REACTOR;
+        rodPlusButton.visible = machineFamily() == MachineFamily.REACTOR;
     }
 
     @Override
@@ -104,20 +132,49 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
                 double radiation = reactor.getDouble("radiation");
                 boolean scrammed = reactor.getBoolean("scrammed");
                 boolean meltedDown = reactor.getBoolean("melted_down");
+                boolean assembled = reactor.getBoolean("assembled");
+                boolean active = reactor.getBoolean("active");
+                int insertion = reactor.getInt("manual_insertion_percent");
+                int generation = reactor.getInt("generation_per_tick");
+                int wasteCap = Math.max(1, reactor.getInt("waste_capacity"));
+                int sizeX = reactor.getInt("size_x");
+                int sizeY = reactor.getInt("size_y");
+                int sizeZ = reactor.getInt("size_z");
+                int fuelColumns = reactor.getInt("fuel_columns");
+                String reason = reactor.getString("validation_reason");
+                String warning = reactor.getString("warning");
+                
+                if (toggleActiveButton != null) {
+                    toggleActiveButton.setMessage(Component.literal(active ? "STOP" : "START"));
+                }
+                if (rodMinusButton != null) {
+                    rodMinusButton.active = assembled && !meltedDown;
+                }
+                if (rodPlusButton != null) {
+                    rodPlusButton.active = assembled && !meltedDown;
+                }
+                if (scramButton != null) {
+                    scramButton.active = assembled && !meltedDown;
+                }
 
                 graphics.drawString(font, Component.literal("State: " + reactorStateLabel(reactor)), panelX + 6, panelY + 82, reactorStateColor(reactor), false);
                 graphics.drawString(font, Component.literal(String.format("Heat: %.1f", heat)), panelX + 6, panelY + 93, heat >= 800.0D ? ECGuiTheme.STATE_ERROR : ECGuiTheme.TEXT_PRIMARY, false);
                 graphics.drawString(font, Component.literal(String.format("Reactivity: %.1f", reactivity)), panelX + 6, panelY + 104, ECGuiTheme.TEXT_PRIMARY, false);
                 graphics.drawString(font, Component.literal(String.format("Steam: %.1f", steam)), panelX + 6, panelY + 115, ECGuiTheme.TEXT_PRIMARY, false);
-                graphics.drawString(font, Component.literal(String.format("Waste: %.2f", waste)), panelX + 6, panelY + 126, waste >= 5.0D ? ECGuiTheme.STATE_WARN : ECGuiTheme.TEXT_PRIMARY, false);
+                graphics.drawString(font, Component.literal(String.format("Waste: %.1f / %d", waste, wasteCap)), panelX + 6, panelY + 126, waste >= wasteCap ? ECGuiTheme.STATE_WARN : ECGuiTheme.TEXT_PRIMARY, false);
                 graphics.drawString(font, Component.literal(String.format("Radiation: %.1f", radiation)), panelX + 6, panelY + 137, radiation >= 5.0D ? ECGuiTheme.STATE_WARN : ECGuiTheme.TEXT_PRIMARY, false);
+                graphics.drawString(font, Component.literal("Output: " + generation + " FE/t"), panelX + 6, panelY + 148, ECGuiTheme.TEXT_PRIMARY, false);
+                graphics.drawString(font, Component.literal("Rods: " + insertion + "%  Cols: " + fuelColumns), panelX + 6, panelY + 159, ECGuiTheme.TEXT_PRIMARY, false);
+                graphics.drawString(font, Component.literal("Size: " + sizeX + "x" + sizeY + "x" + sizeZ), panelX + 6, panelY + 170, ECGuiTheme.TEXT_PRIMARY, false);
 
-                if (scramRequested) {
-                    graphics.drawString(font, Component.literal("SCRAM requested (client)"), panelX + 6, panelY + 148, ECGuiTheme.STATE_WARN, false);
-                } else if (meltedDown) {
+                if (meltedDown) {
                     graphics.drawString(font, Component.literal("Containment failure recorded"), panelX + 6, panelY + 148, ECGuiTheme.STATE_ERROR, false);
                 } else if (scrammed) {
-                    graphics.drawString(font, Component.literal("Control rods fully inserted"), panelX + 6, panelY + 148, ECGuiTheme.ACCENT_AMBER, false);
+                    graphics.drawString(font, Component.literal("Control rods fully inserted"), panelX + 6, panelY + 181, ECGuiTheme.ACCENT_AMBER, false);
+                } else if (!assembled) {
+                    graphics.drawString(font, Component.literal("Invalid: " + reason), panelX + 6, panelY + 181, ECGuiTheme.STATE_ERROR, false);
+                } else if (active) {
+                    graphics.drawString(font, Component.literal("Warning: " + warning), panelX + 6, panelY + 181, ECGuiTheme.TEXT_SECONDARY, false);
                 }
             }
         } else if (machineFamily() == MachineFamily.GENERATOR) {
@@ -166,8 +223,14 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
             if (reactor.isEmpty()) {
                 return "Blocked: Telemetry pending";
             }
+            if (!reactor.getBoolean("assembled")) {
+                return "Blocked: Invalid structure";
+            }
             if (reactor.getBoolean("melted_down")) {
                 return "Error: Meltdown recorded";
+            }
+            if (!reactor.getBoolean("active")) {
+                return "Ready: Offline";
             }
             if (reactor.getBoolean("scrammed")) {
                 return "Warning: SCRAM engaged";
@@ -276,8 +339,14 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
     }
 
     private String reactorStateLabel(CompoundTag reactor) {
+        if (!reactor.getBoolean("assembled")) {
+            return "INVALID";
+        }
         if (reactor.getBoolean("melted_down")) {
             return "MELTDOWN";
+        }
+        if (!reactor.getBoolean("active")) {
+            return "OFFLINE";
         }
         if (reactor.getBoolean("scrammed")) {
             return "SCRAMMED";
@@ -293,12 +362,16 @@ public class TechMachineScreen extends AbstractContainerScreen<TechMachineMenu> 
 
     private int reactorStateColor(CompoundTag reactor) {
         String state = reactorStateLabel(reactor);
-        if ("Stable".equals(state) || "Idle".equals(state)) {
+        if ("Stable".equals(state) || "Idle".equals(state) || "OFFLINE".equals(state)) {
             return 0xD6E7F7;
         }
         if ("SCRAMMED".equals(state)) {
             return 0xFFDCC7A1;
         }
         return 0xFFDF9A7A;
+    }
+
+    private void sendReactorControl(byte action, int value) {
+        ModNetwork.CHANNEL.sendToServer(new ReactorControlC2SPacket(menu.blockPos(), action, value));
     }
 }

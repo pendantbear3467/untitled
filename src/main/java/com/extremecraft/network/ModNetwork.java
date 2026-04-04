@@ -14,6 +14,7 @@ import com.extremecraft.network.packet.InstallModuleC2SPacket;
 import com.extremecraft.network.sync.SyncManaStateS2CPacket;
 import com.extremecraft.network.packet.OpenExtremeCraftDebugScreenS2CPacket;
 import com.extremecraft.network.packet.PlayerStatsPacket;
+import com.extremecraft.network.packet.ReactorControlC2SPacket;
 import com.extremecraft.network.packet.RemoveModuleC2SPacket;
 import com.extremecraft.network.packet.RequestPlayerStatsPacket;
 import com.extremecraft.network.packet.SpellCastPacket;
@@ -162,6 +163,12 @@ public final class ModNetwork {
                 .encoder(RemoveModuleC2SPacket::encode)
                 .decoder(RemoveModuleC2SPacket::decode)
                 .consumerMainThread(RemoveModuleC2SPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(ReactorControlC2SPacket.class, nextId())
+                .encoder(ReactorControlC2SPacket::encode)
+                .decoder(ReactorControlC2SPacket::decode)
+                .consumerMainThread(ReactorControlC2SPacket::handle)
                 .add();
 
         // Metadata/snapshot sync packets. These mirror client-visible catalogs and are not

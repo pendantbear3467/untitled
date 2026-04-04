@@ -49,11 +49,14 @@ public final class ReactorFuelService {
         if (stack.is(NUCLEAR_MATERIALS) || itemId.contains("uranium")) {
             return new FuelProfile(240, 16.0D, 4.0D);
         }
+        if (itemId.contains("reactor_fuel_rod")) {
+            return new FuelProfile(520, 22.0D, 6.5D);
+        }
         if (itemId.contains("thorium")) {
             return new FuelProfile(320, 10.0D, 2.6D);
         }
         if (itemId.contains("reactor_core")) {
-            return new FuelProfile(480, 26.0D, 8.0D);
+            return new FuelProfile(900, 34.0D, 11.0D);
         }
         return FuelProfile.NONE;
     }

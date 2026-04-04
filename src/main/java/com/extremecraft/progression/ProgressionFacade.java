@@ -69,4 +69,8 @@ public final class ProgressionFacade {
     public static boolean claimGuildQuestReward(ServerPlayer player, QuestDefinition quest) {
         return GuildQuestRewardService.claimQuestReward(player, quest);
     }
+
+    public static boolean switchClass(ServerPlayer player, String classId) {
+        return ProgressionService.switchClass(player, classId);
+    }
 }

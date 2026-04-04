@@ -1,5 +1,9 @@
 package com.extremecraft.modules.runtime;
 
+import com.extremecraft.ability.AbilityContext;
+import com.extremecraft.ability.AbilityDefinition;
+import com.extremecraft.ability.AbilityEffect;
+import com.extremecraft.ability.AbilityExecutor;
 import com.extremecraft.modules.data.ModuleAbilityDefinition;
 import com.extremecraft.modules.data.ModuleDefinition;
 import com.extremecraft.modules.data.ModuleTrigger;
@@ -16,7 +20,6 @@ import com.extremecraft.progression.capability.PlayerStatsApi;
 import com.extremecraft.progression.capability.PlayerStatsCapability;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.PacketDistributor;
 
@@ -87,26 +90,18 @@ public final class ModuleRuntimeService {
     }
 
     private static boolean applyAbility(ServerPlayer player, ModuleAbilityDefinition ability, String contextId) {
-        switch (ability.id()) {
-            case "kinetic_shield" -> {
-                return true;
-            }
-            case "blink_step" -> {
-                double distance = ability.scaling().getOrDefault("distance", 6.0D);
-                var look = player.getLookAngle().normalize();
-                double x = player.getX() + (look.x * distance);
-                double z = player.getZ() + (look.z * distance);
-                player.teleportTo(x, player.getY(), z);
-                player.swing(InteractionHand.MAIN_HAND, true);
-                return true;
-            }
-            case "mana_weave" -> {
-                return true;
-            }
-            default -> {
-                return false;
-            }
+        if (player == null || ability == null) {
+            return false;
         }
+
+        // Passive module effects stay in the module runtime; active trigger payloads compile into
+        // the shared ability execution path so gameplay effects do not fork into another system.
+        if ("kinetic_shield".equals(ability.id()) || "mana_weave".equals(ability.id())) {
+            return true;
+        }
+
+        AbilityDefinition compiled = compileTriggeredAbility(ability, contextId);
+        return compiled != null && AbilityExecutor.executeDefinition(AbilityContext.of(player, compiled));
     }
 
     public static float shieldReduction(ServerPlayer player) {
@@ -236,6 +231,24 @@ public final class ModuleRuntimeService {
 
     private static ModuleDefinition module(ModuleType type, String id) {
         return type == ModuleType.ARMOR ? ArmorModuleRegistry.get(id) : ToolModuleRegistry.get(id);
+    }
+
+    private static AbilityDefinition compileTriggeredAbility(ModuleAbilityDefinition ability, String contextId) {
+        if ("blink_step".equals(ability.id())) {
+            double distance = Math.max(0.5D, ability.scaling().getOrDefault("distance", 6.0D));
+            return new AbilityDefinition(
+                    "module:" + ability.id(),
+                    ability.manaCost(),
+                    ability.cooldownTicks(),
+                    AbilityDefinition.TargetType.SELF,
+                    0.0D,
+                    1.0D,
+                    "",
+                    List.of(new AbilityEffect("move", distance, 0, 0, contextId == null ? "" : contextId, Map.of()))
+            );
+        }
+
+        return null;
     }
 
     private static boolean isUnlocked(ServerPlayer player, ModuleDefinition module) {

@@ -10,6 +10,7 @@ Live gameplay owner folders:
 - `class_abilities/`
 - `skills/`
 - `skill_trees/`
+- `module_abilities/`
 - `armor_modules/`
 - `tool_modules/`
 - `worldgen/`

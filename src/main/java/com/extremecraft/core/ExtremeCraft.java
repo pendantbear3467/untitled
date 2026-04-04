@@ -3,13 +3,13 @@ package com.extremecraft.core;
 import com.extremecraft.ability.AbilityEngine;
 import com.extremecraft.ability.AbilityRegistry;
 import com.extremecraft.api.ExtremeCraftAPI;
-import com.extremecraft.classsystem.ClassRegistry;
 import com.extremecraft.combat.CombatEventHandler;
 import com.extremecraft.combat.dualwield.PlayerDualWieldEvents;
 import com.extremecraft.command.ECDevCommands;
 import com.extremecraft.config.Config;
 import com.extremecraft.config.DwConfig;
 import com.extremecraft.config.ECFoundationConfig;
+import com.extremecraft.dev.validation.ECRuntimeOwnershipAudit;
 import com.extremecraft.entity.ModEntities;
 import com.extremecraft.foundation.ECFoundationRuntimeEvents;
 import com.extremecraft.entity.MobAttributes;
@@ -187,7 +187,6 @@ public final class ExtremeCraft {
             MinecraftForge.EVENT_BUS.register(new AbilityRegistry());
             AbilityEngine.initialize();
             MinecraftForge.EVENT_BUS.register(new SpellRegistry());
-            MinecraftForge.EVENT_BUS.register(new ClassRegistry());
             MinecraftForge.EVENT_BUS.register(new MachineRegistry());
             MinecraftForge.EVENT_BUS.register(new ProgressionRegistry());
 
@@ -197,6 +196,10 @@ public final class ExtremeCraft {
             // the primary gameplay mutation path for similarly named runtime domains.
             PlatformDataLoaderBootstrap.registerAll();
             MinecraftForge.EVENT_BUS.register(new PlatformDataSyncEvents());
+
+            if (!FMLEnvironment.production && ECFoundationConfig.shouldLogOwnershipAudit()) {
+                ECRuntimeOwnershipAudit.logStartupSummary();
+            }
         });
     }
 
