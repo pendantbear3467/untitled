@@ -138,20 +138,29 @@ tasks.register('validateContentCompleteness') {
         ]
 
         def validated = false
+        def lastLaunchFailure = null
         for (def cmd : attempts) {
             try {
-                exec {
+                def result = exec {
                     commandLine cmd
+                    ignoreExitValue = true
                 }
-                validated = true
-                break
-            } catch (Exception ignored) {
+                if (result.exitValue == 0) {
+                    validated = true
+                    break
+                }
+                throw new GradleException("Content completeness validation failed with exit code ${result.exitValue}. See log output above.")
+            } catch (Exception ex) {
+                if (ex instanceof GradleException && ex.message?.startsWith('Content completeness validation failed')) {
+                    throw ex
+                }
+                lastLaunchFailure = ex
                 // Try the next Python executable candidate.
             }
         }
 
         if (!validated) {
-            throw new GradleException('Unable to run content completeness validation. Install python/python3 to run tools/content_completion.py validate.')
+            throw new GradleException('Unable to launch content completeness validation. Install python/python3 to run tools/content_completion.py validate.', lastLaunchFailure)
         }
     }
 }
